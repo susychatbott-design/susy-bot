@@ -168,7 +168,7 @@ export default function SusybotApp() {
   const { isListening: isWakeWordActive } = useSusyWakeWord({
     enabled: wakeWordEnabled && !showRealtimeCallModal,
     onWakeWordDetected: (phrase) => {
-      console.log("[WakeWord] Nora llamada por voz:", phrase);
+      console.log("[WakeWord] Susybot llamada por voz:", phrase);
       setShowRealtimeCallModal(true);
     }
   });
@@ -224,7 +224,7 @@ export default function SusybotApp() {
         setShowLiveVisionModal(true);
         setTimeout(() => {
           startLiveVision("environment");
-          speakText("Hola, soy Nora, tu lazarillo visual. He activado la Cámara Titán. Apunta tu teléfono hacia el frente para guiarte en tu camino.", -99);
+          speakText("Hola, soy Susybot, tu asistente municipal y lazarillo, tu lazarillo visual. He activado la Cámara Titán. Apunta tu teléfono hacia el frente para guiarte en tu camino.", -99);
         }, 1000);
       } else if (isCallMode) {
         setShowRealtimeCallModal(true);
@@ -666,11 +666,11 @@ export default function SusybotApp() {
     setPlayingMsgIndex(null);
   };
 
-  // 9. Motor de Visión y Audio en Vivo de Nora Titán (Cámara en Tiempo Real con LLaMA 3.2 Vision)
+  // 9. Motor de Visión y Audio en Vivo de Susybot (Cámara en Tiempo Real con LLaMA 3.2 Vision)
   const startLiveVision = async (facingMode: "user" | "environment" = liveFacingMode) => {
     stopSpeaking();
     setIsLiveStreaming(true);
-    setLiveSubtitles("Activando cámara y visor neuronal de Nora Titán (LLaMA 3.2 / Qwen VL)...");
+    setLiveSubtitles("Activando cámara y visor neuronal de Susybot (LLaMA 3.2 / Qwen VL)...");
     hardware.acquireWakeLock();
 
     try {
@@ -688,7 +688,7 @@ export default function SusybotApp() {
         liveVideoRef.current.play();
       }
 
-      setLiveSubtitles("👁️ Nora Titán está observando en vivo. Apunta a lo que deseas analizar...");
+      setLiveSubtitles("👁️ Susybot está observando en vivo. Apunta a lo que deseas analizar...");
 
       if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
 
@@ -841,7 +841,7 @@ export default function SusybotApp() {
       };
 
       recognition.onerror = () => {
-        setLiveSubtitles("👁️ Nora sigue observando. Puedes pulsar 'Analizar' o escribir.");
+        setLiveSubtitles("👁️ Susybot sigue observando. Puedes pulsar 'Analizar' o escribir.");
       };
 
       recognition.start();
@@ -885,7 +885,7 @@ export default function SusybotApp() {
 
     try {
       setIsAnalyzingFrame(true);
-      setLiveSubtitles("👁️ Nora está analizando la toma en vivo...");
+      setLiveSubtitles("👁️ Susybot está analizando la toma en vivo...");
       lastLiveAnalysisRef.current = Date.now();
       const video = liveVideoRef.current;
       
@@ -1518,7 +1518,7 @@ export default function SusybotApp() {
       });
 
       if (!res.ok) {
-        console.warn(`[Nora Chat] Servidor ocupado o sin red (${res.status}). Activando inferencia local WebGPU / Modo Campo...`);
+        console.warn(`[Susybot Chat] Servidor ocupado o sin red (${res.status}). Activando inferencia local WebGPU / Modo Campo...`);
         const localRes = await executeLocalInference(textToSend, historyPayload, activeMode);
         
         setMessages((prev) => [...prev, {
@@ -1681,7 +1681,7 @@ export default function SusybotApp() {
       }
 
     } catch (err: any) {
-      console.warn("[Nora Chat] Error de red. Conmutando a modo campo local WebGPU...", err);
+      console.warn("[Susybot Chat] Error de red. Conmutando a modo campo local WebGPU...", err);
       const localRes = await executeLocalInference(textToSend, historyPayload, activeMode);
       
       setMessages((prev) => [...prev, {
@@ -2350,7 +2350,7 @@ export default function SusybotApp() {
               </button>
             </div>
 
-            {/* Botón Nora Titán Live Vision (En Modo Visual) */}
+            {/* Botón Susybot Live Vision (En Modo Visual) */}
             {hardware.currentMode === "visual" && (
               <button
                 onClick={() => {
@@ -2358,7 +2358,7 @@ export default function SusybotApp() {
                   startLiveVision();
                 }}
                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white transition-all shadow-md shadow-rose-500/20 active:scale-95 cursor-pointer shrink-0"
-                title="Abrir Nora Titán Live (Cámara y Visión con LLaMA 3.2)"
+                title="Abrir Susybot Live (Cámara y Visión con LLaMA 3.2)"
               >
                 <Eye size={13} className="text-white shrink-0" />
                 <span className="font-extrabold tracking-wide">Cámara IA</span>
@@ -2373,7 +2373,7 @@ export default function SusybotApp() {
                 setShowRealtimeCallModal(true);
               }}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-gradient-to-r from-cyan-600 via-teal-500 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white transition-all shadow-md shadow-cyan-500/20 active:scale-95 cursor-pointer shrink-0"
-              title="Iniciar Llamada en Vivo con Nora"
+              title="Iniciar Llamada en Vivo con Susybot"
             >
               <PhoneCall size={13} className="text-white shrink-0" />
               <span className="font-extrabold tracking-wide">Llamada</span>
@@ -2383,7 +2383,7 @@ export default function SusybotApp() {
             <button
               onClick={() => setShowVoiceModal(true)}
               className="flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 hover:text-white transition-colors shrink-0 shadow-sm"
-              title="Afinar tono, velocidad y elegir voz de Nora"
+              title="Afinar tono, velocidad y elegir voz de Susybot"
             >
               <Sliders size={13} className="text-sky-400 shrink-0" />
               <span className="hidden sm:inline">Voz</span>
@@ -2444,60 +2444,137 @@ export default function SusybotApp() {
             /* Vista de Bienvenida Optimizada para Móvil y Desktop */
             <div className="max-w-xl mx-auto h-full flex flex-col items-center justify-center text-center px-2 sm:px-4 my-auto space-y-3 sm:space-y-4">
               
-              {/* Logo e Identidad */}
-              <div className="flex flex-col items-center">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-sky-500/20 mb-2.5">
-                  <Sparkles size={24} className="text-white" />
-                </div>
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-slate-100 to-sky-400 bg-clip-text text-transparent">
-                  Nora Titán Universal
+              {/* Logo e Identidad Municipal de Ituzaingó */}
+              <div className="flex flex-col items-center text-center">
+                <img 
+                  src="https://ituzaingo.gob.ar/turismo/wp-content/uploads/2024/11/version-marginada.jpg" 
+                  alt="Municipalidad de Ituzaingó" 
+                  className="h-16 sm:h-20 w-auto object-contain rounded-2xl shadow-xl shadow-sky-500/20 mb-3 border border-sky-400/30 transition-transform hover:scale-105" 
+                />
+                <h2 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-white via-sky-100 to-emerald-300 bg-clip-text text-transparent">
+                  Susybot Municipal
                 </h2>
-                <p className="text-[11px] sm:text-xs text-slate-400 max-w-sm mt-1">
-                  Inteligencia Soberana de MyJNexoraVisual al servicio de la educación nacional.
+                <p className="text-xs sm:text-sm font-semibold text-sky-400 mt-1">
+                  Directora Virtual de Atención al Vecino e Innovación Urbana
+                </p>
+                <p className="text-[11px] sm:text-xs text-slate-400 max-w-md mt-1">
+                  Municipalidad de Ituzaingó, Corrientes • Trámites, Reclamos Urbanos, Turismo en Esteros del Iberá y Accesibilidad Universal.
                 </p>
               </div>
 
-              {/* Banner Titán Live Compacto */}
+              {/* Banner Susybot Live Vision Compacto */}
               <button
                 onClick={() => {
                   setShowLiveVisionModal(true);
                   startLiveVision();
                 }}
-                className="w-full p-3 rounded-2xl bg-gradient-to-r from-rose-950/70 via-purple-950/70 to-indigo-950/70 hover:from-rose-900/80 hover:to-indigo-900/80 border border-rose-500/40 flex items-center justify-between text-left transition-all shadow-md shadow-rose-950/30 group active:scale-[0.99] cursor-pointer"
+                className="w-full p-3 rounded-2xl bg-gradient-to-r from-sky-950/80 via-indigo-950/80 to-emerald-950/80 hover:from-sky-900/90 hover:to-emerald-900/90 border border-sky-500/40 flex items-center justify-between text-left transition-all shadow-md shadow-sky-950/30 group active:scale-[0.99] cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-500 to-purple-600 flex items-center justify-center shrink-0 shadow-sm shadow-rose-500/30">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 to-emerald-500 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/30">
                     <Eye size={16} className="text-white animate-pulse" />
                   </div>
                   <div>
                     <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                      👁️ Nora Titán Live Vision
-                      <span className="px-1.5 py-0.2 rounded-full text-[8px] bg-rose-500 text-white font-mono uppercase">En Vivo</span>
+                      👁️ Susybot Live Vision (Cámara Ciudadana y Trámites)
+                      <span className="px-1.5 py-0.2 rounded-full text-[8px] bg-emerald-500 text-white font-mono uppercase">En Vivo</span>
                     </span>
-                    <span className="text-[10px] text-rose-200/80 line-clamp-1">Apunta tu cámara a libros, pizarrones o planos</span>
+                    <span className="text-[10px] text-sky-200/80 line-clamp-1">Apunta tu cámara a formularios, DNI, licencias o enfoca un reclamo urbano</span>
                   </div>
                 </div>
-                <Radio size={15} className="text-rose-400 animate-pulse shrink-0 ml-1" />
+                <Radio size={15} className="text-sky-400 animate-pulse shrink-0 ml-1" />
               </button>
 
-              {/* Selector de Modos de Adaptación (Scroll Horizontal Limpio en Móvil) */}
+              {/* Selector de Modos de Atención Municipal */}
               <div className="w-full flex items-center justify-start sm:justify-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
                 {[
-                  { id: "general", label: "🌟 General" },
-                  { id: "inclusion", label: "🧩 Inclusión TEA" },
-                  { id: "docente", label: "🎓 Docente" },
-                  { id: "catedra", label: "🏛️ Cátedra" },
+                  { id: "general", label: "🌟 Atención General" },
+                  { id: "transito", label: "🚗 Tránsito y Licencias" },
+                  { id: "reclamos", label: "🚧 Obras y Reclamos" },
+                  { id: "turismo", label: "🌿 Turismo & Iberá" },
+                  { id: "inclusion", label: "🧩 Inclusión TEA / DUA" },
                 ].map((mode) => (
                   <button
                     key={mode.id}
                     onClick={() => setActiveMode(mode.id)}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-medium border whitespace-nowrap transition-all shrink-0 ${
                       activeMode === mode.id
-                        ? "bg-sky-500 text-white border-sky-400 shadow-sm shadow-sky-500/30"
+                        ? "bg-gradient-to-r from-sky-600 to-emerald-600 text-white border-sky-400 shadow-sm shadow-sky-500/30"
                         : "bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200"
                     }`}
                   >
                     {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Banners Compartir y Sincronizar */}
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="p-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-700/40 flex items-center gap-2 text-left transition-all group"
+                >
+                  <QrCode size={15} className="text-emerald-400 shrink-0" />
+                  <div className="truncate">
+                    <span className="text-[11px] font-bold text-emerald-300 block truncate">Recomendar / QR</span>
+                    <span className="text-[9px] text-slate-400 hidden sm:block">Compartir con vecinos</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleOpenSyncModal}
+                  className="p-2.5 rounded-xl bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-700/40 flex items-center gap-2 text-left transition-all group"
+                >
+                  <Laptop size={15} className="text-indigo-400 shrink-0" />
+                  <div className="truncate">
+                    <span className="text-[11px] font-bold text-indigo-300 block truncate">Sincronizar Kiosco</span>
+                    <span className="text-[9px] text-slate-400 hidden sm:block">Continuar en tótem o PC</span>
+                  </div>
+                </button>
+              </div>
+
+              {/* Grid de Sugerencias Compacto Municipal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full text-left pt-1">
+                {[
+                  { 
+                    icon: FileText, 
+                    title: "Renovación de Licencia de Conducir", 
+                    desc: "Requisitos, turnos y tasas de Tránsito", 
+                    prompt: "Hola Susybot, con mucho gusto quisiera consultar los requisitos, costos y horarios para renovar mi carnet de conducir en la Dirección de Tránsito de Ituzaingó." 
+                  },
+                  { 
+                    icon: Zap, 
+                    title: "Reportar Reclamo Urbano (#ITU)", 
+                    desc: "Baches, luminarias y podas vecinales", 
+                    prompt: "Hola Susybot, deseo registrar un reclamo formal por una luminaria que no funciona en la esquina de mi barrio para que la cuadrilla de Obras Públicas acuda a revisarla." 
+                  },
+                  { 
+                    icon: Bell, 
+                    title: "Guardias de Salud y Emergencias", 
+                    desc: "Hospital Billinghurst (107) y Bomberos (100)", 
+                    prompt: "Hola Susybot, por favor indícame los números y guardias de emergencia de Ituzaingó: Hospital Dr. Ricardo Billinghurst, Bomberos Voluntarios y Defensa Civil." 
+                  },
+                  { 
+                    icon: Presentation, 
+                    title: "Turismo: Esteros del Iberá y Yacyretá", 
+                    desc: "Portal Cambyretá y visitas a la Represa", 
+                    prompt: "Hola Susybot, ¿cómo puedo visitar los Esteros del Iberá a través del Portal Cambyretá y cuáles son los horarios para los recorridos en la Represa Hidroeléctrica Yacyretá?" 
+                  },
+                ].map((card, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSendMessage(card.prompt)}
+                    className="p-2.5 sm:p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-sky-500/40 text-left transition-all active:scale-[0.98] group flex items-start gap-2.5"
+                  >
+                    <card.icon size={16} className="text-sky-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                    <div className="truncate">
+                      <h4 className="text-xs font-semibold text-slate-200 group-hover:text-sky-300 transition-colors truncate">
+                        {card.title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {card.desc}
+                      </p>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -2534,7 +2611,7 @@ export default function SusybotApp() {
                     icon: Puzzle, 
                     title: "Inclusión y Apoyo (TEA)", 
                     desc: "Lenguaje directo y pictogramas", 
-                    prompt: "Hola Nora, conversemos de forma clara, directa y paso a paso con pictogramas. ¿Qué podemos hacer o aprender juntos hoy?" 
+                    prompt: "Hola Susybot, conversemos de forma clara, directa y paso a paso con pictogramas. ¿Qué podemos hacer o aprender juntos hoy?" 
                   },
                   { 
                     icon: GraduationCap, 
@@ -3052,7 +3129,7 @@ export default function SusybotApp() {
 
             <h3 className="text-lg font-bold text-white mb-2">¿Vincular con tu Computadora?</h3>
             <p className="text-xs text-slate-300 mb-6 leading-relaxed">
-              Has escaneado el código QR de Nora Titán. Al autorizar, tus conversaciones y sesiones se transferirán a tu PC de forma segura y sin contraseñas.
+              Has escaneado el código QR de Susybot. Al autorizar, tus conversaciones y sesiones se transferirán a tu PC de forma segura y sin contraseñas.
             </p>
 
             <div className="space-y-2.5">
@@ -3166,7 +3243,7 @@ export default function SusybotApp() {
                 <Sliders size={20} className="text-white" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Calibrador de Voz de Nora</h3>
+                <h3 className="text-base font-bold text-white">Calibrador de Voz de Susybot</h3>
                 <p className="text-xs text-slate-400">Personaliza la voz neuronal, el tono y la velocidad</p>
               </div>
             </div>
@@ -3189,7 +3266,7 @@ export default function SusybotApp() {
                     const l = v.lang.toLowerCase();
                     if (l.includes("ar") || l === "es-ar" || v.name.toLowerCase().includes("argentina")) {
                       flag = "🇦🇷";
-                      label = `Nora Argentina (${v.name})`;
+                      label = `Susybot Ituzaingó (${v.name})`;
                     } else if (l.includes("us") || l.includes("419") || l.includes("mx") || l.includes("co") || v.name.toLowerCase().includes("google español")) {
                       flag = "🌎";
                       label = `Español Latino Neutro (${v.name})`;
@@ -3297,7 +3374,7 @@ export default function SusybotApp() {
               <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping shadow-lg shadow-rose-500/50" />
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Nora Titán Live
+                  Susybot Live
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-600 text-rose-300 uppercase">En Vivo</span>
                 </h3>
                 <p className="text-[10px] text-slate-300 font-mono">Modo: {activeMode.toUpperCase()}</p>
@@ -3360,7 +3437,7 @@ export default function SusybotApp() {
             {isAnalyzingFrame && (
               <div className="absolute top-6 px-4 py-1.5 rounded-full bg-black/80 border border-rose-500/60 text-rose-300 text-xs font-mono backdrop-blur-md flex items-center gap-2 animate-pulse">
                 <Radio size={14} className="animate-spin" />
-                <span>Nora está analizando lo que ve...</span>
+                <span>Susybot está analizando lo que ve...</span>
               </div>
             )}
           </div>
@@ -3370,7 +3447,7 @@ export default function SusybotApp() {
             
             {/* Globo de Subtítulos de Nora */}
             <div className="max-w-xl mx-auto p-3.5 rounded-2xl bg-black/80 border border-rose-500/40 text-slate-100 text-xs sm:text-sm backdrop-blur-md shadow-2xl leading-relaxed text-center font-medium">
-              <span className="text-rose-400 font-bold mr-1.5">Nora:</span>
+              <span className="text-sky-400 font-bold mr-1.5">Susybot:</span>
               {liveSubtitles}
             </div>
 
@@ -3379,7 +3456,7 @@ export default function SusybotApp() {
               <button
                 onClick={handleLiveVoiceAsk}
                 className="p-3 rounded-2xl bg-slate-800/90 border border-slate-700 hover:bg-slate-700 text-rose-400 hover:text-white transition-all backdrop-blur-md cursor-pointer shrink-0 shadow-md shadow-rose-500/10"
-                title="Hablar por micrófono a Nora"
+                title="Hablar por micrófono a Susybot"
               >
                 <Mic size={18} />
               </button>
@@ -3394,7 +3471,7 @@ export default function SusybotApp() {
                     setLiveCustomPrompt("");
                   }
                 }}
-                placeholder="Pregúntale a Nora sobre lo que estás enfocando..."
+                placeholder="Pregúntale a Susybot sobre lo que estás enfocando..."
                 className="flex-1 px-4 py-3 rounded-2xl bg-slate-900/90 border border-slate-700 text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-hidden focus:border-rose-500 backdrop-blur-md"
               />
 
