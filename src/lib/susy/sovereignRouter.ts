@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 🏛️ NORA TITÁN - ROUTER MULTIMODAL SOBERANO Y MATRIZ DE BLINDAJE TOTAL
  * Ubicación: /src/lib/nora/sovereignRouter.ts

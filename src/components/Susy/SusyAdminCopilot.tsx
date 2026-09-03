@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { X, Send, Sparkles, Compass, HelpCircle, BookOpen, ChevronRight, RefreshCw, Cpu } from "lucide-react";

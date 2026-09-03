@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 👁️ SUSYBOT LIVE - AUDITORÍA VISUAL Y CÁMARA TITÁN EN TIEMPO REAL
  * Ubicación: /src/app/api/live/route.ts

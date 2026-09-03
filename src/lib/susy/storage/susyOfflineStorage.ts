@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 🗄️ NORA OFFLINE STORAGE (INDEXEDDB - CERO DATOS / MODO LAZARILLO)
  * Ubicación: src/lib/nora/storage/susyOfflineStorage.ts

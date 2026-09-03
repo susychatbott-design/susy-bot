@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 🏛️ SUSYBOT SOVEREIGN CORE (100% CÓDIGO ABIERTO - COSTO $0 - CERO APIS PROPIETARIAS)
  * Ubicación: /src/lib/nora/sovereignCore.ts

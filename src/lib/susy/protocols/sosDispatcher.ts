@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 🚨 NORA PROTOCOLO SOS HÍBRIDO (ONLINE CLOUD / OFFLINE SMS NATIVO)
  * Ubicación: src/lib/nora/protocols/sosDispatcher.ts

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * ⚡ SUSYBOT REALTIME PROXY - 100% SOBERANO Y DE ALTA VELOCIDAD (<300MS)
  * Ubicación: /src/app/api/realtime-proxy/route.ts

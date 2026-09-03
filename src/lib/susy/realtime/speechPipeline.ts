@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 🎙️ SUSYBOT REALTIME SPEECH PIPELINE (COSTO $0 - ZERO LATENCY - ROBUST)
  * Ubicación: /src/lib/nora/realtime/speechPipeline.ts

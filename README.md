@@ -1,4 +1,4 @@
-﻿# ðŸ›ï¸ SUSY BOT - Sistema de Inteligencia Artificial Municipal & Ciudadana Soberana
+# ðŸ›ï¸ SUSY BOT - Sistema de Inteligencia Artificial Municipal & Ciudadana Soberana
 
 **Susy Bot** es un cerebro multimodal de IA diseÃ±ado para operar a nivel gubernamental y municipal con **soberanÃ­a absoluta de datos, accesibilidad universal y costo de inferencia $0 en infraestructura abierta**.
 

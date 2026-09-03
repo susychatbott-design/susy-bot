@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 🧠 SUSYBOT LOCAL WEBGPU & AUTONOMOUS DIDACTIC ENGINE (100% OFFLINE)
  * Ubicación: /src/lib/nora/webgpu/localEngine.ts

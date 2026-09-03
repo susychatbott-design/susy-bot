@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ========================================================================
  * 📳 NORA HAPTIC SERVICE (FEEDBACK TÁCTIL Y NAVEGACIÓN LAZARILLO)
  * Ubicación: src/lib/nora/haptics/susyHapticService.ts
