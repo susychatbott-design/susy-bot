@@ -147,7 +147,7 @@ export default function SusybotApp() {
   const [voiceRate, setVoiceRate] = useState<number>(0.94);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
 
-  // Estados de Nora Titán Live Vision y Realtime Voice Call
+  // Estados de Susybot Live Vision y Realtime Voice Call
   const [showRealtimeCallModal, setShowRealtimeCallModal] = useState(false);
   const [showLiveVisionModal, setShowLiveVisionModal] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
@@ -2155,7 +2155,7 @@ export default function SusybotApp() {
               <h1 className="font-bold text-base tracking-wide bg-gradient-to-r from-white via-slate-200 to-sky-400 bg-clip-text text-transparent">
                 Susybot AI
               </h1>
-              <p className="text-[10px] text-sky-400/80 font-mono">By MyJNexoraVisual</p>
+              <p className="text-[10px] text-sky-400/80 font-mono">Municipalidad de Ituzaingó</p>
             </div>
           </div>
           <button 
@@ -2305,7 +2305,7 @@ export default function SusybotApp() {
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50 shrink-0" />
               <span className="font-bold text-sm text-slate-100 tracking-tight">Susybot</span>
               <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-950/80 text-sky-400 border border-sky-800/40">
-                Educación • Inclusión DUA
+                Municipalidad de Ituzaingó • Atención al Vecino
               </span>
               <SusyConnectionBadge />
             </div>

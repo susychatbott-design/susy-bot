@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Susy Bot | Asistente Municipal y Ciudadana Soberana",
-  description: "Inteligencia artificial soberana para atenciÃ³n ciudadana, trÃ¡mites municipales, educaciÃ³n inclusiva y accesibilidad universal.",
+  title: "Susybot | Municipalidad de Ituzaingó, Corrientes",
+  description: "Directora Virtual de Atención al Vecino e Innovación Urbana. Trámites, reclamos urbanos, turismo en Esteros del Iberá y atención inclusiva.",
   icons: {
-    icon: "/favicon.ico",
+    icon: "https://ituzaingo.gob.ar/turismo/wp-content/uploads/2024/11/version-marginada.jpg",
   },
 };
 
