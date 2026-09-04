@@ -242,9 +242,15 @@ export default function SusyRealtimeCallModal({
     activeUtteranceRef.current = null;
     isSusySpeakingRef.current = false;
     isSpeakingRef.current = false;
+    isProcessingRef.current = false;
     silenceStartRef.current = null;
     setCallState("listening");
     setAccessibleAnnouncement("Susy te escucha.");
+
+    // Reactivar AudioContext si fue suspendido por el navegador en móvil
+    if (audioContextRef.current && audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume().catch(() => {});
+    }
 
     // Reactivar micrófono de forma limpia
     if (micGainNodeRef.current && audioContextRef.current) {
@@ -256,6 +262,16 @@ export default function SusyRealtimeCallModal({
       micStreamRef.current.getAudioTracks().forEach((t) => {
         t.enabled = true;
       });
+    }
+
+    // 🎙️ Reactivar SpeechRecognition nativo de forma inmediata
+    if (typeof window !== "undefined") {
+      try {
+        if (recognitionRef.current) {
+          try { recognitionRef.current.abort(); } catch {}
+          try { recognitionRef.current.start(); } catch {}
+        }
+      } catch {}
     }
   }, [clearSpeechHeartbeat]);
 
@@ -695,7 +711,22 @@ export default function SusyRealtimeCallModal({
                 setUserTranscript(`"${cur.trim()}"`);
               }
             };
-            rec.onerror = () => {};
+
+            rec.onerror = (err: any) => {
+              console.warn("[SpeechRecognition Warning]:", err?.error);
+              if (err?.error !== "aborted" && micStreamRef.current && !isSusySpeakingRef.current) {
+                setTimeout(() => {
+                  try { rec.start(); } catch {}
+                }, 400);
+              }
+            };
+
+            rec.onend = () => {
+              if (micStreamRef.current && !isSusySpeakingRef.current && !isProcessingRef.current) {
+                try { rec.start(); } catch {}
+              }
+            };
+
             try { rec.start(); } catch {}
             recognitionRef.current = rec;
           } catch {}
@@ -1122,7 +1153,13 @@ export default function SusyRealtimeCallModal({
                   aria-pressed={callState === "speaking" || isSpeakingRef.current}
                   onClick={() => {
                     if (callState === "speaking") {
-                      // 1. Si Susy habla, pausar y escuchar
+                      // 1. Si Susy habla, guardar contexto de la interrupción y reactivar escucha
+                      if (lastCompletedAssistantTextRef.current) {
+                        lastInterruptedResponseRef.current = {
+                          text: lastCompletedAssistantTextRef.current,
+                          timestamp: Date.now()
+                        };
+                      }
                       stopSusySpeech();
                       resumeListening();
                       playAccessibleChime("start");
@@ -1180,17 +1217,32 @@ export default function SusyRealtimeCallModal({
                 </button>
               </div>
 
-              {/* Subtítulos */}
+              {/* Subtítulos y Botón de Reanudación de Susy */}
               <div className="w-full mt-3 px-3 min-h-[65px] flex flex-col items-center justify-center">
                 {callState === "thinking" ? (
                   <p className="text-xs text-purple-300 font-medium animate-pulse" role="status">
                     ⚡ Susy está pensando...
                   </p>
                 ) : assistantText ? (
-                  <div className="max-w-sm bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg">
+                  <div className="max-w-sm bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col items-center gap-1.5 text-center">
                     <p className="text-xs text-emerald-300 font-medium leading-relaxed">
                       "{assistantText}"
                     </p>
+                    {lastInterruptedResponseRef.current && callState === "listening" && (
+                      <button
+                        onClick={() => {
+                          const resumeQuery = "Por favor continuá con lo que me estabas diciendo.";
+                          setUserTranscript(`"${resumeQuery}"`);
+                          setTypedMessage(resumeQuery);
+                          setTimeout(() => {
+                            handleSendTypedMessage();
+                          }, 50);
+                        }}
+                        className="mt-1 px-3 py-1 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm"
+                      >
+                        <span>▶ Tocar para continuar escuchando</span>
+                      </button>
+                    )}
                   </div>
                 ) : userTranscript ? (
                   <p className="text-xs text-cyan-300 font-medium italic line-clamp-2 max-w-xs">
