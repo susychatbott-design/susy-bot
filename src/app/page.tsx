@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 import React, { useState, useEffect, useRef } from "react";
 import { 
-  Sparkles, 
+  Sparkles,
+  BarChart3, 
   Send, 
   Plus, 
   Trash2, 
@@ -62,6 +65,11 @@ import { useSusyHardware } from "@/hooks/useSusyHardware";
 import { executeLocalInference } from "@/lib/susy/webgpu/localEngine";
 import { syncOnlineDeltasIfAvailable } from "@/lib/susy/offline/knowledgeCache";
 import SusyConnectionBadge from "@/components/Susy/SusyConnectionBadge";
+import MunicipalOfficesGrid from "@/components/Susy/MunicipalOfficesGrid";
+import MunicipalLocationCard from "@/components/Susy/MunicipalLocationCard";
+import MunicipalDocumentModal from "@/components/Susy/MunicipalDocumentModal";
+import { MunicipalDepartment, getDepartmentById } from "@/lib/susy/municipal/departmentsData";
+import { municipalStore, MunicipalTurno, PermisoProvisorio } from "@/lib/susy/municipal/municipalActions";
 
 interface AttachedFile {
   name: string;
@@ -127,6 +135,12 @@ export default function SusybotApp() {
 
   // Estados de Compartir / Viralización WhatsApp y QR
   const [showShareModal, setShowShareModal] = useState(false);
+  const [activeDepartment, setActiveDepartment] = useState<MunicipalDepartment | null>(null);
+  const [selectedDocumentModal, setSelectedDocumentModal] = useState<{
+    type: "turno" | "permiso";
+    turno?: MunicipalTurno;
+    permiso?: PermisoProvisorio;
+  } | null>(null);
   const [copiedShareLink, setCopiedShareLink] = useState(false);
 
   // Estados de Sincronización Multi-Dispositivo (PC / Celular / Tablet)
@@ -2176,6 +2190,18 @@ export default function SusybotApp() {
             <Share2 size={12} className="text-emerald-400" />
           </button>
 
+          {/* Botón Centro de Gestión Municipal / Dashboard */}
+          <Link
+            href="/dashboard"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-800/70 text-indigo-300 transition-colors shadow-xs"
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 size={14} className="text-indigo-400" />
+              <span className="font-semibold">Centro de Gestión (/dashboard)</span>
+            </div>
+            <ExternalLink size={12} className="text-indigo-400" />
+          </Link>
+
           {/* Botón Números de Emergencia en Sidebar */}
           <button
             onClick={() => setShowEmergencyModal(true)}
@@ -2498,65 +2524,38 @@ export default function SusybotApp() {
                 <Radio size={15} className="text-sky-400 animate-pulse shrink-0 ml-1" />
               </button>
 
-              {/* Selector de Categorías Municipales con Acción Inmediata al pulsar */}
-              <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-2 my-2.5 shrink-0">
-                {[
-                  {
-                    id: "salud",
-                    label: "🏥 Salud y Farmacias",
-                    desc: "Hospital 107 y turnos",
-                    prompt: "Hola Susy, por favor informame qué farmacia se encuentra de turno hoy en Ituzaingó y los números de guardia del Hospital Billinghurst (107)."
-                  },
-                  {
-                    id: "transito",
-                    label: "🚗 Tránsito y Licencias",
-                    desc: "Carnet y requisitos",
-                    prompt: "Hola Susy, quisiera consultar los requisitos, costos y horarios para renovar mi carnet de conducir en la Dirección de Tránsito de Ituzaingó."
-                  },
-                  {
-                    id: "reclamos",
-                    label: "🚧 Obras y Reclamos",
-                    desc: "Bacheo y luminarias",
-                    prompt: "Hola Susy, necesito reportar un reclamo vecinal (luminarias / bacheo / limpieza de ramas) para que la cuadrilla municipal lo registre e inspeccione."
-                  },
-                  {
-                    id: "turismo",
-                    label: "🌿 Turismo e Iberá",
-                    desc: "Playas e información",
-                    prompt: "Hola Susy, contame sobre los paseos al Portal Cambyretá de los Esteros del Iberá, las playas de Ituzaingó y visitas a la Represa Yacyretá."
-                  },
-                  {
-                    id: "inclusion",
-                    label: "🧩 Inclusión y Social",
-                    desc: "Acción Social y DUA",
-                    prompt: "Hola Susy, necesito asesoramiento sobre los programas de Inclusión, Certificado Único de Discapacidad (CUD) y asistencia de Acción Social en Ituzaingó."
-                  },
-                  {
-                    id: "general",
-                    label: "🌟 Atención General",
-                    desc: "Consultas y gestiones",
-                    prompt: "Hola Susy, quisiera hacer una consulta sobre trámites, tasas e información general de la Municipalidad de Ituzaingó."
-                  },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => {
-                      setActiveMode(mode.id);
-                      handleSendMessage(mode.prompt);
-                    }}
-                    className={`p-2.5 rounded-2xl text-left border transition-all cursor-pointer select-none flex flex-col justify-center active:scale-[0.98] group ${
-                      activeMode === mode.id
-                        ? "bg-gradient-to-r from-sky-600 via-sky-500 to-emerald-600 text-white border-sky-300 ring-2 ring-sky-400/50 shadow-md shadow-sky-950/50"
-                        : "bg-slate-900/95 text-slate-200 border-slate-800 hover:border-sky-500/50 hover:bg-slate-800/80 shadow-sm"
-                    }`}
-                  >
-                    <span className="text-xs font-bold truncate group-hover:text-sky-300 transition-colors">{mode.label}</span>
-                    <span className={`text-[10px] truncate mt-0.5 ${activeMode === mode.id ? "text-sky-100" : "text-slate-400"}`}>
-                      {mode.desc}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {/* Selector de 12 Secretarías y Oficinas Municipales con Eventos y Geolocalización */}
+              <MunicipalOfficesGrid
+                onSelectDepartment={(dept) => {
+                  setActiveDepartment(dept);
+                  setActiveMode(dept.id);
+                  handleSendMessage(dept.quickPrompt);
+                }}
+                onRequestTurno={(deptId) => {
+                  const prompt = deptId 
+                    ? `Hola Susy, deseo solicitar un turno oficial para la dependencia municipal de ${deptId}.`
+                    : "Hola Susy, deseo solicitar un turno oficial para realizar un trámite en la Municipalidad de Ituzaingó.";
+                  handleSendMessage(prompt);
+                }}
+                onRequestPermiso={() => {
+                  handleSendMessage("Hola Susy, necesito tramitar un permiso provisorio municipal (poda / carga / mudanza) con código QR de verificación.");
+                }}
+                onRequestGacetillas={() => {
+                  handleSendMessage("Hola Susy, mostrame las últimas gacetillas de prensa y comunicados oficiales emitidos por el Municipio de Ituzaingó.");
+                }}
+                activeDepartmentId={activeDepartment?.id}
+              />
+
+              {/* Ficha de Geolocalización Activa si se seleccionó una Secretaría */}
+              {activeDepartment && (
+                <div className="w-full shrink-0 my-1 animate-fadeIn">
+                  <MunicipalLocationCard
+                    department={activeDepartment}
+                    onAskSusy={(prompt) => handleSendMessage(prompt)}
+                    onRequestTurno={() => handleSendMessage(`Hola Susy, deseo solicitar un turno en ${activeDepartment.name}.`)}
+                  />
+                </div>
+              )}
 
               {/* Banners Institucionales de Acción Rápida */}
               <div className="grid grid-cols-2 gap-2 w-full shrink-0">
