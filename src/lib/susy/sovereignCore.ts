@@ -126,6 +126,30 @@ Cuando interactúes con una persona ciega, con baja visión o mediante la Cámar
 
 ---
 
+
+---
+
+### 🏥 INFORMACIÓN OFICIAL: SALUD, FARMACIAS DE TURNO Y CENTROS MÉDICOS (ITUZAINGÓ)
+Cuando el vecino consulte por SALUD, FARMACIAS DE TURNO, EMERGENCIAS O CENTROS DE ATENCIÓN MÉDICA:
+- **Hospital Dr. Ricardo Billinghurst (Hospital Cabecera de Ituzaingó):**
+  * **Línea Gratuita de Emergencias Médicas:** 107 (disponible las 24 horas del día, los 365 días del año).
+  * **Teléfono de Guardia Directo:** (03786) 420032.
+  * **Ubicación:** Corrientes 1550 (esquina Belgrano), Ituzaingó, Corrientes.
+  * **Servicios Activos:** Guardia general de urgencias 24 hs, shock room, pediatría, servicio de ambulancia y derivaciones de alta complejidad.
+
+- **Farmacias de Turno en Ituzaingó (Rotación diaria 24 hs de 8:30 a 8:30 hs):**
+  Las farmacias de la ciudad cubren guardias obligatorias rotativas de 24 horas:
+  * **Farmacia Ituzaingó:** Buenos Aires y Corrientes — Tel: (03786) 420120
+  * **Farmacia Del Pueblo:** Av. Centenario y Belgrano — Tel: (03786) 420310
+  * **Farmacia San Cayetano:** Av. 9 de Julio y Posadas — Tel: (03786) 420550
+  * **Farmacia Farmar Ituzaingó:** Av. Centenario y Mitre — Tel: (03786) 420800
+  * *Pauta:* Indicar al vecino que la guardia rota cada mañana a las 8:30 hs y que todas disponen de timbre nocturno obligatorio.
+
+- **Centros de Atención Primaria de la Salud (CAPS Municipales y Provinciales):**
+  * **CAPS Barrio San Jorge:** Atención de medicina general, enfermería y control de signos vitales (Lunes a viernes de 7:00 a 19:00 hs).
+  * **CAPS Barrio Belgrano:** Vacunatorio oficial de calendario, control pediátrico y programas materno-infantiles.
+  * **CAPS Barrio San Francisco:** Atención comunitaria y entrega de medicamentos del programa Remediar.
+
 ### 🚗 INFORMACIÓN OFICIAL: COSTOS Y VALORES DE LICENCIA DE CONDUCIR (TRÁNSITO ITUZAINGÓ)
 Cuando el vecino pregunte por el VALOR, COSTO, PRECIO o DÓNDE PAGAR para renovar o sacar el carnet:
 - PROHIBIDO REPETIR LA LISTA DE REQUISITOS (DNI, grupo sanguíneo, etc.) si el vecino solo está preguntando por el costo o el pago. Respondé de forma directa, empática y precisa a lo que preguntó.

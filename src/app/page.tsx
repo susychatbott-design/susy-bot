@@ -2280,8 +2280,8 @@ export default function SusybotApp() {
       <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-radial from-[#101827] via-[#090d16] to-[#06080e]">
         
         {/* Top Navbar Institucional y Limpia */}
-        <header className="h-14 border-b border-slate-800/80 px-3 sm:px-4 flex items-center justify-between bg-[#090d16]/95 backdrop-blur-md z-30 shrink-0">
-          <div className="flex items-center gap-2">
+        <header className="h-14 border-b border-slate-800/80 px-2.5 sm:px-4 flex items-center justify-between bg-[#090d16]/95 backdrop-blur-md z-30 shrink-0 gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={() => setSidebarOpen(true)}
               className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition-colors"
@@ -2289,9 +2289,9 @@ export default function SusybotApp() {
             >
               <Menu size={20} />
             </button>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50 shrink-0" />
-              <div className="flex items-baseline gap-1.5">
+              <div className="flex items-baseline gap-1">
                 <span className="font-bold text-base sm:text-lg text-white tracking-tight">Susy</span>
                 <span className="px-1.5 py-0.5 rounded bg-sky-950/90 text-sky-300 border border-sky-700/50 text-[10px] font-semibold tracking-wide uppercase">
                   Municipal
@@ -2300,13 +2300,15 @@ export default function SusybotApp() {
               <span className="hidden xl:inline-block text-[11px] text-slate-400 font-medium ml-1">
                 • Ituzaingó, Corrientes
               </span>
-              <SusyConnectionBadge />
+              <div className="hidden lg:inline-flex">
+                <SusyConnectionBadge />
+              </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1">
-            {/* 🎯 SELECTOR DE MODO ADAPTATIVO (MODO VISUAL VS MODO VOZ CONTINUO / ACCESIBILIDAD) */}
-            <div className="flex items-center bg-slate-950/90 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0 shadow-inner">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-x-auto touch-pan-x flex-nowrap scroll-smooth no-scrollbar py-1 overscroll-x-contain">
+            {/* 🎯 SELECTOR DE MODO ADAPTATIVO (Visible en tablet/desktop para no sobrecargar el móvil) */}
+            <div className="hidden sm:flex items-center bg-slate-950/90 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0 shadow-inner">
               <button
                 onClick={() => {
                   hardware.switchMode("visual");
@@ -2321,7 +2323,7 @@ export default function SusybotApp() {
                 aria-pressed={hardware.currentMode === "visual"}
               >
                 <Eye size={13} className={hardware.currentMode === "visual" ? "text-sky-200" : "text-slate-400"} />
-                <span className="hidden xs:inline">Visual</span>
+                <span>Visual</span>
               </button>
 
               <button
@@ -2339,59 +2341,56 @@ export default function SusybotApp() {
                 aria-pressed={hardware.currentMode === "voice"}
               >
                 <Radio size={13} className={hardware.currentMode === "voice" ? "text-emerald-200 animate-pulse" : "text-slate-400"} />
-                <span className="hidden xs:inline">Voz (No Videntes)</span>
+                <span>Voz</span>
               </button>
             </div>
 
-            {/* Botón Susybot Live Vision (En Modo Visual) */}
-            {hardware.currentMode === "visual" && (
-              <button
-                onClick={() => {
-                  setShowLiveVisionModal(true);
-                  startLiveVision();
-                }}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white transition-all shadow-md shadow-rose-500/20 active:scale-95 cursor-pointer shrink-0"
-                title="Abrir Susybot Live (Cámara y Visión con LLaMA 3.2)"
-              >
-                <Eye size={13} className="text-white shrink-0" />
-                <span className="font-extrabold tracking-wide">Cámara IA</span>
-              </button>
-            )}
-
-            {/* Botón Llamada de Voz en Vivo */}
+            {/* Botón Llamada de Voz en Vivo (Prioridad Máxima y Destacada) */}
             <button
               onClick={() => {
                 stopLiveVision();
                 setShowRealtimeCallModal(true);
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all shadow-md shadow-emerald-500/25 active:scale-95 cursor-pointer shrink-0"
               title="Iniciar Llamada en Vivo con Susy"
             >
               <PhoneCall size={13} className="text-white shrink-0 animate-pulse" />
-              <span className="font-extrabold tracking-wide">Llamada</span>
+              <span className="font-extrabold tracking-wide">Llamar</span>
+            </button>
+
+            {/* Botón Cámara / Visión IA */}
+            <button
+              onClick={() => {
+                setShowLiveVisionModal(true);
+                startLiveVision();
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white transition-all shadow-md shadow-rose-500/20 active:scale-95 cursor-pointer shrink-0"
+              title="Abrir Cámara Ciudadana y Visión con LLaMA 3.2"
+            >
+              <Eye size={13} className="text-white shrink-0" />
+              <span className="font-extrabold tracking-wide">Cámara</span>
             </button>
 
             {/* Botón Emergencias 107 */}
             <button
               onClick={() => setShowEmergencyModal(true)}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 transition-all cursor-pointer shrink-0"
-              title="Teléfonos de Emergencia (107, 101, 100)"
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-950/70 hover:bg-rose-900/80 text-rose-300 border border-rose-800/70 transition-all cursor-pointer shrink-0"
+              title="Teléfonos de Emergencia (107 Hospital, 101 Policía, 100 Bomberos)"
             >
               <Siren size={13} className="text-rose-400 shrink-0" />
               <span className="hidden sm:inline">Emergencias</span>
+              <span className="sm:hidden text-[11px] font-bold">107</span>
             </button>
 
-            {/* Botón Calibrar y Afinar Voz de Susy (SIEMPRE VISIBLE EN CELULAR Y PC) */}
+            {/* Botón Calibrar y Afinar Voz de Susy */}
             <button
               onClick={() => setShowVoiceModal(true)}
-              className="flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 hover:text-white transition-colors shrink-0 shadow-sm"
+              className="hidden sm:flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 hover:text-white transition-colors shrink-0 shadow-sm"
               title="Afinar tono, velocidad y elegir voz de Susybot"
             >
               <Sliders size={13} className="text-sky-400 shrink-0" />
-              <span className="hidden sm:inline">Voz</span>
+              <span>Voz</span>
             </button>
-
-
 
             {/* Botón Compartir / QR (Visible en tablet/desktop) */}
             <button
@@ -2499,26 +2498,59 @@ export default function SusybotApp() {
                 <Radio size={15} className="text-sky-400 animate-pulse shrink-0 ml-1" />
               </button>
 
-              {/* Selector de Categorías Municipales (Grid 100% visible, sin cortes laterales ni scroll forzado) */}
+              {/* Selector de Categorías Municipales con Acción Inmediata al pulsar */}
               <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-2 my-2.5 shrink-0">
                 {[
-                  { id: "general", label: "🌟 Atención General", desc: "Consultas y gestiones" },
-                  { id: "salud", label: "🏥 Salud & Farmacias", desc: "Hospital 107 y turnos" },
-                  { id: "transito", label: "🚗 Tránsito & Licencias", desc: "Carnet y requisitos" },
-                  { id: "reclamos", label: "🚧 Obras & Reclamos", desc: "Bacheo y luminarias" },
-                  { id: "turismo", label: "🌿 Turismo & Iberá", desc: "Playas e información" },
-                  { id: "inclusion", label: "🧩 Inclusión & Social", desc: "Acción Social y DUA" },
+                  {
+                    id: "salud",
+                    label: "🏥 Salud y Farmacias",
+                    desc: "Hospital 107 y turnos",
+                    prompt: "Hola Susy, por favor informame qué farmacia se encuentra de turno hoy en Ituzaingó y los números de guardia del Hospital Billinghurst (107)."
+                  },
+                  {
+                    id: "transito",
+                    label: "🚗 Tránsito y Licencias",
+                    desc: "Carnet y requisitos",
+                    prompt: "Hola Susy, quisiera consultar los requisitos, costos y horarios para renovar mi carnet de conducir en la Dirección de Tránsito de Ituzaingó."
+                  },
+                  {
+                    id: "reclamos",
+                    label: "🚧 Obras y Reclamos",
+                    desc: "Bacheo y luminarias",
+                    prompt: "Hola Susy, necesito reportar un reclamo vecinal (luminarias / bacheo / limpieza de ramas) para que la cuadrilla municipal lo registre e inspeccione."
+                  },
+                  {
+                    id: "turismo",
+                    label: "🌿 Turismo e Iberá",
+                    desc: "Playas e información",
+                    prompt: "Hola Susy, contame sobre los paseos al Portal Cambyretá de los Esteros del Iberá, las playas de Ituzaingó y visitas a la Represa Yacyretá."
+                  },
+                  {
+                    id: "inclusion",
+                    label: "🧩 Inclusión y Social",
+                    desc: "Acción Social y DUA",
+                    prompt: "Hola Susy, necesito asesoramiento sobre los programas de Inclusión, Certificado Único de Discapacidad (CUD) y asistencia de Acción Social en Ituzaingó."
+                  },
+                  {
+                    id: "general",
+                    label: "🌟 Atención General",
+                    desc: "Consultas y gestiones",
+                    prompt: "Hola Susy, quisiera hacer una consulta sobre trámites, tasas e información general de la Municipalidad de Ituzaingó."
+                  },
                 ].map((mode) => (
                   <button
                     key={mode.id}
-                    onClick={() => setActiveMode(mode.id)}
-                    className={`p-2.5 rounded-2xl text-left border transition-all cursor-pointer select-none flex flex-col justify-center ${
+                    onClick={() => {
+                      setActiveMode(mode.id);
+                      handleSendMessage(mode.prompt);
+                    }}
+                    className={`p-2.5 rounded-2xl text-left border transition-all cursor-pointer select-none flex flex-col justify-center active:scale-[0.98] group ${
                       activeMode === mode.id
                         ? "bg-gradient-to-r from-sky-600 via-sky-500 to-emerald-600 text-white border-sky-300 ring-2 ring-sky-400/50 shadow-md shadow-sky-950/50"
-                        : "bg-slate-900/95 text-slate-200 border-slate-800 hover:border-slate-600 hover:bg-slate-800/80 shadow-sm"
+                        : "bg-slate-900/95 text-slate-200 border-slate-800 hover:border-sky-500/50 hover:bg-slate-800/80 shadow-sm"
                     }`}
                   >
-                    <span className="text-xs font-bold truncate">{mode.label}</span>
+                    <span className="text-xs font-bold truncate group-hover:text-sky-300 transition-colors">{mode.label}</span>
                     <span className={`text-[10px] truncate mt-0.5 ${activeMode === mode.id ? "text-sky-100" : "text-slate-400"}`}>
                       {mode.desc}
                     </span>
