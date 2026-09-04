@@ -639,7 +639,7 @@ export default function SusybotApp() {
         utterance.onerror = () => playNextChunk();
 
         // Evitar el corte por Garbage Collection de Chrome
-        (window as any).__noraPageActiveUtterance = utterance;
+        (window as any).__susyPageActiveUtterance = utterance;
         window.speechSynthesis.speak(utterance);
       };
 
@@ -879,7 +879,7 @@ export default function SusybotApp() {
       return;
     }
 
-    // Si Nora está hablando y es un escaneo automático, no cortarla
+    // Si Susy está hablando y es un escaneo automático, no cortarla
     if (typeof window !== "undefined" && (audioPlayerRef.current || (window.speechSynthesis && window.speechSynthesis.speaking)) && !customPrompt) {
       return;
     }
@@ -2380,7 +2380,7 @@ export default function SusybotApp() {
               <span className="font-extrabold tracking-wide">Llamada</span>
             </button>
 
-            {/* Botón Calibrar y Afinar Voz de Nora (SIEMPRE VISIBLE EN CELULAR Y PC) */}
+            {/* Botón Calibrar y Afinar Voz de Susy (SIEMPRE VISIBLE EN CELULAR Y PC) */}
             <button
               onClick={() => setShowVoiceModal(true)}
               className="flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 hover:text-white transition-colors shrink-0 shadow-sm"
@@ -2445,22 +2445,42 @@ export default function SusybotApp() {
             /* Vista de Bienvenida Optimizada para Móvil y Desktop */
             <div className="max-w-xl mx-auto min-h-full flex flex-col items-center justify-start sm:justify-center text-center px-2 sm:px-4 py-4 space-y-4">
               
-              {/* Logo e Identidad Municipal de Ituzaingó */}
-              <div className="flex flex-col items-center text-center">
-                <img 
-                  src="https://ituzaingo.gob.ar/turismo/wp-content/uploads/2024/11/version-marginada.jpg" 
-                  alt="Municipalidad de Ituzaingó" 
-                  className="h-16 sm:h-20 w-auto object-contain rounded-2xl shadow-xl shadow-sky-500/20 mb-3 border border-sky-400/30 transition-transform hover:scale-105" 
-                />
-                <h2 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-white via-sky-100 to-emerald-300 bg-clip-text text-transparent">
-                  Susybot Municipal
-                </h2>
-                <p className="text-xs sm:text-sm font-semibold text-sky-400 mt-1">
+              {/* Logo e Identidad Institucional de la Municipalidad de Ituzaingó */}
+              <div className="flex flex-col items-center text-center w-full max-w-lg">
+                <div className="relative mb-2.5 group">
+                  <div className="absolute -inset-1.5 bg-gradient-to-r from-sky-500/20 via-emerald-500/20 to-sky-500/20 rounded-2xl blur-md opacity-75 group-hover:opacity-100 transition duration-500"></div>
+                  <img 
+                    src="https://ituzaingo.gob.ar/turismo/wp-content/uploads/2024/11/version-marginada.jpg" 
+                    alt="Municipalidad de Ituzaingó" 
+                    className="relative h-16 sm:h-20 w-auto object-contain rounded-xl shadow-lg border border-slate-700/80 bg-slate-900/80 p-1 transition-transform hover:scale-[1.02]" 
+                  />
+                </div>
+
+                {/* Insignia Oficial Cívica */}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/90 border border-sky-500/30 text-sky-300 text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase mb-2 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Municipalidad de Ituzaingó • Corrientes</span>
+                </div>
+
+                {/* Título Institucional Sobrio y Majestuoso */}
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold text-slate-100 tracking-tight leading-tight">
+                  Susy • Atención Ciudadana
+                </h1>
+
+                {/* Cargo Institucional */}
+                <p className="text-xs sm:text-sm font-medium text-sky-300/95 mt-1">
                   Directora Virtual de Atención al Vecino e Innovación Urbana
                 </p>
-                <p className="text-[11px] sm:text-xs text-slate-400 max-w-md mt-1">
-                  Municipalidad de Ituzaingó, Corrientes • Trámites, Reclamos Urbanos, Farmacias de Turno, Turismo en Esteros del Iberá y Accesibilidad Universal.
-                </p>
+
+                {/* Mensaje Cálido de Bienvenida Humana */}
+                <div className="mt-3 p-3 sm:p-3.5 rounded-2xl bg-slate-900/85 border border-slate-800/90 text-slate-300 text-xs sm:text-[13px] leading-relaxed shadow-sm max-w-md text-center">
+                  <p className="text-slate-100 font-semibold mb-1 flex items-center justify-center gap-1.5 text-emerald-400">
+                    <span>👋</span> ¡Hola, vecino! Es un gusto saludarte.
+                  </p>
+                  <p className="text-slate-300/90">
+                    Soy Susy. Estoy aquí para acompañarte de forma simple y humana con tus trámites, reclamos de la ciudad, licencias, farmacias de turno y consultas en Ituzaingó. ¿En qué te puedo ayudar hoy?
+                  </p>
+                </div>
               </div>
 
               {/* Banner Susybot Live Vision Compacto */}
@@ -2486,28 +2506,30 @@ export default function SusybotApp() {
                 <Radio size={15} className="text-sky-400 animate-pulse shrink-0 ml-1" />
               </button>
 
-              {/* Selector de Categorías de Atención Municipal (Legible, con margen y sin recortes) */}
-              <div className="w-full flex items-center justify-start sm:justify-center gap-2 overflow-x-auto py-2 my-1 max-w-full scrollbar-thin scrollbar-thumb-slate-800 shrink-0">
-                {[
-                  { id: "general", label: "🌟 Atención General" },
-                  { id: "salud", label: "🏥 Salud & Farmacias" },
-                  { id: "transito", label: "🚗 Tránsito & Licencias" },
-                  { id: "reclamos", label: "🚧 Obras & Reclamos" },
-                  { id: "turismo", label: "🌿 Turismo & Iberá" },
-                  { id: "inclusion", label: "🧩 Inclusión & Social" },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => setActiveMode(mode.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all shrink-0 shadow-sm ${
-                      activeMode === mode.id
-                        ? "bg-gradient-to-r from-sky-600 to-emerald-600 text-white border-sky-400 shadow-sky-500/30 scale-105"
-                        : "bg-slate-900/90 text-slate-300 border-slate-700/60 hover:text-white hover:border-slate-500"
-                    }`}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
+              {/* Selector Deslizable de Categorías Municipales (Sin cortes, con margen y desplazamiento táctil suave) */}
+              <div className="w-full py-2 my-1 shrink-0">
+                <div className="flex items-center justify-start sm:justify-center gap-2.5 overflow-x-auto px-1 py-1.5 max-w-full touch-pan-x overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {[
+                    { id: "general", label: "🌟 Atención General" },
+                    { id: "salud", label: "🏥 Salud & Farmacias" },
+                    { id: "transito", label: "🚗 Tránsito & Licencias" },
+                    { id: "reclamos", label: "🚧 Obras & Reclamos" },
+                    { id: "turismo", label: "🌿 Turismo & Iberá" },
+                    { id: "inclusion", label: "🧩 Inclusión & Social" },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => setActiveMode(mode.id)}
+                      className={`h-9 px-4 rounded-full text-xs font-medium border whitespace-nowrap transition-all shrink-0 inline-flex items-center justify-center cursor-pointer select-none ${
+                        activeMode === mode.id
+                          ? "bg-gradient-to-r from-sky-600 via-sky-500 to-emerald-600 text-white border-sky-300 ring-2 ring-sky-400/50 shadow-md shadow-sky-950/50 font-semibold"
+                          : "bg-slate-900/95 text-slate-300 border-slate-700/70 hover:text-white hover:border-slate-500 hover:bg-slate-800/90 shadow-sm"
+                      }`}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Banners Compartir y Sincronizar (1 fila compacta) */}
@@ -3319,7 +3341,7 @@ export default function SusybotApp() {
           {/* Subtítulos y Controles Inferiores */}
           <div className="p-4 z-20 bg-gradient-to-t from-black via-black/90 to-transparent space-y-3">
             
-            {/* Globo de Subtítulos de Nora */}
+            {/* Globo de Subtítulos de Susy */}
             <div className="max-w-xl mx-auto p-3.5 rounded-2xl bg-black/80 border border-rose-500/40 text-slate-100 text-xs sm:text-sm backdrop-blur-md shadow-2xl leading-relaxed text-center font-medium">
               <span className="text-sky-400 font-bold mr-1.5">Susybot:</span>
               {liveSubtitles}

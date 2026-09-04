@@ -53,14 +53,14 @@ export default function SusyRealtimeCallModal({
   const [interactionMode, setInteractionMode] = useState<"hands_free" | "push_to_talk">("hands_free");
   const interactionModeRef = useRef<"hands_free" | "push_to_talk">(interactionMode);
   const [isPushTalking, setIsPushTalking] = useState<boolean>(false);
-  const [accessibleAnnouncement, setAccessibleAnnouncement] = useState<string>("Llamada con Nora iniciada. Te escucha.");
+  const [accessibleAnnouncement, setAccessibleAnnouncement] = useState<string>("Llamada con Susy iniciada. Te escucha.");
   const [micError, setMicError] = useState<string | null>(null);
 
   // 🎧 Modo Coexistencia con Lector de Pantalla del Sistema (TalkBack / VoiceOver)
   const [useSystemScreenReader, setUseSystemScreenReader] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
       try {
-        return localStorage.getItem("nora_use_system_screen_reader") === "true";
+        return localStorage.getItem("susy_use_system_screen_reader") === "true";
       } catch {}
     }
     return false;
@@ -71,20 +71,20 @@ export default function SusyRealtimeCallModal({
       const next = !prev;
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem("nora_use_system_screen_reader", String(next));
+          localStorage.setItem("susy_use_system_screen_reader", String(next));
         } catch {}
       }
       setAccessibleAnnouncement(
         next
           ? "Modo Lector del Sistema activado. Las respuestas serán leídas por TalkBack o VoiceOver."
-          : "Modo Lector del Sistema desactivado. Nora hablará con su sintetizador de audio."
+          : "Modo Lector del Sistema desactivado. Susy hablará con su sintetizador de voz."
       );
       return next;
     });
   }, []);
 
   // Control de estado y memoria de conversación
-  const isNoraSpeakingRef = useRef<boolean>(false);
+  const isSusySpeakingRef = useRef<boolean>(false);
   const isProcessingRef = useRef<boolean>(false);
   const historyRef = useRef<{ role: string; content: string }[]>(initialHistory || []);
 
@@ -177,10 +177,10 @@ export default function SusyRealtimeCallModal({
       try {
         if (!callWakeLockRef.current || callWakeLockRef.current.released) {
           callWakeLockRef.current = await (navigator as any).wakeLock.request("screen");
-          console.log("[Nora Call] Screen Wake Lock activo durante la llamada");
+          console.log("[Susy Call] Screen Wake Lock activo durante la llamada");
         }
       } catch (err) {
-        console.warn("[Nora Call] Wake Lock aviso:", err);
+        console.warn("[Susy Call] Wake Lock aviso:", err);
       }
     }
   }, []);
@@ -239,11 +239,11 @@ export default function SusyRealtimeCallModal({
   const resumeListening = useCallback(() => {
     clearSpeechHeartbeat();
     activeUtteranceRef.current = null;
-    isNoraSpeakingRef.current = false;
+    isSusySpeakingRef.current = false;
     isSpeakingRef.current = false;
     silenceStartRef.current = null;
     setCallState("listening");
-    setAccessibleAnnouncement("Nora te escucha.");
+    setAccessibleAnnouncement("Susy te escucha.");
 
     // Reactivar micrófono de forma limpia
     if (micGainNodeRef.current && audioContextRef.current) {
@@ -263,16 +263,16 @@ export default function SusyRealtimeCallModal({
     const timeout = durationMs || 35000;
     speechHeartbeatRef.current = setTimeout(() => {
       // Solo recuperar si realmente se excedió el tiempo total estimado de la locución
-      if (isNoraSpeakingRef.current) {
-        console.warn("[Nora Voice Heartbeat] Fin de tiempo de seguridad de locución. Liberando canal...");
+      if (isSusySpeakingRef.current) {
+        console.warn("[Susy Voice Heartbeat] Fin de tiempo de seguridad de locución. Liberando canal...");
         if (typeof window !== "undefined" && "speechSynthesis" in window) {
           try { window.speechSynthesis.cancel(); } catch {}
         }
         activeUtteranceRef.current = null;
-        isNoraSpeakingRef.current = false;
+        isSusySpeakingRef.current = false;
         resumeListening();
         playAccessibleChime("start");
-        setAccessibleAnnouncement("Canal de audio restablecido. Nora te escucha.");
+        setAccessibleAnnouncement("Canal de audio restablecido. Susy te escucha.");
       }
     }, timeout);
 
@@ -289,11 +289,11 @@ export default function SusyRealtimeCallModal({
     }
   }, [clearSpeechHeartbeat, playAccessibleChime, resumeListening]);
 
-  // 3. Detener audio de Nora de forma absoluta y limpia
-  const stopNoraSpeech = useCallback(() => {
+  // 3. Detener audio de Susy de forma limpia y confiable
+  const stopSusySpeech = useCallback(() => {
     clearSpeechHeartbeat();
     activeUtteranceRef.current = null;
-    isNoraSpeakingRef.current = false;
+    isSusySpeakingRef.current = false;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try { window.speechSynthesis.cancel(); } catch {}
     }
@@ -317,7 +317,7 @@ export default function SusyRealtimeCallModal({
 
   // Cierre limpio de llamada y liberación total de hardware
   const handleCleanExit = useCallback(() => {
-    stopNoraSpeech();
+    stopSusySpeech();
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((t) => {
         t.stop();
@@ -337,18 +337,22 @@ export default function SusyRealtimeCallModal({
     }
     setIsEngineReady(false);
     onClose();
-  }, [onClose, stopNoraSpeech]);
+  }, [onClose, stopSusySpeech]);
 
   // 5. Reproducción de Audio Completa y Fonéticamente Humana (Con Heartbeat Watchdog)
-  const playRealNoraAudio = useCallback(
+  const playRealSusyAudio = useCallback(
     async (_audioBase64: string | null, fullText: string, customPhoneticText?: string) => {
       if (isMuted || !fullText || !fullText.trim()) {
         resumeListening();
         return;
       }
 
-      stopNoraSpeech();
-      isNoraSpeakingRef.current = true;
+      stopSusySpeech();
+      isSusySpeakingRef.current = true;
+      liveTranscriptRef.current = "";
+      if (micStreamRef.current) {
+        micStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
+      }
       setCallState("speaking");
       setAssistantText(fullText);
       lastCompletedAssistantTextRef.current = fullText;
@@ -357,15 +361,15 @@ export default function SusyRealtimeCallModal({
 
       // 🎧 MODO COEXISTENCIA DE AUDIO: Si usa TalkBack o VoiceOver, no reproducir SpeechSynthesis de la app
       if (useSystemScreenReader) {
-        isNoraSpeakingRef.current = false;
-        setAccessibleAnnouncement(`Nora responde: ${spokenText}`);
+        isSusySpeakingRef.current = false;
+        setAccessibleAnnouncement(`Susy responde: ${spokenText}`);
         setTimeout(() => {
           resumeListening();
         }, Math.min(8000, Math.max(2000, spokenText.length * 40)));
         return;
       }
 
-      setAccessibleAnnouncement("Nora está respondiendo.");
+      setAccessibleAnnouncement("Susy está respondiendo.");
 
       // Reproducción continua de texto completo mediante SpeechSynthesis con Heartbeat
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -398,7 +402,7 @@ export default function SusyRealtimeCallModal({
           utterance.onend = () => {
             clearSpeechHeartbeat();
             activeUtteranceRef.current = null;
-            isNoraSpeakingRef.current = false;
+            isSusySpeakingRef.current = false;
             if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
             // Delay de seguridad de 350ms para evitar que el micrófono capture el eco final
             cooldownTimerRef.current = setTimeout(() => {
@@ -411,7 +415,7 @@ export default function SusyRealtimeCallModal({
             console.warn("[SpeechSynthesis Error]:", err);
             clearSpeechHeartbeat();
             activeUtteranceRef.current = null;
-            isNoraSpeakingRef.current = false;
+            isSusySpeakingRef.current = false;
             resumeListening();
             playAccessibleChime("start");
           };
@@ -429,7 +433,7 @@ export default function SusyRealtimeCallModal({
         resumeListening();
       }, 3500);
     },
-    [clearSpeechHeartbeat, isMuted, playAccessibleChime, resetSpeechHeartbeat, resumeListening, stopNoraSpeech]
+    [clearSpeechHeartbeat, isMuted, playAccessibleChime, resetSpeechHeartbeat, resumeListening, stopSusySpeech]
   );
 
   // 6. Protocolo SOS Lazarillo Híbrido
@@ -474,10 +478,10 @@ export default function SusyRealtimeCallModal({
         return;
       }
 
-      stopNoraSpeech();
+      stopSusySpeech();
       isProcessingRef.current = true;
       setCallState("thinking");
-      setAccessibleAnnouncement("Nora está procesando tu mensaje...");
+      setAccessibleAnnouncement("Susy está procesando tu consulta...");
       playAccessibleChime("end");
       setUserTranscript(clientText ? `"${clientText}"` : "Escuchando tu consulta...");
 
@@ -526,7 +530,7 @@ export default function SusyRealtimeCallModal({
             }
           } catch (fetchErr: any) {
             console.warn("[Voice Modal] Red no disponible o error HTTP. Conmutando a Inferencia Local Offline...", fetchErr?.message);
-            const userPrompt = clientText || "Consulta docente por voz";
+            const userPrompt = clientText || "Hola Susy, te consulto por trámites de la Municipalidad de Ituzaingó";
             const localRes = await executeLocalInference(
               userPrompt,
               historyRef.current,
@@ -554,7 +558,7 @@ export default function SusyRealtimeCallModal({
             if (onMessageLogged) {
               onMessageLogged(transcribedUserText || "🎙️ [Voz]", text);
             }
-            playRealNoraAudio(resAudio, text, phoneticText);
+            playRealSusyAudio(resAudio, text, phoneticText);
           } else {
             resumeListening();
           }
@@ -570,7 +574,7 @@ export default function SusyRealtimeCallModal({
 
       reader.readAsDataURL(audioBlob);
     },
-    [handleExecuteSOS, onMessageLogged, playAccessibleChime, playRealNoraAudio, resumeListening, stopNoraSpeech]
+    [handleExecuteSOS, onMessageLogged, playAccessibleChime, playRealSusyAudio, resumeListening, stopSusySpeech]
   );
 
   // 8. Inicialización Asíncrona Controlada por User Gesture (Tap Físico)
@@ -671,7 +675,7 @@ export default function SusyRealtimeCallModal({
       setMicError(null);
       playAccessibleChime("connected");
       emitSinglePulse("CONFIRM_VOZ");
-      setAccessibleAnnouncement("Conectado con Nora. Lista para escucharte.");
+      setAccessibleAnnouncement("Conectado con Susy. Lista para escucharte.");
 
       // Inicializar SpeechRecognition nativo en paralelo si el navegador lo soporta
       if (typeof window !== "undefined") {
@@ -683,6 +687,7 @@ export default function SusyRealtimeCallModal({
             rec.interimResults = true;
             rec.lang = "es-AR";
             rec.onresult = (e: any) => {
+              if (isSusySpeakingRef.current || isProcessingRef.current) return;
               let cur = "";
               for (let i = e.resultIndex; i < e.results.length; ++i) {
                 cur += e.results[i][0].transcript;
@@ -714,36 +719,13 @@ export default function SusyRealtimeCallModal({
         const now = Date.now();
 
         // 🛡️ Calibración continua del piso de ruido ambiental (Adaptive Noise Floor)
-        if (!isSpeakingRef.current && !isNoraSpeakingRef.current && !isProcessingRef.current) {
+        if (!isSpeakingRef.current && !isSusySpeakingRef.current && !isProcessingRef.current) {
           noiseFloorRef.current = Math.min(32, Math.max(6, noiseFloorRef.current * 0.95 + avg * 0.05));
         }
 
-        // 🛡️ FILTRO DE PROTECCIÓN DURANTE HABLA DE NORA (VAD WATCHDOG Anti-Eco y Anti-Ruido)
-        if (isNoraSpeakingRef.current) {
-          // Exigir volumen nítidamente superior al piso de ruido y persistencia humana (>850ms)
-          const interruptThreshold = Math.max(38, noiseFloorRef.current + 20);
-          if (avg > interruptThreshold) {
-            if (interruptionSoundStartRef.current === null) {
-              interruptionSoundStartRef.current = now;
-            } else if (now - interruptionSoundStartRef.current >= 850) {
-              // Interrupción legítima deliberada del usuario
-              lastInterruptedResponseRef.current = {
-                text: lastCompletedAssistantTextRef.current,
-                timestamp: now
-              };
-              interruptionSoundStartRef.current = null;
-              stopNoraSpeech();
-              isSpeakingRef.current = true;
-              speechStartTimeRef.current = now;
-              createAndStartRecorder();
-              setCallState("listening");
-              setAccessibleAnnouncement("Te escucho...");
-            }
-          } else {
-            // Sonido transitorio, eco del altavoz o ruido breve: descartar
-            interruptionSoundStartRef.current = null;
-          }
-
+        // 🛡️ PROTECCIÓN ANTI-CORTE: Mientras Susy habla, evitar que su propia voz corte la llamada
+        if (isSusySpeakingRef.current) {
+          interruptionSoundStartRef.current = null;
           animFrameRef.current = requestAnimationFrame(monitorAudioLoop);
           return;
         }
@@ -816,7 +798,7 @@ export default function SusyRealtimeCallModal({
   // Cleanup de seguridad al desmontar
   useEffect(() => {
     return () => {
-      stopNoraSpeech();
+      stopSusySpeech();
       if (micStreamRef.current) {
         micStreamRef.current.getTracks().forEach((t) => {
           t.stop();
@@ -832,7 +814,7 @@ export default function SusyRealtimeCallModal({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [stopNoraSpeech]);
+  }, [stopSusySpeech]);
 
   // 9. Controles Push-to-Talk con Desbloqueo Explícito
   const handlePushTalkStart = async () => {
@@ -841,7 +823,7 @@ export default function SusyRealtimeCallModal({
       return;
     }
 
-    if (callState === "speaking") stopNoraSpeech();
+    if (callState === "speaking") stopSusySpeech();
     setIsPushTalking(true);
     emitSinglePulse("CONFIRM_VOZ");
 
@@ -891,7 +873,7 @@ export default function SusyRealtimeCallModal({
     const textToSend = typedMessage.trim();
     setTypedMessage("");
 
-    if (callState === "speaking") stopNoraSpeech();
+    if (callState === "speaking") stopSusySpeech();
     setCallState("thinking");
     setUserTranscript(textToSend);
     setAccessibleAnnouncement(`Enviando: ${textToSend}`);
@@ -920,7 +902,7 @@ export default function SusyRealtimeCallModal({
           if (onMessageLogged) onMessageLogged(textToSend, data.text);
 
           if (data.audioBase64) {
-            await playRealNoraAudio(data.audioBase64, data.text);
+            await playRealSusyAudio(data.audioBase64, data.text);
           } else {
             setAccessibleAnnouncement(data.text);
             resumeListening();
@@ -960,7 +942,7 @@ export default function SusyRealtimeCallModal({
         if (interactionMode === "push_to_talk" && !isPushTalking) {
           handlePushTalkStart();
         } else if (callState === "speaking") {
-          stopNoraSpeech();
+          stopSusySpeech();
         }
       } else if (e.code === "Escape") {
         handleCleanExit();
@@ -980,7 +962,7 @@ export default function SusyRealtimeCallModal({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isOpen, callState, interactionMode, isPushTalking, handleCleanExit, stopNoraSpeech]);
+  }, [isOpen, callState, interactionMode, isPushTalking, handleCleanExit, stopSusySpeech]);
 
   if (!isOpen) return null;
 
@@ -994,12 +976,12 @@ export default function SusyRealtimeCallModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Llamada de voz en vivo con Nora"
+      aria-label="Llamada de voz en vivo con Susy"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-2xl animate-fade-in select-none"
     >
       {/* Región Dinámica Asertiva para TalkBack (Android) y VoiceOver (iOS) */}
       <div 
-        id="nora-call-a11y-live-region"
+        id="susy-call-a11y-live-region"
         role="status" 
         aria-live="assertive" 
         aria-atomic="true" 
@@ -1016,7 +998,7 @@ export default function SusyRealtimeCallModal({
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
             <div>
               <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                Nora Realtime Voice
+                Susybot Voz en Vivo
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-cyan-300 font-mono">HD</span>
               </h3>
               <p className="text-[11px] text-slate-400 font-mono">
@@ -1028,7 +1010,7 @@ export default function SusyRealtimeCallModal({
           <button
             onClick={handleCleanExit}
             role="button"
-            aria-label="Finalizar y cerrar llamada con Nora"
+            aria-label="Finalizar y cerrar llamada con Susy"
             className="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
           >
             ✕
@@ -1042,7 +1024,7 @@ export default function SusyRealtimeCallModal({
               <Sparkles size={40} className="text-slate-950" />
             </div>
             <div className="space-y-1 max-w-xs">
-              <h4 className="text-white font-bold text-base">Llamada de Voz con Nora</h4>
+              <h4 className="text-white font-bold text-base">Llamada con Susy • Atención al Vecino</h4>
               <p className="text-xs text-slate-400 leading-relaxed">
                 Toca el botón para activar el audio de alta fidelidad y hablar en tiempo real.
               </p>
@@ -1055,7 +1037,7 @@ export default function SusyRealtimeCallModal({
             <button
               onClick={startUnifiedAudioEngine}
               role="button"
-              aria-label="Iniciar llamada segura de voz con Nora"
+              aria-label="Iniciar llamada de voz con Susy"
               disabled={isInitializing}
               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-400 to-indigo-500 hover:opacity-90 active:scale-95 text-slate-950 font-bold text-sm shadow-xl shadow-cyan-500/30 transition-all flex items-center gap-2 cursor-pointer"
             >
@@ -1122,7 +1104,7 @@ export default function SusyRealtimeCallModal({
                 <button
                   type="button"
                   role="button"
-                  aria-label={`Estado de Nora: ${
+                  aria-label={`Estado de Susy: ${
                     callState === "speaking"
                       ? "Respondiendo a tu consulta. Toca para interrumpir."
                       : callState === "thinking"
@@ -1134,12 +1116,12 @@ export default function SusyRealtimeCallModal({
                   aria-pressed={callState === "speaking" || isSpeakingRef.current}
                   onClick={() => {
                     if (callState === "speaking") {
-                      // 1. Si Nora habla, interrumpir y escuchar
-                      stopNoraSpeech();
+                      // 1. Si Susy habla, pausar y escuchar
+                      stopSusySpeech();
                       resumeListening();
                       playAccessibleChime("start");
                     } else if (callState === "thinking") {
-                      // 2. Si Nora está pensando o bloqueada, cancelar de inmediato
+                      // 2. Si Susy está pensando o bloqueada, cancelar de inmediato
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
                         abortControllerRef.current = null;
@@ -1196,7 +1178,7 @@ export default function SusyRealtimeCallModal({
               <div className="w-full mt-3 px-3 min-h-[65px] flex flex-col items-center justify-center">
                 {callState === "thinking" ? (
                   <p className="text-xs text-purple-300 font-medium animate-pulse" role="status">
-                    ⚡ Nora está pensando...
+                    ⚡ Susy está pensando...
                   </p>
                 ) : assistantText ? (
                   <div className="max-w-sm bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg">
@@ -1217,7 +1199,7 @@ export default function SusyRealtimeCallModal({
                     </p>
                     <p className="text-[11px] text-slate-400">
                       {interactionMode === "hands_free"
-                        ? "Hablá con libertad. Nora te escucha y te responde."
+                        ? "Hablá con libertad. Susy te escucha y te responde con calidez."
                         : "Pulsá cuando quieras hablar."}
                     </p>
                   </div>
@@ -1242,7 +1224,7 @@ export default function SusyRealtimeCallModal({
                 <button
                   onClick={handleSendTypedMessage}
                   role="button"
-                  aria-label="Enviar texto a Nora"
+                  aria-label="Enviar texto a Susy"
                   disabled={!typedMessage.trim() || callState === "thinking"}
                   className="p-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:opacity-90 disabled:opacity-30 text-slate-950 font-bold transition-all cursor-pointer shrink-0 shadow-md shadow-cyan-500/20"
                 >
@@ -1257,7 +1239,7 @@ export default function SusyRealtimeCallModal({
                 <button
                   role="button"
                   aria-pressed={isPushTalking}
-                  aria-label="Mantén presionado para hablar con Nora"
+                  aria-label="Mantener presionado para hablar con Susy"
                   onMouseDown={handlePushTalkStart}
                   onMouseUp={handlePushTalkEnd}
                   onTouchStart={handlePushTalkStart}
@@ -1269,7 +1251,7 @@ export default function SusyRealtimeCallModal({
                   }`}
                 >
                   <Mic size={16} className={isPushTalking ? "animate-pulse" : ""} />
-                  <span>{isPushTalking ? "Nora te está escuchando..." : "Mantener presionado para hablar"}</span>
+                  <span>{isPushTalking ? "Susy te está escuchando..." : "Mantener presionado para hablar"}</span>
                 </button>
               </div>
             )}
@@ -1283,13 +1265,13 @@ export default function SusyRealtimeCallModal({
               if (isMuted) {
                 setIsMuted(false);
               } else {
-                stopNoraSpeech();
+                stopSusySpeech();
                 setIsMuted(true);
               }
             }}
             role="button"
             aria-pressed={isMuted}
-            aria-label={isMuted ? "Reanudar micrófono y voz de Nora" : "Silenciar micrófono y voz de Nora"}
+            aria-label={isMuted ? "Reanudar micrófono y voz de Susy" : "Silenciar micrófono y voz de Susy"}
             className={`w-11 h-11 rounded-full flex items-center justify-center transition-all cursor-pointer ${
               isMuted
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
@@ -1314,7 +1296,7 @@ export default function SusyRealtimeCallModal({
           <button
             onClick={handleCleanExit}
             role="button"
-            aria-label="Finalizar llamada con Nora"
+            aria-label="Finalizar llamada con Susy"
             className="w-11 h-11 rounded-full bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/40 flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
           >
             <PhoneOff size={18} />

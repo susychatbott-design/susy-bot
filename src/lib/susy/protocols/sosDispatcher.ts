@@ -30,7 +30,7 @@ export const dispatchSOS = async ({
 }: TriggerSOSParams): Promise<SOSResult> => {
   const contacts = await getSOSContacts();
   if (!contacts || contacts.length === 0) {
-    throw new Error('No hay contactos de emergencia configurados en la memoria de Nora.');
+    throw new Error('No hay contactos de emergencia configurados en la memoria de Susy.');
   }
 
   // Tomamos el contacto prioritario
@@ -40,7 +40,7 @@ export const dispatchSOS = async ({
   const mapsUrl = hasCoords ? `https://maps.google.com/?q=${lat},${lng}` : 'Ubicación satelital en proceso...';
 
   const notePart = customNote ? ` Motivo: "${customNote}".` : '';
-  const messageText = `🚨 ALERTA SOS NORA AI: Persona que requiere auxilio inmediato en Ituzaingó, Corrientes.${notePart} Ubicación GPS satelital: ${mapsUrl}`;
+  const messageText = `🚨 ALERTA SOS SUSYBOT MUNICIPAL: Persona que requiere auxilio inmediato en Ituzaingó, Corrientes.${notePart} Ubicación GPS satelital: ${mapsUrl}`;
 
   // 1. Si hay red, despachar vía Servidor Central / Webhook
   if (isOnline) {

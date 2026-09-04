@@ -157,7 +157,7 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error("[Realtime Voice Proxy Server Error]:", error);
-    const emergencyText = "He procesado tu consulta. Sigamos adelante con la clase.";
+    const emergencyText = "Te escucho con atención, vecino. ¿En qué trámite o consulta municipal de Ituzaingó te puedo colaborar?";
     return NextResponse.json({
       text: emergencyText,
       phoneticText: emergencyText,

@@ -1,6 +1,6 @@
 /**
  * ========================================================================
- * 🗣️ NORMALIZADOR FONÉTICO Y PROSODIA HUMANA DE NORA
+ * 🗣️ NORMALIZADOR FONÉTICO Y PROSODIA HUMANA DE SUSYBOT
  * Ubicación: /src/lib/nora/phoneticNormalizer.ts
  * 
  * Propósito:
@@ -24,7 +24,7 @@ export function normalizePhoneticTextForSpeech(rawText: string): string {
     .replace(/\bMyJNexora\b/gi, "Eme y Jota Néxora")
     .replace(/\bNexoraVisual\b/gi, "Néxora Visual")
     .replace(/\bNexora\b/gi, "Néxora")
-    .replace(/\bSusybot\b/gi, "Nora Itu")
+    .replace(/\bSusybot\b/gi, "Susy")
     .replace(/\bItuzaingó\b/g, "Ituzaingó")
     .replace(/\bTEA\b/g, "condición del espectro autista")
     .replace(/\bDUA\b/g, "Diseño Universal para el Aprendizaje")
