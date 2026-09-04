@@ -113,6 +113,7 @@ export default function SusyRealtimeCallModal({
   const silenceStartRef = useRef<number | null>(null);
   const noiseFloorRef = useRef<number>(14);
   const speechStartTimeRef = useRef<number>(0);
+  const voiceStartRef = useRef<number | null>(null);
   const cooldownTimerRef = useRef<any>(null);
   const interruptionSoundStartRef = useRef<number | null>(null);
   const lastInterruptedResponseRef = useRef<{ text: string; timestamp: number } | null>(null);
@@ -271,7 +272,6 @@ export default function SusyRealtimeCallModal({
         activeUtteranceRef.current = null;
         isSusySpeakingRef.current = false;
         resumeListening();
-        playAccessibleChime("start");
         setAccessibleAnnouncement("Canal de audio restablecido. Susy te escucha.");
       }
     }, timeout);
@@ -407,8 +407,7 @@ export default function SusyRealtimeCallModal({
             // Delay de seguridad de 350ms para evitar que el micrófono capture el eco final
             cooldownTimerRef.current = setTimeout(() => {
               resumeListening();
-              playAccessibleChime("start");
-            }, 350);
+            }, 500);
           };
 
           utterance.onerror = (err) => {
@@ -417,7 +416,6 @@ export default function SusyRealtimeCallModal({
             activeUtteranceRef.current = null;
             isSusySpeakingRef.current = false;
             resumeListening();
-            playAccessibleChime("start");
           };
 
           resetSpeechHeartbeat(estimatedDurationMs);
@@ -667,7 +665,7 @@ export default function SusyRealtimeCallModal({
       };
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const SILENCE_TIMEOUT_MS = 1000;
+      const SILENCE_TIMEOUT_MS = 2000;
       const MAX_SPEECH_DURATION_MS = 45000;
 
       setIsEngineReady(true);
@@ -746,11 +744,19 @@ export default function SusyRealtimeCallModal({
         if (avg > dynamicThreshold) {
           silenceStartRef.current = null;
           if (!isSpeakingRef.current) {
-            isSpeakingRef.current = true;
-            createAndStartRecorder();
-            setCallState("listening");
+            if (voiceStartRef.current === null) {
+              voiceStartRef.current = now;
+            } else if (now - voiceStartRef.current >= 180) {
+              // 🛡️ Detección de habla humana sostenida (>180ms) para descartar ruidos y clics breves
+              isSpeakingRef.current = true;
+              voiceStartRef.current = null;
+              speechStartTimeRef.current = now;
+              createAndStartRecorder();
+              setCallState("listening");
+            }
           }
         } else {
+          voiceStartRef.current = null;
           if (isSpeakingRef.current) {
             if (silenceStartRef.current === null) {
               silenceStartRef.current = now;

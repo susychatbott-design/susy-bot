@@ -119,6 +119,29 @@ Cuando el frontend detecte modo sin conexión:
 
 ---
 
+
+---
+
+### 🚗 INFORMACIÓN OFICIAL: COSTOS Y VALORES DE LICENCIA DE CONDUCIR (TRÁNSITO ITUZAINGÓ)
+Cuando el vecino pregunte por el VALOR, COSTO, PRECIO o DÓNDE PAGAR para renovar o sacar el carnet:
+- PROHIBIDO REPETIR LA LISTA DE REQUISITOS (DNI, grupo sanguíneo, etc.) si el vecino solo está preguntando por el costo o el pago. Respondé de forma directa, empática y precisa a lo que preguntó.
+- Explicá con amabilidad cómo se compone el arancel:
+  1. **Boleta Nacional CENAT:** Certificado Nacional de Antecedentes de Tránsito (arancel nacional obligatorio de aproximadamente $6.800, se abona previamente en Rapipago, Pago Fácil o Banco Nación).
+  2. **Tasa Municipal de Ituzaingó (Dirección de Tránsito):** Fijada por la Ordenanza Tarifaria Municipal según categoría y vigencia otorgada por el médico:
+     - **Autos / Camionetas Particulares (Cat. B):**
+       * Por 1 año: aprox. $8.500 a $12.000.
+       * Por 3 años: aprox. $18.000 a $22.000.
+       * Por 5 años (vigencia estándar hasta 65 años): aprox. $28.000 a $35.000 (más sellado administrativo municipal).
+     - **Motos (Cat. A):** Arancel municipal diferenciado menor (aprox. $8.000 a $18.000 según vigencia de 1 a 5 años).
+     - **Profesionales (Cat. C, D, E):** Arancel anual diferenciado con certificado de reincidencia.
+  3. **Lugar y Medios de Pago:** La tasa municipal se liquida y abona directamente en la Caja Municipal / Rentas dentro de la Dirección de Tránsito (Av. Centenario / Palacio Municipal) de lunes a viernes de 7:00 a 13:00 hs, aceptando efectivo, tarjeta de débito y transferencias bancarias.
+
+---
+
+### 🗣️ POLÍTICA CARDINAL DE FLUIDEZ Y MEMORIA CONVERSACIONAL (100% HUMANA)
+- **Cero bucles y cero folletos repetitivos:** Si en un mensaje previo ya le diste los requisitos al vecino y ahora te pregunta "¿cuál es el valor?", "¿dónde pago?" o "¿a qué hora atienden?", respondé EXCLUSIVAMENTE y en 1 o 2 párrafos concisos sobre ese punto exacto.
+- Hablá con la naturalidad, calidez y atención empática de una empleada municipal experimentada que está conversando cara a cara con el vecino.
+
 ### 📝 EJEMPLOS DE INTERACCIÓN ESPERADA (ESTILO CONCIERGE PROFESIONAL)
 
 **Caso A: Consulta de Trámite (Estilo Córdoba)**
@@ -545,7 +568,7 @@ export async function POST(req: Request) {
     if (ragBizData) fullSystemPrompt += ragBizData;
 
     if (rawHistory.length > 0) {
-      fullSystemPrompt += `\n\n========================================================================\n🔗 DIRECTIVA DE CONTINUIDAD, COHESIÓN Y MEMORIA VIVA (TURNO ACUMULADO: ${rawHistory.length + 1}):\n- La conversación ya está en curso y tiene un hilo activo consolidado.\n- PROHIBIDO TERMINANTEMENTE repetir saludos formales ("¡Hola!", "Soy Nora..."), formular de nuevo preguntas del inicio o desviar la charla a temas no pedidos.\n- Mantén intacto el andamiaje conceptual y responde con coherencia inmediata sobre lo último dialogado con el usuario.\n========================================================================`;
+      fullSystemPrompt += `\n\n========================================================================\n🔗 DIRECTIVA DE CONTINUIDAD, COHESIÓN Y MEMORIA VIVA (TURNO ACUMULADO: ${rawHistory.length + 1}):\n- La conversación ya está en curso y tiene un hilo activo consolidado.\n- PROHIBIDO TERMINANTEMENTE repetir saludos formales o volver a recitar la lista de requisitos ya mencionada, formular de nuevo preguntas del inicio o desviar la charla a temas no pedidos.\n- Mantén intacto el andamiaje conceptual y responde con coherencia inmediata sobre lo último dialogado con el usuario.\n========================================================================`;
     }
 
     let effectiveUserMessage = effectiveMessage;

@@ -145,8 +145,8 @@ export default function SusybotApp() {
   // Voces Disponibles y Selección de Voz Neuronal
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceUri, setSelectedVoiceUri] = useState<string>("");
-  const [voicePitch, setVoicePitch] = useState<number>(0.92);
-  const [voiceRate, setVoiceRate] = useState<number>(0.94);
+  const [voicePitch, setVoicePitch] = useState<number>(1.05);
+  const [voiceRate, setVoiceRate] = useState<number>(1.02);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   // Estados de Susybot Live Vision y Realtime Voice Call
@@ -583,9 +583,6 @@ export default function SusybotApp() {
       window.speechSynthesis.cancel();
       window.speechSynthesis.resume();
 
-      const rawSentences = cleanText.match(/[^.!?;\n]+[.!?;\n]*/g) || [cleanText];
-      const sentenceQueue = rawSentences.map((s) => s.trim()).filter((s) => s.length > 0);
-
       const voices = window.speechSynthesis.getVoices();
       let voiceToUse: SpeechSynthesisVoice | undefined = undefined;
 
@@ -613,39 +610,27 @@ export default function SusybotApp() {
           voices.find((v) => v.lang.startsWith("es"));
       }
 
-      const playNextChunk = () => {
-        if (sentenceQueue.length === 0) {
-          setPlayingMsgIndex(null);
-          return;
-        }
+      // 🎙️ Locución humana continua sin cortes robóticos
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = voiceRate || 1.02;
+      utterance.pitch = voicePitch || 1.05;
 
-        const nextChunk = sentenceQueue.shift()!;
-        if (!nextChunk.trim()) {
-          playNextChunk();
-          return;
-        }
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        utterance.lang = voiceToUse.lang || "es-AR";
+      } else {
+        utterance.lang = "es-AR";
+      }
 
-        window.speechSynthesis.resume();
-        const utterance = new SpeechSynthesisUtterance(nextChunk.trim());
-        utterance.rate = voiceRate || 0.98;
-        utterance.pitch = voicePitch || 1.0;
-
-        if (voiceToUse) {
-          utterance.voice = voiceToUse;
-          utterance.lang = voiceToUse.lang || "es-AR";
-        } else {
-          utterance.lang = "es-AR";
-        }
-
-        utterance.onend = () => playNextChunk();
-        utterance.onerror = () => playNextChunk();
-
-        // Evitar el corte por Garbage Collection de Chrome
-        (window as any).__susyPageActiveUtterance = utterance;
-        window.speechSynthesis.speak(utterance);
+      utterance.onend = () => {
+        setPlayingMsgIndex(null);
+      };
+      utterance.onerror = () => {
+        setPlayingMsgIndex(null);
       };
 
-      playNextChunk();
+      (window as any).__susyPageActiveUtterance = utterance;
+      window.speechSynthesis.speak(utterance);
     } catch (e) {
       console.warn("[Speak Error]:", e);
       setPlayingMsgIndex(null);
@@ -676,10 +661,16 @@ export default function SusybotApp() {
     setLiveSubtitles("Iniciando Cámara Ciudadana de Ituzaingó...");
     hardware.acquireWakeLock();
 
+    // 🛡️ Detener pistas previas para que el hardware móvil libere el sensor de cámara
+    if (liveMediaStreamRef.current) {
+      liveMediaStreamRef.current.getTracks().forEach(t => t.stop());
+      liveMediaStreamRef.current = null;
+    }
+
     try {
       const stream = await hardware.acquireCamera(facingMode);
       if (!stream) {
-        setLiveSubtitles("⚠️ No se pudo acceder a la cámara o el permiso fue denegado.");
+        setLiveSubtitles("⚠️ No se pudo acceder a la cámara. Por favor permite el acceso en los ajustes de tu navegador.");
         setIsLiveStreaming(false);
         hardware.releaseWakeLock();
         return;
@@ -687,8 +678,19 @@ export default function SusybotApp() {
 
       liveMediaStreamRef.current = stream;
       if (liveVideoRef.current) {
-        liveVideoRef.current.srcObject = stream;
-        liveVideoRef.current.play();
+        const vid = liveVideoRef.current;
+        vid.muted = true;
+        vid.defaultMuted = true;
+        vid.setAttribute("playsinline", "true");
+        vid.setAttribute("webkit-playsinline", "true");
+        vid.setAttribute("muted", "true");
+        vid.setAttribute("autoplay", "true");
+        vid.srcObject = stream;
+        
+        vid.onloadedmetadata = () => {
+          vid.play().catch(e => console.warn("[Video Autoplay Warn]:", e));
+        };
+        vid.play().catch(e => console.warn("[Video Play Warn]:", e));
       }
 
       setLiveSubtitles("👁️ Cámara activa. Enfocá tu trámite o reclamo y Susy te asiste paso a paso.");
@@ -3292,16 +3294,32 @@ export default function SusybotApp() {
           <div className="relative flex-1 flex items-center justify-center overflow-hidden">
             <video
               ref={(el) => {
-                liveVideoRef.current = el;
-                if (el && liveMediaStreamRef.current && el.srcObject !== liveMediaStreamRef.current) {
-                  el.srcObject = liveMediaStreamRef.current;
-                  el.play().catch(() => {});
+                if (el) {
+                  liveVideoRef.current = el;
+                  el.muted = true;
+                  el.defaultMuted = true;
+                  el.setAttribute("playsinline", "true");
+                  el.setAttribute("webkit-playsinline", "true");
+                  el.setAttribute("muted", "true");
+                  el.setAttribute("autoplay", "true");
+                  if (liveMediaStreamRef.current && el.srcObject !== liveMediaStreamRef.current) {
+                    el.srcObject = liveMediaStreamRef.current;
+                    el.onloadedmetadata = () => {
+                      el.play().catch(() => {});
+                    };
+                    el.play().catch(() => {});
+                  }
                 }
               }}
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
+              onClick={() => {
+                if (liveVideoRef.current) {
+                  liveVideoRef.current.play().catch(() => {});
+                }
+              }}
+              className={`w-full h-full object-cover cursor-pointer ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
             />
 
             {/* Marco Guía Institucional para Documentos y Reclamos */}
