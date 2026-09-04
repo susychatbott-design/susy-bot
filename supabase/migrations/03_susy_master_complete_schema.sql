@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE SEQUENCE IF NOT EXISTS susy_ticket_seq START 101;
 
 -- ==============================================================================
--- 1. RECLAMOS URBANOS CIUDADANOS (MÓDULO ZÁRATE)
+-- 1. RECLAMOS URBANOS CIUDADANOS (MÓDULO DE SERVICIOS URBANOS ITUZAINGÓ)
 -- ==============================================================================
 CREATE TABLE IF NOT EXISTS susy_reclamos_urbanos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

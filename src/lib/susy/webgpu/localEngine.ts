@@ -60,27 +60,30 @@ export async function executeLocalInference(
     cleanQuery.includes("corsos") ||
     cleanQuery.includes("carnaval")
   ) {
-    responseText = `¡Hola! Qué hermosa consulta. En Ituzaingó la cultura y el chamamé se viven a pleno, especialmente los fines de semana frente al río Paraná:
+    responseText = `¡Hola! Qué excelente consulta. En Ituzaingó la cultura, el teatro y el chamamé se viven a pleno, especialmente este fin de semana:
 
-🎭 **Agenda Cultural y Eventos Destacados:**
+🎭 **Cartelera y Agenda Cultural en Vivo (Ituzaingó 2026):**
 
-1. 🪗 **Encuentro de Chamamé y Feria de Artesanos en la Costanera:**
-   • **Días y Horarios**: Todos los **sábados y domingos de 18:00 a 23:00 hs**.
+1. 🎭 **Obra de Teatro en Cartelera: "El Viento Trae Recuerdos"**
+   • **Lugar**: **Auditorio Mayor del Centro Cultural Ituzaingó** (Corrientes y Belgrano).
+   • **Días y Horarios**: **Sábado y Domingo a las 20:30 hs** (Apertura de sala 20:00 hs).
+   • **Propuesta**: Emotiva comedia dramática litoraleña interpretada por el Elenco Municipal de Teatro, bajo la dirección de la Prof. Laura Méndez, con escenografía artesanal y música en vivo.
+   • **Entrada**: **Libre y Gratuita** (retirar ubicaciones numeradas en boletería desde las 18:00 hs).
+
+2. 🪗 **Sunset y Chamamé en la Costanera del Paraná:**
+   • **Días y Horarios**: **Sábados y domingos de 18:00 a 23:00 hs**.
    • **Lugar**: **Paseo de los Pescadores** (Av. Costanera y Playa Stella Maris).
-   • **Propuesta**: Música litoraleña en vivo, ballets folclóricos de la ciudad, artesanos locales y puestos gastronómicos con sabores correntinos (empanadas de pescado de río, tortas fritas y chipá caliente). Entrada libre y gratuita.
+   • **Propuesta**: Música litoraleña en vivo, parejas de baile tradicional, feria gastronómica y atardecer frente al río. Entrada libre y gratuita.
 
-2. 🏛️ **Centro Cultural Municipal de Ituzaingó:**
-   • **Ubicación**: Calle **Corrientes y Belgrano**. Tel: (03786) 420210.
-   • **Horario**: Lunes a viernes de 8:00 a 12:00 y 16:00 a 20:00 hs.
-   • **Actividades y Talleres Gratuitos**: Clases de guitarra, acordeón, danzas tradicionales argentinas, teatro comunitario y artes plásticas. También podés recorrer las muestras pictóricas en el auditorio central.
+3. 🎪 **Paseo de Artesanos y Sabores Regionales:**
+   • **Lugar**: **Plaza General San Martín** (Centenario y Bernardino Valle).
+   • **Días**: **Sábado y Domingo de 16:30 a 22:30 hs**.
+   • **Propuesta**: Más de 40 stands de artesanías en madera, cuero, platería y gastronomía típica (chipá mbocá caliente, dulces regionales y cerveza artesanal).
 
-3. 🌿 **Museo Antropológico y Casa Verde:**
-   • **Ubicación**: Calle Buenos Aires y Centenario. Muestras permanentes de la historia jesuítica-guaraní de la región, pueblos originarios y paleontología del Río Paraná.
+4. 🌿 **Talleres Culturales Gratuitos en el Centro Cultural:**
+   • Clases semanales de guitarra, acordeón, danzas folclóricas, teatro comunitario y pintura. Informes e inscripciones en Corrientes y Belgrano o al Tel: (03786) 420210.
 
-4. 🎊 **Carnaval y Corsos de Ituzaingó:**
-   • Durante temporada de verano, desfile de comparsas tradicionales (Auténtica, Brillo de Luna, Poderosa) en el Corsódromo Municipal sobre Av. Centenario.
-
-¿Te gustaría que te indique cómo llegar al Paseo de los Pescadores o necesitás información sobre la inscripción a los talleres municipales?`;
+¿Deseas que te reserve información para la obra de teatro o te oriente sobre cómo llegar al Centro Cultural?`;
   }
 
   // --------------------------------------------------------------------------

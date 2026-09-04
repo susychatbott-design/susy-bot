@@ -9,12 +9,24 @@ export const runtime = "nodejs";
  */
 export async function POST(req: Request) {
   try {
+    const origin = req.headers.get("origin") || req.headers.get("host") || "https://ituzaingo.gob.ar";
+    const cleanOrigin = origin.startsWith("http") ? origin : `https://${origin}`;
+
     const supabase = createServerSupabaseClient();
     const body = await req.json().catch(() => ({}));
     const pinCode = Math.floor(100000 + Math.random() * 900000).toString();
     const desktopSocketId = body.desktop_socket_id ? `${body.desktop_socket_id}_PIN_${pinCode}` : `PIN_${pinCode}`;
-
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+    if (!supabase) {
+      const fallbackTokenId = `sync_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+      return NextResponse.json({
+        token_id: fallbackTokenId,
+        pin_code: pinCode,
+        expires_at: expiresAt,
+        sync_url: `${cleanOrigin}?sync_token=${fallbackTokenId}`
+      });
+    }
 
     const { data, error } = await supabase
       .from("susybot_sync_tokens")
@@ -66,6 +78,10 @@ export async function GET(req: Request) {
     }
 
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json({ status: "PENDING" });
+    }
+
     let query = supabase.from("susybot_sync_tokens").select("token_id, user_id, session_id, status, expires_at, desktop_socket_id");
 
     if (tokenId) {
@@ -119,6 +135,10 @@ export async function PUT(req: Request) {
     }
 
     const supabase = createServerSupabaseClient();
+    if (!supabase) {
+      return NextResponse.json({ error: "Servicio de base de datos no disponible temporalmente" }, { status: 503 });
+    }
+
     let query = supabase.from("susybot_sync_tokens").select("token_id, expires_at, status, desktop_socket_id");
 
     if (token_id) {

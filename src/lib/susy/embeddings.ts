@@ -75,7 +75,7 @@ export async function indexArticleSemanticMemory(articleId: string, title: strin
     const fullText = `${title}\n\n${content.replace(/<[^>]+>/g, ' ')}`;
     const embedding = await generateTextEmbedding(fullText);
 
-    if (!embedding) {
+    if (!embedding || !supabase) {
       return false;
     }
 

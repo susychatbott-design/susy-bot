@@ -1,15 +1,19 @@
-﻿-- ==============================================================================
+-- ==============================================================================
 -- ðŸ›ï¸ SUSY BOT - ESQUEMA DE BASE DE DATOS MUNICIPAL (ITUZAINGÃ“, CORRIENTES)
 -- UbicaciÃ³n: supabase/migrations/01_susy_municipal_schema.sql
 -- ==============================================================================
 
--- Habilitar extensiÃ³n de vectores para RAG semÃ¡ntico (pgvector)
+-- 🚀 SUSY BOT - ESQUEMA DE BASE DE DATOS MUNICIPAL (ITUZAINGÓ, CORRIENTES)
+-- Ubicación: supabase/migrations/01_susy_municipal_schema.sql
+-- ==============================================================================
+
+-- Habilitar extensión de vectores para RAG semántico (pgvector)
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Secuencia para nÃºmeros correlativos de tickets #ITU-XXX
+-- Secuencia para números correlativos de tickets #ITU-XXX
 CREATE SEQUENCE IF NOT EXISTS susy_ticket_seq START 101;
 
--- 1. RECLAMOS URBANOS CIUDADANOS (MÃ“DULO ZÃRATE)
+-- 1. RECLAMOS URBANOS CIUDADANOS (MÓDULO DE SERVICIOS URBANOS ITUZAINGÓ)
 CREATE TABLE IF NOT EXISTS susy_reclamos_urbanos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     ticket_code TEXT NOT NULL UNIQUE DEFAULT ('ITU-' || nextval('susy_ticket_seq')::TEXT),
@@ -60,7 +64,7 @@ CREATE TABLE IF NOT EXISTS susy_citizen_memory (
     UNIQUE(citizen_id, memory_key)
 );
 
--- 5. DIGESTO MUNICIPAL Y BASE DE CONOCIMIENTO (MÃ“DULO CÃ“RDOBA - RAG)
+-- 5. DIGESTO MUNICIPAL Y BASE DE CONOCIMIENTO (DIGESTO ITUZAINGÓ - RAG)
 CREATE TABLE IF NOT EXISTS susy_municipal_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,

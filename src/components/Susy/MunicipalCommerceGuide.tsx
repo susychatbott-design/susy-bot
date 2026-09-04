@@ -14,8 +14,6 @@ import {
   Clock, 
   Phone, 
   MessageSquare, 
-  Instagram, 
-  Facebook, 
   Globe, 
   ShieldCheck, 
   Navigation, 

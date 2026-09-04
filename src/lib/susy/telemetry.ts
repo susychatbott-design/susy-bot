@@ -36,7 +36,8 @@ export function recordPerformanceMetric(metric: NoraPerformanceMetric): void {
   Promise.resolve().then(async () => {
     try {
       const supabase = createServerSupabaseClient();
-      await supabase.from("susybot_performance_metrics").insert([
+      if (supabase) {
+        await supabase.from("susybot_performance_metrics").insert([
         {
           session_id: metric.sessionId || null,
           user_id: metric.userId || "anonymous",
@@ -57,6 +58,7 @@ export function recordPerformanceMetric(metric: NoraPerformanceMetric): void {
           metadata: metric.metadata || {}
         }
       ]);
+      }
     } catch (err) {
       console.warn("[Telemetry] Error registrando métrica en segundo plano:", err);
     }

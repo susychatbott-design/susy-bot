@@ -11,7 +11,7 @@ export default function SusyConnectionBadge() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsOnline(navigator.onLine);
-      setHasWebGPU(checkWebGPUSupport());
+      checkWebGPUSupport().then(supported => setHasWebGPU(!!supported));
 
       const handleOnline = () => setIsOnline(true);
       const handleOffline = () => setIsOnline(false);

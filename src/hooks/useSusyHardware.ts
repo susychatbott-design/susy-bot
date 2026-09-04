@@ -73,37 +73,105 @@ export function useSusyHardware(initialMode: NoraHardwareMode = "visual") {
     setHardwareError(null);
   }, [releaseCamera, releaseMicrophone]);
 
-  // Adquiere la cámara de forma segura (Modo Visual)
+  // Adquiere la cámara de forma segura (Modo Visual) con detección inteligente de hardware
   const acquireCamera = useCallback(
-    async (facingMode: "user" | "environment" = "environment"): Promise<MediaStream | null> => {
+    async (facingMode?: "user" | "environment"): Promise<MediaStream | null> => {
       try {
         setHardwareError(null);
         if (videoStreamRef.current) {
           releaseCamera();
+          // Pausa técnica de 100ms para permitir que el driver de cámara en Windows/Android libere el dispositivo
+          await new Promise((r) => setTimeout(r, 100));
         }
 
-        let stream: MediaStream | null = null;
+        if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("MEDIA_DEVICES_NOT_SUPPORTED");
+        }
 
-        // 1. Intentar con facingMode ideal sin dimensiones rígidas (permite vertical/horizontal nativo en móviles)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "");
+        // En PC/Laptop priorizamos "user" (webcam frontal) porque "environment" suele seleccionar el sensor infrarrojo de Windows Hello (pantalla negra)
+        const effectiveFacing: "user" | "environment" = facingMode || (isMobile ? "environment" : "user");
+
+        let stream: MediaStream | null = null;
+        let devices: MediaDeviceInfo[] = [];
+
         try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: { ideal: facingMode }
-            },
-            audio: false
-          });
-        } catch (firstErr) {
-          console.warn("[HardwareManager] Fallback 1 (sin facingMode):", firstErr);
+          devices = await navigator.mediaDevices.enumerateDevices();
+        } catch (e) {
+          console.warn("[HardwareManager] enumerateDevices no disponible:", e);
+        }
+
+        const videoInputs = devices.filter((d) => d.kind === "videoinput");
+
+        // Filtrar sensores infrarrojos o cámaras virtuales que emiten pantallas negras
+        const usableCameras = videoInputs.filter((d) => {
+          const lbl = (d.label || "").toLowerCase();
+          return (
+            !lbl.includes("ir camera") &&
+            !lbl.includes("infrared") &&
+            !lbl.includes("windows hello") &&
+            !lbl.includes("depth")
+          );
+        });
+
+        const targetList = usableCameras.length > 0 ? usableCameras : videoInputs;
+
+        // 1. Intento por deviceId si hay una cámara específica para la orientación deseada
+        if (targetList.length > 0 && targetList[0].deviceId) {
+          let chosen = targetList[0];
+          if (effectiveFacing === "environment") {
+            const backCam = targetList.find((c) => /back|rear|environment|trasera|externa/i.test(c.label));
+            if (backCam) chosen = backCam;
+          } else {
+            const frontCam = targetList.find((c) => /front|user|frontal|webcam|integrated|facetime/i.test(c.label));
+            if (frontCam) chosen = frontCam;
+          }
+
           try {
-            // 2. Fallback universal sin restricciones
             stream = await navigator.mediaDevices.getUserMedia({
-              video: true,
+              video: {
+                deviceId: { ideal: chosen.deviceId },
+                width: { ideal: 1280, min: 640 },
+                height: { ideal: 720, min: 480 }
+              },
               audio: false
             });
-          } catch (secondErr) {
-            console.warn("[HardwareManager] Fallback 2 falló:", secondErr);
-            throw secondErr;
+          } catch (devErr) {
+            console.warn("[HardwareManager] Selección por deviceId falló, pasando a facingMode:", devErr);
           }
+        }
+
+        // 2. Intento por facingMode ideal
+        if (!stream) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: effectiveFacing },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              },
+              audio: false
+            });
+          } catch (firstErr) {
+            console.warn("[HardwareManager] Fallback con facingMode:", firstErr);
+            try {
+              // 3. Fallback universal sin restricciones
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+              });
+            } catch (secondErr) {
+              console.warn("[HardwareManager] Fallback universal falló:", secondErr);
+              throw secondErr;
+            }
+          }
+        }
+
+        if (stream) {
+          // Asegurar que las pistas de video estén habilitadas
+          stream.getVideoTracks().forEach((track) => {
+            track.enabled = true;
+          });
         }
 
         videoStreamRef.current = stream;
@@ -111,11 +179,12 @@ export function useSusyHardware(initialMode: NoraHardwareMode = "visual") {
         return stream;
       } catch (err: any) {
         console.warn("[HardwareManager] Error al adquirir cámara:", err);
-        const msg = err.name === "NotAllowedError"
-          ? "Permiso de cámara denegado. Por favor permite el acceso a la cámara en los ajustes de tu navegador."
-          : err.name === "NotReadableError"
-          ? "La cámara está en uso por otra app. Ciérrala e intenta de nuevo."
-          : "No se pudo acceder a la cámara en este dispositivo.";
+        const msg =
+          err.name === "NotAllowedError"
+            ? "Permiso de cámara denegado. Por favor permite el acceso a la cámara en los ajustes de tu navegador."
+            : err.name === "NotReadableError"
+            ? "La cámara está en uso por otra app. Ciérrala e intenta de nuevo."
+            : "No se pudo acceder a la cámara en este dispositivo.";
         setHardwareError(msg);
         setIsCameraActive(false);
         return null;

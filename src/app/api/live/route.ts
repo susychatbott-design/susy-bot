@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { executeSovereignStream } from "@/lib/susy/sovereignCore";
+import { applyReputationalShield } from "@/lib/susy/security/susyReputationalPatch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,7 +17,15 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
-    const { imageBase64, userPrompt = "", mode = "visual" } = await req.json();
+    const { imageBase64, userPrompt = "", mode = "visual", sessionId } = await req.json();
+
+    const shield = await applyReputationalShield(userPrompt, sessionId);
+    if (shield.isAttack) {
+      return new Response(JSON.stringify({ text: shield.neutralResponse }), { 
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
     if (!imageBase64) {
       return NextResponse.json({ error: "Frame de imagen requerido para Cámara Titán." }, { status: 400 });

@@ -7,6 +7,8 @@ import { fetchUserContinuousMemory } from "@/lib/susy/userMemory";
 import { dispatchSovereignInference } from "@/lib/susy/sovereignRouter";
 import { fetchHybridRAGDocuments } from "@/lib/susy/hybridRag";
 import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
+import { applyReputationalShield } from "@/lib/susy/security/susyReputationalPatch";
+import { buscarEventosCulturalesEnVivo, generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,9 +17,9 @@ export const fetchCache = "force-no-store";
 export const maxDuration = 60;
 
 /**
- * ⚡ MÓDULO ZÁRATE: Registro automático de reclamos urbanos
+ * ⚡ MÓDULO DE RECLAMOS URBANOS (ITUZAINGÓ): Registro automático de reclamos urbanos
  */
-async function processZarateTransactions(aiResponseText: string, citizenId?: string): Promise<string> {
+async function processMunicipalClaimTransactions(aiResponseText: string, citizenId?: string): Promise<string> {
   const callRegex = /\[CALL_FUNCTION:\s*registrarReclamoMunicipal\((.*?)\)\]/i;
   const match = aiResponseText.match(callRegex);
   if (!match) return aiResponseText;
@@ -57,7 +59,7 @@ async function processZarateTransactions(aiResponseText: string, citizenId?: str
       }
     }
   } catch (err) {
-    console.warn("[Módulo Zárate Info]: Reclamo procesado en contingencia local:", err);
+    console.warn("[Módulo Reclamos Info]: Reclamo procesado en contingencia local:", err);
   }
 
   return aiResponseText.replace(
@@ -70,29 +72,31 @@ async function processZarateTransactions(aiResponseText: string, citizenId?: str
 
 const SUSY_SYSTEM_PROMPT = `
 # 🏛️ SYSTEM PROMPT: SUSYBOT - AGENTE INTELIGENTE MUNICIPAL (ITUZAINGÓ)
-## Versión: 4.1 (Concierge Institucional & DUA) • MyJNexoraVisual
+## Desarrollado y Propiedad Intelectual Exclusiva: MyJNexoraVisual
+## Solución Tecnológica Oficial para Licitación de Servicios Municipales
+## Versión: 4.2 (Concierge Institucional & DUA) • MyJNexoraVisual
 ## Filosofía: Código Abierto • $0 Costo Operativo • Resiliencia Offline Absoluta
 
 [INSTRUCCIÓN DE CONTROL CRÍTICO]
-Sos Susybot, la Directora Virtual de Atención al Vecino e Innovación Urbana de la Municipalidad de Ituzaingó, Corrientes. Tu arquitectura se ejecuta sobre un núcleo soberano de código abierto. Tu misión es resolver trámites, guiar cálida y profesionalmente al ciudadano, registrar reclamos de infraestructura de forma autónoma y promover el desarrollo local y turístico (Esteros del Iberá/Yacyretá) sin generar jamás conflictos políticos, debates partidarios ni alucinaciones de datos.
+Sos Susybot, la plataforma de Inteligencia Artificial Cívica desarrollada íntegra y exclusivamente por la firma tecnológica MyJNexoraVisual, presentada como propuesta de modernización para la licitación de servicios de la Municipalidad de Ituzaingó, Corrientes. Tu arquitectura se ejecuta sobre un núcleo soberano de código abierto. Tu misión es resolver trámites, guiar cálida y profesionalmente al ciudadano, registrar reclamos de infraestructura de forma autónoma y promover el desarrollo local y turístico (Esteros del Iberá/Yacyretá) sin generar jamás conflictos políticos, debates partidarios ni alucinaciones de datos.
 
 ---
 
 ### 🎭 1. IDENTIDAD, TONO Y DISEÑO UNIVERSAL (DUA)
 - **Identidad:** Servicial, técnica, cálida y altamente profesional. Sos la anfitriona y facilitadora pública de la Municipalidad de Ituzaingó, comunicándote con la excelencia, paciencia, amabilidad y pulcritud de una recepcionista de primer nivel o una concierge institucional.
 - **Tono:** Profesional, cercano, empático y hospitalario. Hablás en un español claro, correcto y cordial. EVITÁ modismos coloquiales informales como "che". Usá aperturas y fórmulas amables y acogedoras: "¡Hola! Qué gusto saludarte", "Bienvenido, ¿en qué te puedo colaborar hoy?", "Con mucho gusto te oriento con ese trámite", "Es un placer atenderte".
-- **Accesibilidad (DUA):** Tus respuestas deben ser altamente estructuradas. Usá viñetas cortas, frases concisas y evitá bloques de texto densos. Pensá que tus respuestas serán leídas por streaming en tiempo real a alumnos con TEA o vecinos que usan lectores de pantalla (TalkBack/VoiceOver).
+- **Accesibilidad (DUA):** Tus respuestas deben ser altamente estructuradas. Usá viñetas cortas, frases concisas y evitá bloques de texto densos. Pensá que tus respuestas serán leídas por streaming en tiempo real a ciudadanos con TEA o vecinos que usan lectores de pantalla (TalkBack/VoiceOver).
 
 ---
 
-### 🧠 2. ARQUITECTURA DE CONOCIMIENTO (MODULO CÓRDOBA - RAG)
+### 🧠 2. ARQUITECTURA DE CONOCIMIENTO (DIGESTO MUNICIPAL ITUZAINGÓ - RAG)
 Operás bajo un esquema de Generación Aumentada por Recuperación (RAG). Tu cerebro está conectado a la base de datos vectorial de Supabase (pgvector) que contiene el Digesto Municipal de Ituzaingó.
 - **Regla Estricta:** Solo respondés preguntas de trámites (carnet de conducir, tasas, habilitaciones) basándote en los fragmentos de texto provistos por el contexto indexado. 
 - **Si el dato no existe o está fuera de contexto:** No inventes. Respondé con calidez y rigor: "Como asistente virtual del municipio, no dispongo de ese dato exacto en este momento. Podés consultar de forma presencial en la Mesa de Entradas del Municipio o aguardar a que actualicemos la base de datos."
 
 ---
 
-### ⚡ 3. CAPACIDAD TRANSACCIONAL (MÓDULO ZÁRATE - FUNCTION CALLING)
+### ⚡ 3. CAPACIDAD TRANSACCIONAL (MÓDULO DE RECLAMOS URBANOS ITUZAINGÓ - FUNCTION CALLING)
 Tenés la facultad administrativa de interactuar con el backend para generar acciones gubernamentales vinculantes. Cuando un vecino exprese una intención de reporte o reclamo urbano (baches, luminarias, recolección de ramas), debés activar el protocolo de extracción de datos con la máxima diligencia.
 
 Deberás estructurar la salida en un formato limpio utilizando la función registrarReclamoMunicipal:
@@ -144,11 +148,11 @@ Cuando el vecino pregunte por el VALOR, COSTO, PRECIO o DÓNDE PAGAR para renova
 
 ### 📝 EJEMPLOS DE INTERACCIÓN ESPERADA (ESTILO CONCIERGE PROFESIONAL)
 
-**Caso A: Consulta de Trámite (Estilo Córdoba)**
+**Caso A: Consulta de Trámite y Digesto Municipal**
 - Vecino: "¿Cómo hago para renovar el carnet de conducir si tengo 18 años?"
 - Susybot: "¡Hola! Qué gusto saludarte. Con mucho gusto te indico los pasos para renovar tu licencia en Ituzaingó; es un trámite muy sencillo. Vas a necesitar: 1. Tu DNI original y copia con domicilio local. 2. Constancia de grupo y factor sanguíneo. 3. Constancia de libre deuda de tasas municipales. Podés solicitar tu turno directamente desde nuestra web o acercarte a la Dirección de Tránsito de lunes a viernes de 7:00 a 13:00 hs. ¿Querés que revisemos algún detalle adicional o los exámenes requeridos?"
 
-**Caso B: Reporte de Infraestructura (Estilo Zárate)**
+**Caso B: Reporte de Infraestructura y Reclamo Urbano**
 - Vecino: "Hay un pozo enorme en la esquina de Centenario y Mitre, casi me caigo de la moto."
 - Susybot: "¡Qué peligroso momento! Lo primordial es que te encontrás bien. Ya mismo ingreso este reporte para que el área de Obras Públicas acuda a señalizar y reparar la calzada. [CALL_FUNCTION: registrarReclamoMunicipal(tipo_reclamo="infraestructura", ubicacion_exacta="Centenario y Mitre", descripcion_vecino="Pozo de gran tamaño en calzada")] Excelente. Tu reclamo ha quedado registrado formalmente con el ticket de seguimiento #ITU-982. Te agradezco enormemente por avisarnos y colaborar con la seguridad de nuestra comunidad."
 
@@ -306,9 +310,17 @@ async function fetchLiveWebSearch(query: string): Promise<string> {
 
 async function fetchSemanticArticlesRAG(supabase: any, userQuery: string): Promise<string> {
   const lower = userQuery.toLowerCase();
-  const isRegionalQuery = [
+  const isCulturalQuery = [
+    "cultura", "cultural", "teatro", "obra", "obras", "finde", "fin de semana",
+    "centro cultural", "actividades", "espectaculo", "espectaculos", "espectáculo", 
+    "espectáculos", "taller", "talleres", "cartelera", "que hacer", "qué hacer",
+    "sabado", "sábado", "domingo", "artesano", "artesanos", "chamame", "chamamé",
+    "musica", "música", "recital", "festival", "cine"
+  ].some(w => lower.includes(w));
+
+  const isRegionalQuery = isCulturalQuery || [
     "noticia", "noticias", "ituzaingó", "ituzaingo", "corrientes", "portal", "nexativa", 
-    "suceso", "ayer", "hoy", "intendente", "evento", "carnaval", "pesca", "represa", 
+    "suceso", "ayer", "hoy", "intendente", "evento", "eventos", "carnaval", "pesca", "represa", 
     "yacyreta", "politica", "deportes", "actualidad", "paso", "nacional", "internacional",
     "gobierno", "argentina", "presidente", "economia", "dolar", "inflacion"
   ].some(w => lower.includes(w));
@@ -323,6 +335,11 @@ async function fetchSemanticArticlesRAG(supabase: any, userQuery: string): Promi
 
     let combinedContext = "";
 
+    // 1. Inyección de la Cartelera Cultural y Teatro en Vivo si corresponde
+    if (isCulturalQuery) {
+      combinedContext += generarContextoAgendaCultural();
+    }
+
     if (hybridResults && hybridResults.length > 0) {
       const formattedDB = hybridResults
         .map((a: any, i: number) => {
@@ -334,7 +351,7 @@ async function fetchSemanticArticlesRAG(supabase: any, userQuery: string): Promi
         })
         .join("\n\n");
 
-      combinedContext += `📰 REDACCIÓN EN TIEMPO REAL (NEXATIVA NEWS - 2026):\n${formattedDB}`;
+      combinedContext += `\n\n📰 REDACCIÓN EN TIEMPO REAL (NEXATIVA NEWS - 2026):\n${formattedDB}`;
     }
 
     if (webResult) {
@@ -342,13 +359,13 @@ async function fetchSemanticArticlesRAG(supabase: any, userQuery: string): Promi
     }
 
     if (combinedContext) {
-      return `\n\n========================================================================\n🌍 BASE DE CONOCIMIENTO Y CABLES EN VIVO (AÑO 2026):\n${combinedContext}\n\nDIRECTIVA PERIODÍSTICA OBLIGATORIA:\nUtiliza estos datos reales y frescos para fundamentar tu respuesta con rigor periodístico (Titular, Bajada, Hechos Clave y Enlace). NUNCA digas que tus datos están limitados a 2024.\n========================================================================`;
+      return `\n\n========================================================================\n🌍 BASE DE CONOCIMIENTO MUNICIPAL Y CABLES EN VIVO (AÑO 2026):\n${combinedContext}\n\nDIRECTIVA INSTITUCIONAL OBLIGATORIA:\nUtiliza estos datos reales y frescos para fundamentar tu respuesta con precisión y calidez. Si te preguntan por obras de teatro, eventos o cultura en Ituzaingó, detalla la obra del Centro Cultural, días, horarios y acceso.\n========================================================================`;
     }
 
     return "";
   } catch (err) {
     console.warn("[Susybot RAG News Warning]:", err);
-    return "";
+    return isCulturalQuery ? generarContextoAgendaCultural() : "";
   }
 }
 
@@ -383,9 +400,11 @@ async function fetchDirectoryBusinessesRAG(supabase: any, userQuery: string): Pr
 
 export async function POST(req: Request) {
   try {
+    const body = await req.json();
     const { 
       message = "", 
-      session_id, 
+      sessionId,
+      session_id = sessionId, 
       user_id = "anonymous_user", 
       history: clientHistory,
       contextData, 
@@ -394,7 +413,32 @@ export async function POST(req: Request) {
       audioFile,
       interactionMode = contextData?.interactionMode || "visual",
       stream = true 
-    } = await req.json();
+    } = body;
+
+    const shield = await applyReputationalShield(message, session_id || sessionId);
+    if (shield.isAttack) {
+      if (stream) {
+        const encoder = new TextEncoder();
+        const customStream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: shield.neutralResponse, session_id: session_id || sessionId })}\n\n`));
+            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+            controller.close();
+          }
+        });
+        return new Response(customStream, {
+          headers: {
+            "Content-Type": "text/event-stream; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive"
+          }
+        });
+      }
+      return new Response(JSON.stringify({ text: shield.neutralResponse }), { 
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
 
     if ((!message || typeof message !== "string") && !file && !audioFile) {
       return NextResponse.json({ error: "Se requiere un mensaje de texto, un audio o un archivo adjunto." }, { status: 400 });
@@ -415,6 +459,30 @@ export async function POST(req: Request) {
       const transcribed = await transcribeAudioWithWhisper(targetAudio);
       if (transcribed && transcribed.trim().length > 0) {
         effectiveMessage = transcribed.trim();
+        const audioShield = await applyReputationalShield(effectiveMessage, session_id || sessionId);
+        if (audioShield.isAttack) {
+          if (stream) {
+            const encoder = new TextEncoder();
+            const customStream = new ReadableStream({
+              start(controller) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: audioShield.neutralResponse, session_id: session_id || sessionId })}\n\n`));
+                controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+                controller.close();
+              }
+            });
+            return new Response(customStream, {
+              headers: {
+                "Content-Type": "text/event-stream; charset=utf-8",
+                "Cache-Control": "no-cache, no-transform",
+                "Connection": "keep-alive"
+              }
+            });
+          }
+          return new Response(JSON.stringify({ text: audioShield.neutralResponse }), { 
+            status: 200,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
         console.log("[Susybot-Chat] 🎙️ Audio convertido a texto con éxito:", effectiveMessage);
       } else {
         console.warn("[Susybot-Chat] ⚠️ Audio recibido sin voz reconocible o error en Whisper.");
@@ -436,7 +504,7 @@ export async function POST(req: Request) {
     const supabase = createServerSupabaseClient();
 
     const incomingMsgId = message_id || req.headers.get("x-message-id");
-    if (incomingMsgId) {
+    if (incomingMsgId && supabase) {
       const { data: existingMsg, error: checkMsgErr } = await supabase
         .from("susybot_messages")
         .select("id")
@@ -454,7 +522,7 @@ export async function POST(req: Request) {
     }
 
     let activeSessionId = session_id;
-    if (!activeSessionId) {
+    if (!activeSessionId && supabase) {
       const title = message.slice(0, 30) || "Nueva conversación";
       console.log("[Susybot-Chat] 📝 Creando nueva sesión en susybot_sessions para user:", user_id);
       const { data: newSession, error: sessErr } = await supabase
@@ -475,7 +543,7 @@ export async function POST(req: Request) {
       const generatedImageText = await synthesizeImageResponse(effectiveMessage);
       const encoder = new TextEncoder();
 
-      if (activeSessionId) {
+      if (activeSessionId && supabase) {
         supabase.from("susybot_messages").insert([
           { session_id: activeSessionId, role: "user", content: effectiveMessage, metadata: { ...(contextData || {}) } },
           { session_id: activeSessionId, role: "assistant", content: generatedImageText, metadata: { generated_by: "Susybot-Pollinations-8K" } }
@@ -521,7 +589,7 @@ export async function POST(req: Request) {
           rawHistory.push({ role, content: m.content.trim() });
         }
       }
-    } else if (activeSessionId) {
+    } else if (activeSessionId && supabase) {
       // Prioridad 2: Consulta ordenada descendentemente (los más recientes) e invertida a cronología real
       const { data: pastMsgs } = await supabase
         .from("susybot_messages")
@@ -552,9 +620,9 @@ export async function POST(req: Request) {
 
     const [weatherData, ragNewsData, ragBizData, continuousUserMemory] = await Promise.all([
       isWeatherExplicit ? fetchRealtimeWeather() : Promise.resolve(null),
-      fetchSemanticArticlesRAG(supabase, effectiveMessage),
-      fetchDirectoryBusinessesRAG(supabase, effectiveMessage),
-      fetchUserContinuousMemory(supabase, user_id)
+      supabase ? fetchSemanticArticlesRAG(supabase, effectiveMessage) : Promise.resolve(""),
+      supabase ? fetchDirectoryBusinessesRAG(supabase, effectiveMessage) : Promise.resolve(""),
+      (supabase && user_id) ? fetchUserContinuousMemory(supabase, user_id) : Promise.resolve(null)
     ]);
 
     const activeMode = contextData?.mode || "general";
@@ -587,7 +655,7 @@ export async function POST(req: Request) {
     const safetyCheck = sanitizeAndInspectPrompt(effectiveUserMessage);
     if (!safetyCheck.isSafe) {
       const encoder = new TextEncoder();
-      const safeShieldResponse = "Comprendo tu inquietud. Como Susybot, opero bajo una constitución inmutable de ética, transparencia, rigurosa veracidad y servicio humanista. No puedo modificar mis directivas éticas de seguridad ni revelar parámetros internos confidenciales, pero con mucho gusto estoy a tu completa disposición para ayudarte en tus tareas educativas, profesionales, laborales o comunitarias. ¿En qué proyecto o consulta constructiva podemos avanzar juntos hoy?";
+      const safeShieldResponse = safetyCheck.rejectionResponse || "Como asistente oficial de la Municipalidad de Ituzaingó, estoy facultada únicamente para asistirle en trámites ciudadanos, gestión de reclamos urbanos, consultas del digesto municipal y tasas locales. No tengo autorización para divulgar detalles técnicos de la infraestructura gubernamental. ¿En qué otra gestión pública puedo ayudarle?";
       const customStream = new ReadableStream({
         start(controller) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: safeShieldResponse, session_id: activeSessionId })}\n\n`));

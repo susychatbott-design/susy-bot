@@ -11,8 +11,9 @@ export async function POST(req: Request) {
     const supabase = createServerSupabaseClient();
     
     // Registrar evento de emergencia en la base de datos
-    try {
-      await supabase.from("emergency_alerts").insert([
+    if (supabase) {
+      try {
+        await supabase.from("emergency_alerts").insert([
         {
           contact_phone: phone,
           contact_name: name,
@@ -23,7 +24,8 @@ export async function POST(req: Request) {
         }
       ]);
     } catch (dbErr) {
-      console.warn("[Susybot-SOS] Nota BD:", dbErr);
+        console.warn("[Susybot-SOS] Nota BD:", dbErr);
+      }
     }
 
     return NextResponse.json({

@@ -17,7 +17,7 @@ export interface MunicipalEvent {
   address: string;
   coordinates: [number, number]; // [lat, lng]
   description: string;
-  admission: "Gratuito" | "Con Inscripción" | "Arancelado";
+  admission: "Gratuito" | "Con Inscripción" | "Arancelado" | "Con Acreditación";
   linkUrl?: string;
 }
 
@@ -160,6 +160,18 @@ export const MUNICIPAL_DEPARTMENTS: MunicipalDepartment[] = [
     ],
     events: [
       {
+        id: "cul-teatro-01",
+        title: "Obra de Teatro: \"El Viento Trae Recuerdos\"",
+        category: "Teatro",
+        dateStr: "Sábado y Domingo",
+        timeStr: "20:30 hs",
+        locationName: "Auditorio del Centro Cultural Ituzaingó",
+        address: "Corrientes y Belgrano",
+        coordinates: [-27.5852, -56.6821],
+        description: "Comedia dramática litoraleña interpretada por el Elenco Municipal de Teatro. Entrada libre y gratuita.",
+        admission: "Gratuito"
+      },
+      {
         id: "cul-01",
         title: "Encuentro de Chamamé y Feria de Artesanos en la Costanera",
         category: "Festival",
@@ -172,7 +184,7 @@ export const MUNICIPAL_DEPARTMENTS: MunicipalDepartment[] = [
         admission: "Gratuito"
       }
     ],
-    quickPrompt: "Hola Susy, informame sobre los talleres de la Secretaría de Cultura y los eventos artísticos de este fin de semana en Ituzaingó."
+    quickPrompt: "Hola Susy, informame sobre la obra de teatro en el Centro Cultural y los eventos de este fin de semana en Ituzaingó."
   },
   {
     id: "turismo",

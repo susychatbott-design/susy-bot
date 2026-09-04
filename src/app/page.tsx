@@ -52,7 +52,10 @@ import {
   Presentation,
   PhoneCall,
   Siren,
-  Phone
+  Phone,
+  Lock,
+  Newspaper,
+  MapPin
 } from "lucide-react";
 import jsQR from "jsqr";
 import ReactMarkdown from "react-markdown";
@@ -68,7 +71,9 @@ import SusyConnectionBadge from "@/components/Susy/SusyConnectionBadge";
 import MunicipalOfficesGrid from "@/components/Susy/MunicipalOfficesGrid";
 import MunicipalLocationCard from "@/components/Susy/MunicipalLocationCard";
 import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
+import MunicipalPressModal from "@/components/Susy/MunicipalPressModal";
 import MunicipalDocumentModal from "@/components/Susy/MunicipalDocumentModal";
+import SusyEmergencyModal from "@/components/Susy/SusyEmergencyModal";
 import { MunicipalDepartment, getDepartmentById } from "@/lib/susy/municipal/departmentsData";
 import { municipalStore, MunicipalTurno, PermisoProvisorio } from "@/lib/susy/municipal/municipalActions";
 
@@ -216,6 +221,7 @@ export default function SusybotApp() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [activeDepartment, setActiveDepartment] = useState<MunicipalDepartment | null>(null);
   const [showCommerceGuideModal, setShowCommerceGuideModal] = useState(false);
+  const [showPressModal, setShowPressModal] = useState(false);
   const [selectedDocumentModal, setSelectedDocumentModal] = useState<{
     type: "turno" | "permiso";
     turno?: MunicipalTurno;
@@ -248,7 +254,14 @@ export default function SusybotApp() {
   const [showLiveVisionModal, setShowLiveVisionModal] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
-  const [liveFacingMode, setLiveFacingMode] = useState<"user" | "environment">("environment");
+  const [liveFacingMode, setLiveFacingMode] = useState<"user" | "environment">(() => {
+    if (typeof navigator !== "undefined" && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || "")) {
+      return "environment";
+    }
+    return "user";
+  });
+  const [activeCameraLabel, setActiveCameraLabel] = useState<string>("");
+  const [cameraVideoReady, setCameraVideoReady] = useState<boolean>(false);
   const [liveSubtitles, setLiveSubtitles] = useState<string>("Iniciando visión en vivo...");
   const [isAnalyzingFrame, setIsAnalyzingFrame] = useState(false);
   const [liveCustomPrompt, setLiveCustomPrompt] = useState<string>("");
@@ -755,25 +768,44 @@ export default function SusybotApp() {
 
   // 9. Motor de Visión y Audio en Vivo de Susybot (Cámara en Tiempo Real con LLaMA 3.2 Vision)
   
-  // Sincronizar stream de cámara con elemento video al abrir modal
+  // Sincronizar stream de cámara con elemento video de forma continua y reactiva
   useEffect(() => {
-    if (showLiveVisionModal && liveMediaStreamRef.current && liveVideoRef.current) {
-      const vid = liveVideoRef.current;
-      if (vid.srcObject !== liveMediaStreamRef.current) {
-        vid.srcObject = liveMediaStreamRef.current;
+    if (!showLiveVisionModal) return;
+
+    let timer: any;
+    const tryAttach = () => {
+      if (liveMediaStreamRef.current && liveVideoRef.current) {
+        const vid = liveVideoRef.current;
+        if (vid.srcObject !== liveMediaStreamRef.current) {
+          vid.srcObject = liveMediaStreamRef.current;
+        }
+        vid.muted = true;
+        vid.defaultMuted = true;
+        vid.playsInline = true;
+        vid.setAttribute("playsinline", "true");
+        vid.setAttribute("webkit-playsinline", "true");
+        vid.setAttribute("muted", "true");
+        vid.setAttribute("autoplay", "true");
+
+        vid.play()
+          .then(() => setCameraVideoReady(true))
+          .catch(() => {});
       }
-      vid.muted = true;
-      vid.defaultMuted = true;
-      vid.setAttribute("playsinline", "true");
-      vid.setAttribute("webkit-playsinline", "true");
-      vid.play().catch(() => {});
-    }
+    };
+
+    tryAttach();
+    timer = setInterval(tryAttach, 400);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [showLiveVisionModal]);
 
   const startLiveVision = async (facingMode: "user" | "environment" = liveFacingMode) => {
     stopSpeaking();
     setShowLiveVisionModal(true);
     setIsLiveStreaming(true);
+    setCameraVideoReady(false);
     setLiveSubtitles("Iniciando Cámara Ciudadana de Ituzaingó...");
     hardware.acquireWakeLock();
 
@@ -793,21 +825,49 @@ export default function SusybotApp() {
       }
 
       liveMediaStreamRef.current = stream;
-      if (liveVideoRef.current) {
+      const vTrack = stream.getVideoTracks()[0];
+      if (vTrack) {
+        vTrack.enabled = true;
+        setActiveCameraLabel(vTrack.label || (facingMode === "user" ? "Cámara Frontal" : "Cámara Trasera"));
+      }
+
+      // Enlace atómico con reintentos para asegurar render inmediato
+      const attachVideo = (attempt = 0) => {
         const vid = liveVideoRef.current;
+        if (!vid) {
+          if (attempt < 15) setTimeout(() => attachVideo(attempt + 1), 80);
+          return;
+        }
+
         vid.muted = true;
         vid.defaultMuted = true;
+        vid.playsInline = true;
         vid.setAttribute("playsinline", "true");
         vid.setAttribute("webkit-playsinline", "true");
         vid.setAttribute("muted", "true");
         vid.setAttribute("autoplay", "true");
-        vid.srcObject = stream;
-        
-        vid.onloadedmetadata = () => {
-          vid.play().catch(e => console.warn("[Video Autoplay Warn]:", e));
+
+        if (vid.srcObject !== stream) {
+          vid.srcObject = stream;
+        }
+
+        const handlePlay = () => {
+          vid.play()
+            .then(() => {
+              setCameraVideoReady(true);
+            })
+            .catch((e) => {
+              console.warn("[Video Autoplay Warn]:", e);
+            });
         };
-        vid.play().catch(e => console.warn("[Video Play Warn]:", e));
-      }
+
+        vid.onloadedmetadata = handlePlay;
+        vid.onloadeddata = handlePlay;
+        vid.oncanplay = handlePlay;
+        handlePlay();
+      };
+
+      attachVideo();
 
       setLiveSubtitles("👁️ Cámara Ciudadana activa. Enfocá tu trámite o reclamo y te oriento al instante.");
       speakText("Hola, te habla Susy. Ya tenés activa la Cámara Ciudadana. Enfocá con tu celu el trámite, boleta o reclamo y te oriento al instante.", -99);
@@ -982,6 +1042,7 @@ export default function SusybotApp() {
     liveMediaStreamRef.current = null;
     setIsLiveStreaming(false);
     setIsAnalyzingFrame(false);
+    setCameraVideoReady(false);
     setShowLiveVisionModal(false);
     stopSpeaking();
   };
@@ -989,6 +1050,7 @@ export default function SusybotApp() {
   const toggleLiveCamera = () => {
     const nextMode = liveFacingMode === "environment" ? "user" : "environment";
     setLiveFacingMode(nextMode);
+    setCameraVideoReady(false);
     startLiveVision(nextMode);
   };
 
@@ -2372,6 +2434,40 @@ export default function SusybotApp() {
           )}
         </div>
 
+        {/* Accesos Cívicos Rápidos & Gestión Municipal */}
+        <div className="p-2 border-t border-slate-800/80 space-y-1 bg-slate-950/40">
+          <button
+            onClick={() => {
+              setSidebarOpen(false);
+              setShowCommerceGuideModal(true);
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-slate-300 hover:text-amber-300 hover:bg-slate-800/60 transition-colors text-left cursor-pointer"
+          >
+            <span className="text-sm">🏪</span>
+            <span className="font-medium">Guía Comercial Ituzaingó</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setSidebarOpen(false);
+              setShowPressModal(true);
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-slate-300 hover:text-sky-300 hover:bg-slate-800/60 transition-colors text-left cursor-pointer"
+          >
+            <Newspaper size={14} className="text-sky-400 shrink-0" />
+            <span className="font-medium">Gacetillas y Noticias</span>
+          </button>
+
+          <Link
+            href="/dashboard"
+            onClick={() => setSidebarOpen(false)}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 border border-amber-500/30 transition-colors text-left font-semibold"
+          >
+            <Lock size={13} className="text-amber-400 shrink-0" />
+            <span>Panel Funcionarios (PIN)</span>
+          </Link>
+        </div>
+
         {/* Footer del Sidebar */}
         <div className="p-3 border-t border-slate-800/70 text-[11px] text-slate-500 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -2422,15 +2518,16 @@ export default function SusybotApp() {
             </div>
           </div>
           
-          <div className="flex items-center justify-end gap-1.5 sm:gap-2 min-w-0 flex-1 overflow-x-auto touch-pan-x flex-nowrap scroll-smooth no-scrollbar py-1 overscroll-x-contain">
-            {/* 🎯 SELECTOR DE MODO ADAPTATIVO (Visible en tablet/desktop para no sobrecargar el móvil) */}
-            <div className="hidden sm:flex items-center bg-slate-950/90 p-0.5 sm:p-1 rounded-xl border border-slate-800 shrink-0 shadow-inner">
+          {/* Barra de Acciones y Controles (Totalmente Adaptativo y Libre de Superposiciones) */}
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
+            {/* 🎯 SELECTOR DE MODO ADAPTATIVO (Visible en tablet/desktop) */}
+            <div className="hidden md:flex items-center bg-slate-950/90 p-0.5 rounded-xl border border-slate-800 shrink-0 shadow-inner">
               <button
                 onClick={() => {
                   hardware.switchMode("visual");
                   setShowRealtimeCallModal(false);
                 }}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   hardware.currentMode === "visual"
                     ? "bg-gradient-to-r from-sky-600 to-indigo-600 text-white shadow-md shadow-sky-500/25"
                     : "text-slate-400 hover:text-slate-200"
@@ -2438,7 +2535,7 @@ export default function SusybotApp() {
                 title="Modo Visual: Chat, Visor de Cámara y OCR con LLaMA 3.2 Vision"
                 aria-pressed={hardware.currentMode === "visual"}
               >
-                <Eye size={13} className={hardware.currentMode === "visual" ? "text-sky-200" : "text-slate-400"} />
+                <Eye size={12} className={hardware.currentMode === "visual" ? "text-sky-200" : "text-slate-400"} />
                 <span>Visual</span>
               </button>
 
@@ -2448,80 +2545,80 @@ export default function SusybotApp() {
                   stopLiveVision();
                   setShowRealtimeCallModal(true);
                 }}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold transition-all ${
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   hardware.currentMode === "voice"
                     ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Modo Voz Continuo: Accesibilidad, Manos Libres y WebRTC para personas no videntes"
+                title="Modo Voz Continuo: Accesibilidad y Manos Libres"
                 aria-pressed={hardware.currentMode === "voice"}
               >
-                <Radio size={13} className={hardware.currentMode === "voice" ? "text-emerald-200 animate-pulse" : "text-slate-400"} />
+                <Radio size={12} className={hardware.currentMode === "voice" ? "text-emerald-200 animate-pulse" : "text-slate-400"} />
                 <span>Voz</span>
               </button>
             </div>
 
-            {/* Botón Llamada de Voz en Vivo (Prioridad Máxima y Destacada) */}
+            {/* 1. Botón Llamada de Voz en Vivo */}
             <button
               onClick={() => {
                 stopLiveVision();
                 setShowRealtimeCallModal(true);
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all shadow-md shadow-emerald-500/25 active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all shadow-md shadow-emerald-600/30 active:scale-95 cursor-pointer shrink-0"
               title="Iniciar Llamada en Vivo con Susy"
             >
               <PhoneCall size={13} className="text-white shrink-0 animate-pulse" />
-              <span className="font-extrabold tracking-wide">Llamar</span>
+              <span className="hidden xs:inline">Llamar</span>
             </button>
 
-            {/* Botón Cámara / Visión IA */}
+            {/* 2. Botón Cámara / Visión IA */}
             <button
               onClick={() => {
                 setShowLiveVisionModal(true);
                 startLiveVision();
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white transition-all shadow-md shadow-rose-500/20 active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-600 hover:from-indigo-500 hover:to-rose-500 text-white transition-all shadow-md shadow-indigo-600/25 active:scale-95 cursor-pointer shrink-0"
               title="Abrir Cámara Ciudadana y Visión con LLaMA 3.2"
             >
               <Eye size={13} className="text-white shrink-0" />
-              <span className="font-extrabold tracking-wide">Cámara</span>
+              <span className="hidden xs:inline">Cámara</span>
             </button>
 
-            {/* Botón Emergencias 107 */}
+            {/* 3. Botón Rojo Emergencias 107 (100% visible, no recortado) */}
             <button
               onClick={() => setShowEmergencyModal(true)}
-              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-950/70 hover:bg-rose-900/80 text-rose-300 border border-rose-800/70 transition-all cursor-pointer shrink-0"
-              title="Teléfonos de Emergencia (107 Hospital, 101 Policía, 100 Bomberos)"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white border border-rose-400/50 transition-all shadow-md shadow-rose-600/40 active:scale-95 cursor-pointer shrink-0 animate-pulse"
+              title="Emergencias 107 (Hospital, Policía, Bomberos)"
             >
-              <Siren size={13} className="text-rose-400 shrink-0" />
+              <Siren size={13} className="text-white shrink-0" />
               <span className="hidden sm:inline">Emergencias</span>
-              <span className="sm:hidden text-[11px] font-bold">107</span>
+              <span>107</span>
             </button>
 
-            {/* Botón Calibrar y Afinar Voz de Susy */}
+            {/* Botón Calibrar y Afinar Voz de Susy (Desktop) */}
             <button
               onClick={() => setShowVoiceModal(true)}
-              className="hidden sm:flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-lg text-xs font-medium bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 hover:text-white transition-colors shrink-0 shadow-sm"
+              className="hidden lg:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-900/90 hover:bg-slate-800 border border-sky-500/40 text-sky-300 hover:text-white transition-colors shrink-0 shadow-sm cursor-pointer"
               title="Afinar tono, velocidad y elegir voz de Susybot"
             >
               <Sliders size={13} className="text-sky-400 shrink-0" />
               <span>Voz</span>
             </button>
 
-            {/* Botón Compartir / QR (Visible en tablet/desktop) */}
+            {/* Botón Compartir / QR (Desktop) */}
             <button
               onClick={() => setShowShareModal(true)}
-              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 transition-colors shrink-0"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 transition-colors shrink-0 cursor-pointer"
               title="Compartir Susybot por WhatsApp o Código QR"
             >
               <QrCode size={13} className="text-emerald-400" />
               <span>Compartir</span>
             </button>
 
-            {/* Toggle de Voz Femenina Automática */}
+            {/* Toggle de Voz Femenina Automática (Desktop) */}
             <button
               onClick={toggleAutoVoice}
-              className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors shrink-0 ${
+              className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border transition-colors shrink-0 cursor-pointer ${
                 autoVoice 
                   ? "bg-sky-950/80 border-sky-700 text-sky-300" 
                   : "bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white"
@@ -2535,11 +2632,11 @@ export default function SusybotApp() {
             {/* Botón Nuevo Chat */}
             <button
               onClick={handleNewChat}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-medium text-slate-200 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/60 transition-colors shrink-0 flex items-center gap-1"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium text-slate-200 hover:text-white bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
               title="Iniciar nuevo chat"
             >
               <Plus size={14} />
-              <span className="hidden md:inline">Nuevo Chat</span>
+              <span className="hidden sm:inline">Nuevo</span>
             </button>
           </div>
         </header>
@@ -2550,8 +2647,8 @@ export default function SusybotApp() {
           className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6 scrollbar-thin scrollbar-thumb-slate-800"
         >
           {messages.length === 0 ? (
-            /* Vista de Bienvenida Optimizada para Móvil y Desktop */
-            <div className="max-w-xl mx-auto min-h-full flex flex-col items-center justify-start sm:justify-center text-center px-2 sm:px-4 py-4 space-y-4">
+            /* Vista de Bienvenida Optimizada y Centrada para Móvil y Desktop */
+            <div className="max-w-4xl mx-auto min-h-full flex flex-col items-center justify-start text-center px-2 sm:px-4 py-4 space-y-4">
               
               {/* Logo e Identidad Institucional de la Municipalidad de Ituzaingó */}
               <div className="flex flex-col items-center text-center w-full max-w-lg">
@@ -2631,9 +2728,7 @@ export default function SusybotApp() {
                   handleSendMessage("Hola Susy, necesito tramitar un permiso provisorio municipal (poda / carga / mudanza) con código QR de verificación.");
                 }}
                 onRequestComercio={() => setShowCommerceGuideModal(true)}
-                onRequestGacetillas={() => {
-                  handleSendMessage("Hola Susy, mostrame las últimas gacetillas de prensa y comunicados oficiales emitidos por el Municipio de Ituzaingó.");
-                }}
+                onRequestGacetillas={() => setShowPressModal(true)}
                 activeDepartmentId={activeDepartment?.id}
               />
 
@@ -2648,39 +2743,71 @@ export default function SusybotApp() {
                 </div>
               )}
 
-              {/* Banners Institucionales de Acción Rápida */}
-              <div className="grid grid-cols-2 gap-2 w-full shrink-0">
+              {/* Centro de Acceso Cívico Rápido (4 Paneles Ciudadanos) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full shrink-0">
+                {/* 1. Emergencias 107 */}
                 <button
-                  onClick={() => setShowShareModal(true)}
-                  className="p-2.5 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-700/50 flex items-center gap-2.5 text-left transition-all group cursor-pointer"
+                  onClick={() => setShowEmergencyModal(true)}
+                  className="p-2.5 rounded-2xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-700/50 flex items-center gap-2 text-left transition-all group cursor-pointer"
                 >
-                  <QrCode size={18} className="text-emerald-400 shrink-0" />
+                  <Siren size={18} className="text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
                   <div className="truncate">
-                    <span className="text-xs font-bold text-emerald-300 block truncate">Recomendar / QR</span>
-                    <span className="text-[10px] text-slate-400 hidden sm:block">Compartir con vecinos</span>
+                    <span className="text-xs font-bold text-rose-300 block truncate">Emergencias 107</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:block truncate">Guardia & Policía</span>
                   </div>
                 </button>
 
+                {/* 2. Guía Comercial */}
                 <button
-                  onClick={() => setShowEmergencyModal(true)}
-                  className="p-2.5 rounded-2xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-700/50 flex items-center gap-2.5 text-left transition-all group cursor-pointer"
+                  onClick={() => setShowCommerceGuideModal(true)}
+                  className="p-2.5 rounded-2xl bg-amber-950/50 hover:bg-amber-900/60 border border-amber-600/40 flex items-center gap-2 text-left transition-all group cursor-pointer"
                 >
-                  <Siren size={18} className="text-rose-400 shrink-0" />
+                  <span className="text-lg shrink-0 group-hover:scale-110 transition-transform">🏪</span>
                   <div className="truncate">
-                    <span className="text-xs font-bold text-rose-300 block truncate">Emergencias & Guardia</span>
-                    <span className="text-[10px] text-slate-400 hidden sm:block">Hospital 107 • Policía • Bomberos</span>
+                    <span className="text-xs font-bold text-amber-300 block truncate">Guía Comercial</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:block truncate">Comercios Adheridos</span>
+                  </div>
+                </button>
+
+                {/* 3. Gacetillas Oficiales */}
+                <button
+                  onClick={() => setShowPressModal(true)}
+                  className="p-2.5 rounded-2xl bg-sky-950/50 hover:bg-sky-900/60 border border-sky-600/40 flex items-center gap-2 text-left transition-all group cursor-pointer"
+                >
+                  <Newspaper size={18} className="text-sky-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-sky-300 block truncate">Gacetillas Prensa</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:block truncate">Noticias Oficiales</span>
+                  </div>
+                </button>
+
+                {/* 4. Recomendar / QR */}
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="p-2.5 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-700/50 flex items-center gap-2 text-left transition-all group cursor-pointer"
+                >
+                  <QrCode size={18} className="text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <div className="truncate">
+                    <span className="text-xs font-bold text-emerald-300 block truncate">Compartir Susy</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:block truncate">Código QR Vecinal</span>
                   </div>
                 </button>
               </div>
 
-              {/* Grid de Sugerencias Oficiales de Ituzaingó (4 Tarjetas Clave) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full text-left pt-1 shrink-0">
+              {/* Grid de Sugerencias Oficiales de Ituzaingó (Tarjetas Clave con Cultura en Vivo) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 w-full text-left pt-1 shrink-0">
                 {[
                   { 
                     icon: Bell, 
                     title: "Farmacias de Turno & Salud", 
                     desc: "Hospital Billinghurst (107) y turnos de farmacia", 
                     prompt: "Hola Susybot, por favor indícame qué farmacia se encuentra de turno hoy en Ituzaingó y los números de guardia de salud." 
+                  },
+                  { 
+                    icon: Sparkles, 
+                    title: "Teatro & Agenda Cultural en Vivo", 
+                    desc: "Obra de teatro en Centro Cultural y cartelera de fin de semana", 
+                    prompt: "Hola Susy, ¿qué actividades culturales y obras de teatro hay este fin de semana en Ituzaingó?" 
                   },
                   { 
                     icon: FileText, 
@@ -2699,6 +2826,12 @@ export default function SusybotApp() {
                     title: "Turismo: Esteros del Iberá y Yacyretá", 
                     desc: "Portal Cambyretá y visitas a la Represa", 
                     prompt: "Hola Susybot, ¿cómo puedo visitar los Esteros del Iberá a través del Portal Cambyretá y cuáles son los horarios para los recorridos en la Represa Hidroeléctrica Yacyretá?" 
+                  },
+                  { 
+                    icon: ShieldCheck, 
+                    title: "Digesto y Ordenanzas Municipales", 
+                    desc: "Consultas normativas del Municipio de Ituzaingó", 
+                    prompt: "Hola Susy, deseo consultar las ordenanzas vigentes del digesto municipal y tasas de Ituzaingó." 
                   },
                 ].map((card, i) => (
                   <button
@@ -2972,9 +3105,11 @@ export default function SusybotApp() {
           )}
 
           <div className="text-center mt-2 text-[10px] text-slate-500 flex flex-wrap items-center justify-center gap-1.5">
-            <span>Susybot AI</span>
+            <span>Susy Bot AI</span>
             <span>•</span>
-            <span>Tecnología desarrollada por <strong className="text-sky-400 font-medium">MyJNexoraVisual</strong></span>
+            <span>Propuesta Tecnológica Oficial para Licitación Municipal</span>
+            <span>•</span>
+            <span>Desarrollo y Propiedad Intelectual Exclusiva: <strong className="text-sky-400 font-medium">MyJNexoraVisual</strong></span>
             <span>•</span>
             <span>Ituzaingó, Corrientes</span>
           </div>
@@ -2982,6 +3117,13 @@ export default function SusybotApp() {
       </main>
 
       {/* ================================================================= */}
+      {/* 🚨 MODAL: EMERGENCIAS CIUDADANAS (HOSPITAL 107 / POLICÍA / BOMBEROS) */}
+      {/* ================================================================= */}
+      <SusyEmergencyModal
+        isOpen={showEmergencyModal}
+        onClose={() => setShowEmergencyModal(false)}
+      />
+
       {/* ================================================================= */}
       {/* 🔄 MODAL: SINCRONIZAR MULTI-DISPOSITIVO (PC ↔ CELULAR)           */}
       {/* ================================================================= */}
@@ -3372,7 +3514,7 @@ export default function SusybotApp() {
       )}
 
       {/* ================================================================= */}
-      {/* 👁️ MODAL: NORA TITÁN LIVE VISION (CÁMARA & VOZ FULL-DUPLEX)      */}
+      {/* 👁️ MODAL: SUSY BOT LIVE VISION - MYJNEXORAVISUAL (CÁMARA CIUDADANA) */}
       {/* ================================================================= */}
       {showLiveVisionModal && (
         <div className="fixed inset-0 z-50 bg-black flex flex-col justify-between overflow-hidden animate-fade-in">
@@ -3386,10 +3528,14 @@ export default function SusybotApp() {
               <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping shadow-lg shadow-rose-500/50" />
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Cámara Ciudadana de Ituzaingó
+                  Cámara Ciudadana • Susy Bot
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500 text-emerald-300 uppercase">En Vivo</span>
                 </h3>
-                <p className="text-[10px] text-slate-300 font-mono">Modo: {activeMode.toUpperCase()}</p>
+                <p className="text-[10px] text-slate-300 font-mono flex items-center gap-1.5">
+                  <span className="text-sky-300 font-semibold">{activeCameraLabel || (liveFacingMode === "user" ? "Cámara Frontal" : "Cámara Trasera")}</span>
+                  <span>•</span>
+                  <span>MyJNexoraVisual</span>
+                </p>
               </div>
             </div>
 
@@ -3412,40 +3558,50 @@ export default function SusybotApp() {
             </div>
           </div>
 
-          {/* Visor de Video en Tiempo Real con HUD Cyberpunk */}
-          <div className="relative flex-1 flex items-center justify-center overflow-hidden">
+          {/* Visor de Video en Tiempo Real con HUD Inteligente */}
+          <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
             <video
-              ref={(el) => {
-                if (el) {
-                  liveVideoRef.current = el;
-                  el.muted = true;
-                  el.defaultMuted = true;
-                  el.setAttribute("playsinline", "true");
-                  el.setAttribute("webkit-playsinline", "true");
-                  el.setAttribute("muted", "true");
-                  el.setAttribute("autoplay", "true");
-                  if (liveMediaStreamRef.current && el.srcObject !== liveMediaStreamRef.current) {
-                    el.srcObject = liveMediaStreamRef.current;
-                    el.onloadedmetadata = () => {
-                      el.play().catch(() => {});
-                    };
-                    el.play().catch(() => {});
-                  }
-                }
-              }}
+              ref={liveVideoRef}
               autoPlay
               playsInline
               muted
-              onLoadedMetadata={(e) => { e.currentTarget.play().catch(() => {}); }}
-              onLoadedData={(e) => { e.currentTarget.play().catch(() => {}); }}
-              onCanPlay={(e) => { e.currentTarget.play().catch(() => {}); }}
+              onLoadedMetadata={(e) => {
+                setCameraVideoReady(true);
+                e.currentTarget.play().catch(() => {});
+              }}
+              onLoadedData={(e) => {
+                setCameraVideoReady(true);
+                e.currentTarget.play().catch(() => {});
+              }}
+              onCanPlay={(e) => {
+                setCameraVideoReady(true);
+                e.currentTarget.play().catch(() => {});
+              }}
               onClick={() => {
                 if (liveVideoRef.current) {
-                  liveVideoRef.current.play().catch(() => {});
+                  liveVideoRef.current.play().then(() => setCameraVideoReady(true)).catch(() => {});
                 }
               }}
               className={`w-full h-full object-cover cursor-pointer ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
             />
+
+            {/* Estado de espera / recuperación si la cámara tarda en emitir frames */}
+            {!cameraVideoReady && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-center p-6 z-10 animate-fade-in">
+                <div className="w-12 h-12 rounded-full border-3 border-sky-400 border-t-transparent animate-spin mb-4" />
+                <p className="text-sm font-bold text-white mb-1">Iniciando Sensor de Video...</p>
+                <p className="text-xs text-slate-400 max-w-xs mb-4">
+                  {activeCameraLabel ? `Conectado: ${activeCameraLabel}` : "Sincronizando sensor óptico..."}
+                </p>
+                <button
+                  onClick={toggleLiveCamera}
+                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-sky-600/30 active:scale-95"
+                >
+                  <FlipHorizontal size={14} />
+                  <span>Alternar Cámara (Frontal / Trasera)</span>
+                </button>
+              </div>
+            )}
 
             {/* Marco Guía Institucional para Documentos y Reclamos */}
             <div className="absolute inset-6 sm:inset-12 pointer-events-none border border-sky-400/30 rounded-3xl flex flex-col justify-between p-4 shadow-inner">
@@ -3547,6 +3703,40 @@ export default function SusybotApp() {
           }}
         />
       )}
+
+      {/* 🚨 Modal de Emergencias Ciudadanas 107 y Despacho Satelital */}
+      <SusyEmergencyModal
+        isOpen={showEmergencyModal}
+        onClose={() => setShowEmergencyModal(false)}
+      />
+
+      {/* 🏪 Guía Comercial e Industrial de Ituzaingó */}
+      {showCommerceGuideModal && (
+        <MunicipalCommerceGuide
+          onClose={() => setShowCommerceGuideModal(false)}
+          onAskSusy={(q) => {
+            setShowCommerceGuideModal(false);
+            handleSendMessage(q);
+          }}
+        />
+      )}
+
+      {/* 📰 Gacetillas de Prensa y Comunicados Oficiales */}
+      <MunicipalPressModal
+        isOpen={showPressModal}
+        onClose={() => setShowPressModal(false)}
+        onAskSusy={(q) => {
+          setShowPressModal(false);
+          handleSendMessage(q);
+        }}
+      />
+
+      {/* 📄 Visor Oficial de Comprobante de Turno y Permiso con QR */}
+      <MunicipalDocumentModal
+        isOpen={Boolean(selectedDocumentModal)}
+        onClose={() => setSelectedDocumentModal(null)}
+        documentData={selectedDocumentModal}
+      />
     </div>
   );
 }
