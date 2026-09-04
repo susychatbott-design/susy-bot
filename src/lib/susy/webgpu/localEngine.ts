@@ -5,8 +5,8 @@
  * 
  * Motor de inferencia institucional 100% resolutivo, humano y empático.
  * Diseñado para responder con precisión quirúrgica a cientos de vecinos
- * diarios sobre trámites, guardias de farmacia, reclamos de obras,
- * salud, tasas y turismo en Ituzaingó, Corrientes.
+ * diarios sobre cultura, eventos del finde, trámites, farmacias de turno,
+ * obras, comercio, salud, tasas, turismo y dependencias en Ituzaingó, Corrientes.
  * ========================================================================
  */
 
@@ -25,16 +25,110 @@ export async function executeLocalInference(
 ): Promise<LocalInferenceResult> {
   const cleanQuery = (userQuery || "").toLowerCase().trim();
   
-  // Extraemos el último tema dialogado únicamente para resolver preguntas cortas de seguimiento
+  // Extraemos el último tema dialogado para mantener continuidad conversacional
   const lastAssistantMsg = [...history].reverse().find(h => h.role === "assistant" || h.role === "model");
   const lastContextText = (lastAssistantMsg?.content || "").toLowerCase();
 
   let responseText = "";
 
   // --------------------------------------------------------------------------
-  // 1. FARMACIAS Y FARMACIAS DE TURNO (MÁXIMA PRIORIDAD SANITARIA)
+  // 1. CULTURA, EVENTOS, ACTIVIDADES Y FIN DE SEMANA EN ITUZAINGÓ
   // --------------------------------------------------------------------------
   if (
+    cleanQuery.includes("cultura") ||
+    cleanQuery.includes("cultural") ||
+    cleanQuery.includes("evento") ||
+    cleanQuery.includes("actividad") ||
+    cleanQuery.includes("actividades") ||
+    cleanQuery.includes("finde") ||
+    cleanQuery.includes("fin de semana") ||
+    cleanQuery.includes("agenda") ||
+    cleanQuery.includes("musica") ||
+    cleanQuery.includes("música") ||
+    cleanQuery.includes("chamame") ||
+    cleanQuery.includes("chamamé") ||
+    cleanQuery.includes("artesano") ||
+    cleanQuery.includes("artesanía") ||
+    cleanQuery.includes("artesania") ||
+    cleanQuery.includes("feria") ||
+    cleanQuery.includes("costanera") ||
+    cleanQuery.includes("paseo de los pescadores") ||
+    cleanQuery.includes("centro cultural") ||
+    cleanQuery.includes("teatro") ||
+    cleanQuery.includes("taller") ||
+    cleanQuery.includes("talleres") ||
+    cleanQuery.includes("corsos") ||
+    cleanQuery.includes("carnaval")
+  ) {
+    responseText = `¡Hola! Qué hermosa consulta. En Ituzaingó la cultura y el chamamé se viven a pleno, especialmente los fines de semana frente al río Paraná:
+
+🎭 **Agenda Cultural y Eventos Destacados:**
+
+1. 🪗 **Encuentro de Chamamé y Feria de Artesanos en la Costanera:**
+   • **Días y Horarios**: Todos los **sábados y domingos de 18:00 a 23:00 hs**.
+   • **Lugar**: **Paseo de los Pescadores** (Av. Costanera y Playa Stella Maris).
+   • **Propuesta**: Música litoraleña en vivo, ballets folclóricos de la ciudad, artesanos locales y puestos gastronómicos con sabores correntinos (empanadas de pescado de río, tortas fritas y chipá caliente). Entrada libre y gratuita.
+
+2. 🏛️ **Centro Cultural Municipal de Ituzaingó:**
+   • **Ubicación**: Calle **Corrientes y Belgrano**. Tel: (03786) 420210.
+   • **Horario**: Lunes a viernes de 8:00 a 12:00 y 16:00 a 20:00 hs.
+   • **Actividades y Talleres Gratuitos**: Clases de guitarra, acordeón, danzas tradicionales argentinas, teatro comunitario y artes plásticas. También podés recorrer las muestras pictóricas en el auditorio central.
+
+3. 🌿 **Museo Antropológico y Casa Verde:**
+   • **Ubicación**: Calle Buenos Aires y Centenario. Muestras permanentes de la historia jesuítica-guaraní de la región, pueblos originarios y paleontología del Río Paraná.
+
+4. 🎊 **Carnaval y Corsos de Ituzaingó:**
+   • Durante temporada de verano, desfile de comparsas tradicionales (Auténtica, Brillo de Luna, Poderosa) en el Corsódromo Municipal sobre Av. Centenario.
+
+¿Te gustaría que te indique cómo llegar al Paseo de los Pescadores o necesitás información sobre la inscripción a los talleres municipales?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 2. COMERCIO, GUÍA COMERCIAL Y GASTRONOMÍA LOCAL
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("comercio") ||
+    cleanQuery.includes("guia comercial") ||
+    cleanQuery.includes("guía comercial") ||
+    cleanQuery.includes("restaurante") ||
+    cleanQuery.includes("donde comer") ||
+    cleanQuery.includes("dónde comer") ||
+    cleanQuery.includes("pescado") ||
+    cleanQuery.includes("surubi") ||
+    cleanQuery.includes("surubí") ||
+    cleanQuery.includes("dorado") ||
+    cleanQuery.includes("pacu") ||
+    cleanQuery.includes("pacú") ||
+    cleanQuery.includes("hotel") ||
+    cleanQuery.includes("cabaña") ||
+    cleanQuery.includes("cabañas") ||
+    cleanQuery.includes("alojamiento") ||
+    cleanQuery.includes("supermercado") ||
+    cleanQuery.includes("ferreteria") ||
+    cleanQuery.includes("ferretería")
+  ) {
+    responseText = `¡Hola! Con mucho gusto te presento la **Guía Comercial y Gastronómica Oficial de Ituzaingó**:
+
+🍽️ **Dónde Comer y Pescados de Río:**
+• **Restaurante El Timón del Paraná**: Especialidad en surubí al paquete, dorado a la parrilla y pacú. Av. Costanera y Belgrano. Abierto mediodía y noche.
+• **Sabores del Iberá**: Parrilla tradicional correntina, minutas y empanadas criollas. Calle Centenario 1240.
+• **Paseo de Comidas Costanera**: Carritos y paradores habilitados con vista panorámica al atardecer sobre el río.
+
+🏡 **Alojamientos y Cabañas Adheridas:**
+• **Cabañas Rincón del Sol**: Cabañas familiares equipadas con piscina sobre calle Posadas y Ruta 12.
+• **Hotel Ituzaingó**: Alojamiento céntrico sobre calle Buenos Aires y San Martín con desayuno regional.
+
+🛍️ **Comercios y Servicios Municipales Adheridos:**
+• **Ferretería El Progreso**: Artículos del hogar, herramientas y materiales. Calle Belgrano 1120.
+• Todos los comercios adheridos cuentan con habilitación bromatológica oficial y participan de promociones de la Municipalidad para premiar a los vecinos cumplidores.
+
+¿Buscás el contacto telefónico de algún restaurante o rubro en particular?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 3. FARMACIAS Y FARMACIAS DE TURNO (MÁXIMA PRIORIDAD SANITARIA)
+  // --------------------------------------------------------------------------
+  else if (
     cleanQuery.includes("farmacia") ||
     cleanQuery.includes("remedio") ||
     cleanQuery.includes("medicamento") ||
@@ -44,7 +138,7 @@ export async function executeLocalInference(
   ) {
     responseText = `¡Hola! Con mucho gusto te oriento sobre las **Farmacias y Servicios de Turno en Ituzaingó**:
 
-En nuestra ciudad el cronograma de **Farmacias de Turno** rota semanalmente (de 8:00 hs a 8:00 hs del día siguiente).
+En nuestra ciudad el cronograma de **Farmacias de Turno** rota diariamente (de 8:00 hs a 8:00 hs del día siguiente).
 
 📍 **Farmacias principales de Ituzaingó:**
 • **Farmacia del Pueblo**: Calle Buenos Aires y Centenario. Tel: (03786) 420-150.
@@ -54,15 +148,15 @@ En nuestra ciudad el cronograma de **Farmacias de Turno** rota semanalmente (de 
 • **Farmacia Santa Rita**: Bº Gral. San Martín (Calle 7 y 14).
 
 🚨 **Guardia Sanitaria Permanente (24 Horas):**
-Si necesitás atención médica urgente o provisión farmacéutica de guardia en horas de la noche/madrugada:
+Si precisás atención médica urgente o provisión farmacéutica de guardia en horas de la noche/madrugada:
 • **Hospital Dr. Ricardo Billinghurst**: Guardia activa las 24 horas en **Calle Corrientes y Belgrano**.
 • **Teléfono de Emergencia Médica**: Línea gratuita **107** o directo **(03786) 420033**.
 
-💡 *Tip ciudadano:* El turno del día exacto se encuentra exhibido en el cartel iluminado de cada farmacia y en la cartelera del Hospital. Si tenés una receta o medicamento específico, avisame y te oriento con gusto.`;
+💡 *Tip ciudadano:* El turno del día exacto se encuentra exhibido en el cartel iluminado de cada farmacia y en la cartelera del Hospital. ¿Tenés una receta o medicamento específico? Avisame y te ayudo.`;
   }
 
   // --------------------------------------------------------------------------
-  // 2. GUARDIAS DE SALUD, HOSPITAL Y EMERGENCIAS (107 / 100 / 103 / 106)
+  // 4. GUARDIAS DE SALUD, HOSPITAL Y EMERGENCIAS (107 / 100 / 103 / 106)
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("hospital") ||
@@ -97,11 +191,11 @@ Si necesitás atención médica urgente o provisión farmacéutica de guardia en
 • **Prefectura Naval Argentina (Puerto Ituzaingó)**: Línea **106** / (03786) 420025.
 • **Defensa Civil Municipal**: Línea de guardia **103**.
 
-Si te encontrás ante un peligro inminente, por favor comunicate primero al **107** o al **100**. ¿Precisás la ubicación de las salas de primeros auxilios (CAPS) de algún barrio?`;
+Si estás ante un peligro inminente, comunicate primero al **107** o al **100**. ¿Precisás la ubicación de los Centros de Atención Primaria (CAPS) barriales?`;
   }
 
   // --------------------------------------------------------------------------
-  // 3. TRÁNSITO, LICENCIA DE CONDUCIR Y CARNET
+  // 5. TRÁNSITO, LICENCIA DE CONDUCIR Y CARNET
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("carnet") ||
@@ -114,25 +208,25 @@ Si te encontrás ante un peligro inminente, por favor comunicate primero al **10
     cleanQuery.includes("sacar carnet") ||
     cleanQuery.includes("multa")
   ) {
-    responseText = `¡Hola! Qué gusto saludarte. Con mucho gusto te detallo los requisitos para tramitar o renovar tu **Licencia Nacional de Conducir** en Ituzaingó:
+    responseText = `¡Hola! Qué gusto saludarte. Con mucho gusto te detallo los requisitos y pasos para tramitar o renovar tu **Licencia Nacional de Conducir** en Ituzaingó:
 
 📋 **Requisitos Obligatorios:**
-1. **DNI original y fotocopia** con domicilio radicado en la ciudad de Ituzaingó.
+1. **DNI original y fotocopia** con domicilio en Ituzaingó.
 2. **Constancia de grupo y factor sanguíneo** (para primera licencia o cambio de categoría).
-3. **Libre deuda municipal de infracciones de tránsito y tasas** (se consulta en el momento en la oficina).
-4. **Certificado Nacional de Antecedentes de Tránsito (CENAT)**: Boleta abonada previa al inicio del trámite.
-5. **Examen psicofísico y médico**: Se realiza en el gabinete médico de la Dirección de Tránsito.
-6. **Para primera licencia**: Asistir al curso de seguridad vial y aprobar examen teórico y práctico.
+3. **Libre deuda de infracciones de tránsito municipal** (se verifica en ventanilla).
+4. **Boleta CENAT abonada** (Certificado Nacional de Antecedentes de Tránsito).
+5. **Examen psicofísico**: Se realiza en el gabinete médico de la Dirección de Tránsito.
+6. **Para primera licencia**: Curso de educación vial y aprobación de examen teórico y práctico.
 
 📍 **Lugar de Atención y Horarios:**
 Dirección de Tránsito Municipal de Ituzaingó.
 • **Horario**: Lunes a viernes de 7:00 a 13:00 hs.
 
-¿Deseás consultar el costo de las tasas según tu categoría (moto, auto particular o profesional)?`;
+💡 *Turnos:* Podés solicitarme un turno directo desde acá escribiendo "quiero un turno para carnet" para evitarte esperas. ¿Deseás consultar el costo según tu categoría (auto, moto o profesional)?`;
   }
 
   // --------------------------------------------------------------------------
-  // 4. RECLAMOS URBANOS Y OBRAS PÚBLICAS (BACHES, LUMINARIAS, PODAS, BASURA)
+  // 6. RECLAMOS URBANOS Y OBRAS PÚBLICAS (BACHES, LUMINARIAS, PODAS, BASURA)
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("pozo") ||
@@ -153,12 +247,12 @@ Dirección de Tránsito Municipal de Ituzaingó.
     cleanQuery.includes("queja")
   ) {
     const ticketRandom = "ITU-" + Math.floor(100 + Math.random() * 900);
-    responseText = `¡Comprendo perfectamente la situación y ya me ocupo de gestionarlo!
+    responseText = `¡Comprendo perfectamente la situación y ya me ocupo de registrarlo!
 
 He derivado tu solicitud al sistema operativo de **Obras y Servicios Públicos**:
 • **Ticket Oficial de Reclamo**: **#${ticketRandom}**
 • **Área Responsable**: Secretaría de Obras y Servicios Públicos de Ituzaingó.
-• **Procedimiento**: La cuadrilla técnica de guardia programará la inspección en la dirección indicada para su intervención oportuna.
+• **Procedimiento**: La cuadrilla técnica de guardia programará la inspección en la dirección indicada para intervenir a la brevedad.
 
 🌿 **Cronograma de Ramas y Podas:** Recordá sacar las ramas los días asignados a tu sector barrial en fardos ordenados para no obstaculizar los desagües pluviales.
 
@@ -166,7 +260,7 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
   }
 
   // --------------------------------------------------------------------------
-  // 5. RENTAS, TASAS, IMPUESTOS MUNICIPALES Y HABILITACIONES
+  // 7. RENTAS, TASAS, IMPUESTOS MUNICIPALES Y HABILITACIONES
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("renta") ||
@@ -178,7 +272,6 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
     cleanQuery.includes("habilitar") ||
     cleanQuery.includes("habilitacion") ||
     cleanQuery.includes("habilitación") ||
-    cleanQuery.includes("comercio") ||
     cleanQuery.includes("pagar")
   ) {
     responseText = `¡Hola! Te oriento con todo gusto sobre las **Rentas, Tasas y Trámites Comerciales** de la Municipalidad de Ituzaingó:
@@ -190,14 +283,14 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
 💳 **Trámites y Pagos Disponibles:**
 1. **Tasa por Servicios a la Propiedad (Inmobiliario)**: Descuentos por pago anual adelantado y contribuyente al día.
 2. **Impuesto al Parque Automotor (Patentes)**: Liquidación y pago de patentes radicadas en la comuna.
-3. **Habilitaciones Comerciales**: Presentación de planos, libre deuda y habilitación bromatológica para nuevos locales.
+3. **Habilitaciones Comerciales**: Presentación de planos, libre deuda y habilitación bromatológica para locales nuevos.
 4. **Planes de Pago**: Facilidades y moratorias vigentes para regularizar períodos atrasados.
 
-¿Necesitás conocer los requisitos para algún rubro comercial o el estado de deuda de un inmueble?`;
+¿Precisás consultar los requisitos para algún rubro comercial o verificar el estado de deuda de un inmueble?`;
   }
 
   // --------------------------------------------------------------------------
-  // 6. TURISMO, ESTEROS DEL IBERÁ, YACYRETÁ Y PLAYAS DE ITUZAINGÓ
+  // 8. TURISMO, ESTEROS DEL IBERÁ, YACYRETÁ Y PLAYAS DE ITUZAINGÓ
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("ibera") ||
@@ -211,43 +304,169 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
     cleanQuery.includes("turismo") ||
     cleanQuery.includes("pesca") ||
     cleanQuery.includes("paseo") ||
-    cleanQuery.includes("hotel") ||
-    cleanQuery.includes("alojamiento") ||
     cleanQuery.includes("camping")
   ) {
     if (cleanQuery.includes("ibera") || cleanQuery.includes("iberá") || cleanQuery.includes("cambyret")) {
       responseText = `¡Hola! Qué gusto saludarte. Te brindo la guía oficial para visitar los **Esteros del Iberá a través del Portal Cambyretá**:
 
-• **Acceso desde Ituzaingó**: Se ingresa por la **Ruta Nacional 12 (km 1230)**. Son unos 15 km de camino consolidado de ripio y arena hasta la seccional de guardaparques y 29 km hasta los senderos principales.
+• **Acceso desde Ituzaingó**: Se ingresa por la **Ruta Nacional 12 (km 1230)**. Son 15 km de camino consolidado de ripio y arena hasta la seccional de guardaparques y 29 km hasta los senderos principales.
 • **Qué vas a disfrutar**: Avistaje natural de carpinchos, yacarés negro y overo, ciervos de los pantanos y más de 350 especies de aves autóctonas.
 • **Servicios del Portal**: Quinchos con mesas, sanitarios, agua potable y senderos autoguiados. El ingreso es libre y gratuito.
 • **Consejos para la visita**: Conducir a baja velocidad (máximo 40 km/h), llevar agua fresca, repelente, calzado cerrado, protector solar y regresar antes de la puesta de sol.
 
-¿Te gustaría consultar el estado del camino para hoy o el contacto de prestadores turísticos habilitados?`;
+¿Te gustaría consultar el estado del camino para hoy o el contacto de guías de sitio matriculados?`;
     } else if (cleanQuery.includes("yacyret") || cleanQuery.includes("represa")) {
       responseText = `¡Hola! Con mucho gusto te detallo cómo realizar la visita a la **Central Hidroeléctrica Yacyretá**:
 
-• **Visitas Guiadas Gratuitas**: Organizadas por la Entidad Binacional Yacyretá (EBY).
-• **Punto de Salida**: **Centro de Visitantes (Av. 9 de Julio y Buenos Aires)** en el centro de Ituzaingó.
-• **Horarios**: Turnos habituales a las 9:00, 11:00 y 14:00 hs (se recomienda confirmar turno previo).
-• **Requisito Indispensable**: Presentar **DNI original físico** de cada integrante del grupo y asistir con calzado cerrado.
-• **Recorrido**: Proyección audiovisual institucional y paseo en ómnibus especial por la presa, casa de máquinas y esclusa de navegación.
+• **Visitas Guiadas Gratuitas**: Organizadas por el Centro de Visitantes de Yacyretá.
+• **Punto de Encuentro**: **Av. 9 de Julio y Buenos Aires** en el centro de Ituzaingó.
+• **Horarios**: Turnos diarios a las 9:00, 11:00 y 14:00 hs (conviene reservar con anticipación).
+• **Requisito Indispensable**: Presentar **DNI físico original** de cada persona y concurrir con calzado cerrado.
+• **Recorrido**: Video informativo institucional y traslado en bus especial guiado por la presa, casa de máquinas y esclusa de navegación.
 
-¿Deseás consultar el número de reservas del Centro de Visitantes?`;
+¿Querés que te facilite el teléfono del Centro de Visitantes para confirmar tu lugar?`;
     } else {
-      responseText = `¡Hola! Es un placer recibirte. Ituzaingó es la Capital de la Energía y portal de los Esteros del Iberá. Te recomiendo nuestros principales atractivos:
+      responseText = `¡Hola! Es un placer recibirte en Ituzaingó, Capital de la Energía y portal a los Esteros del Iberá. Te recomiendo nuestros principales atractivos turísticos:
 
-1. **Nuestras Playas sobre el Río Paraná**: Playa Punta Norte, Paranaguá, La Marcelina y Morena Beach, con paradores y aguas cálidas.
-2. **Esteros del Iberá (Portal Cambyretá)**: Acceso por RN 12 km 1230 con ingreso libre para conectar con la naturaleza virgen.
-3. **Visitas a la Represa Yacyretá**: Recorrido técnico y ecológico saliendo de Av. 9 de Julio y Buenos Aires.
-4. **Pesca Deportiva con Devolución**: Salidas en lancha con guías matriculados para pesca de dorado, surubí y boga.
+1. 🏖️ **Playas de Río Paraná**: Playa Punta Norte, Paranaguá, La Marcelina y Morena Beach, con paradores náuticos, arenas doradas y aguas templadas.
+2. 🌿 **Esteros del Iberá (Portal Cambyretá)**: Acceso por Ruta 12 km 1230, ingreso gratuito para avistar carpinchos, yacarés y aves libres.
+3. ⚡ **Represa Hidroeléctrica Yacyretá**: Visitas técnicas y ecológicas gratuitas saliendo de Av. 9 de Julio y Buenos Aires.
+4. 🎣 **Pesca Deportiva con Devolución**: Salidas en lancha con guías matriculados para pesca de dorado, surubí y boga.
 
-¿Sobre cuál de estos paseos te gustaría que te brinde más recomendaciones o contactos?`;
+¿Sobre cuál de estos paseos te gustaría tener más detalles o contactos directos?`;
     }
   }
 
   // --------------------------------------------------------------------------
-  // 7. ZOONOSIS, BROMATOLOGÍA Y MASCOTAS
+  // 9. TRABAJO, EMPLEO Y CAPACITACIÓN LABORAL
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("trabajo") ||
+    cleanQuery.includes("empleo") ||
+    cleanQuery.includes("curriculum") ||
+    cleanQuery.includes("cv") ||
+    cleanQuery.includes("bolsa de trabajo") ||
+    cleanQuery.includes("capacitacion") ||
+    cleanQuery.includes("capacitación") ||
+    cleanQuery.includes("fomentar empleo") ||
+    cleanQuery.includes("oficio")
+  ) {
+    responseText = `¡Hola! Con mucho gusto te informo sobre la **Oficina de Empleo y Capacitación de Ituzaingó**:
+
+💼 **Servicios para Vecinos y Trabajadores:**
+• **Recepción y Carga de CV**: Acercate con tu DNI y currículum vitae impreso o digital para incorporarte a la base de postulantes comunal.
+• **Programa Fomentar Empleo**: Orientación vocacional, inserción en empresas locales y entrenamientos laborales remunerados.
+• **Cursos de Oficios Gratuitos**: Talleres con certificación oficial en electricidad, gastronomía, albañilería y servicios turísticos.
+
+📍 **Ubicación y Horarios:**
+Calle **Belgrano 1540**.
+• **Horario**: Lunes a viernes de 7:00 a 13:00 hs.
+
+¿Deseás que te oriente sobre las inscripciones vigentes o los requisitos del programa Fomentar Empleo?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 10. EDUCACIÓN, UNIVERSIDAD Y BECAS
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("educacion") ||
+    cleanQuery.includes("educación") ||
+    cleanQuery.includes("escuela") ||
+    cleanQuery.includes("colegio") ||
+    cleanQuery.includes("universidad") ||
+    cleanQuery.includes("polo universitario") ||
+    cleanQuery.includes("carrera") ||
+    cleanQuery.includes("beca") ||
+    cleanQuery.includes("boleto estudiantil")
+  ) {
+    responseText = `¡Hola! Es un placer brindarte detalles sobre el área de **Educación y Polo Universitario de Ituzaingó**:
+
+🎓 **Oferta Educativa y Servicios:**
+• **Polo Universitario Ituzaingó**: Convenios activos con la Universidad Nacional del Nordeste (UNNE) e institutos de formación superior para carreras a distancia y presenciales.
+• **Boleto Estudiantil Gratuito**: Tramitación del pase para estudiantes primarios, secundarios y terciarios que residan en la ciudad.
+• **Punto Digital y Aulas de Estudio**: Espacios con computadoras con conexión Wi-Fi gratuita para investigación y cursado virtual.
+
+📍 **Sede de Atención:**
+Dirección de Educación Municipal, Palacio Municipal (Centenario y San Martín). Lunes a viernes de 7:00 a 13:00 hs.
+
+¿Querés consultar las carreras universitarias disponibles este ciclo o los requisitos para el boleto estudiantil?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 11. JUVENTUD Y DEPORTES
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("juventud") ||
+    cleanQuery.includes("joven") ||
+    cleanQuery.includes("deporte") ||
+    cleanQuery.includes("skatepark") ||
+    cleanQuery.includes("skate") ||
+    cleanQuery.includes("torneo") ||
+    cleanQuery.includes("cancha") ||
+    cleanQuery.includes("voley")
+  ) {
+    responseText = `¡Hola! Qué alegría saludarte. Te cuento sobre las actividades de la **Dirección de Juventud y Deportes de Ituzaingó**:
+
+⚽ **Espacios y Actividades:**
+• **Punto Joven Costanera**: Punto de encuentro, talleres creativos y torneos de vóley playero y básquetbol 3x3 frente al río Paraná.
+• **Pista de Skate y Deportes Urbanos**: En el Paseo de los Pescadores, con iluminación LED nocturna y actividades de integración.
+• **Escuelas Deportivas Municipales**: Fútbol, atletismo, handball y canotaje para chicos y adolescentes en distintos barrios.
+
+📍 Para consultas e inscripción a torneos o actividades juveniles, acercate de lunes a viernes de 8:00 a 12:00 hs a la sede municipal. ¿Te gustaría conocer el calendario de partidos de este mes?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 12. PRENSA, COMUNICACIÓN Y RADIO MUNICIPAL
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("prensa") ||
+    cleanQuery.includes("comunicado") ||
+    cleanQuery.includes("noticia") ||
+    cleanQuery.includes("gacetilla") ||
+    cleanQuery.includes("radio municipal") ||
+    cleanQuery.includes("radio")
+  ) {
+    responseText = `¡Hola! Te oriento con gusto sobre el área de **Prensa y Comunicación Institucional**:
+
+📻 **Canales Oficiales del Municipio:**
+• **Radio Municipal Ituzaingó (FM 88.5)**: Cobertura informativa en vivo, boletines meteorológicos y servicios comunitarios diarios.
+• **Gacetillas y Partes Oficiales**: La Dirección de Prensa emite diariamente comunicados verificados sobre obras, cortes programados y eventos.
+• **Redes Oficiales**: Seguinos en las cuentas oficiales de la Municipalidad de Ituzaingó para enterarte primero de todas las novedades.
+
+¿Precisás contactar a la oficina de Prensa para solicitar una gacetilla o difusión comunitaria?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 13. TURNOS Y PERMISOS PROVISORIOS MUNICIPALES
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("turno") ||
+    cleanQuery.includes("sacar turno") ||
+    cleanQuery.includes("pedir turno") ||
+    cleanQuery.includes("permiso") ||
+    cleanQuery.includes("permiso provisorio") ||
+    cleanQuery.includes("volquete") ||
+    cleanQuery.includes("ocupacion de vereda") ||
+    cleanQuery.includes("ocupación de vereda")
+  ) {
+    responseText = `¡Hola! Desde el sistema inteligente de Susybot podés gestionar **Turnos Oficiales y Permisos Provisorios** al instante:
+
+📅 **Turnos Municipales Disponibles:**
+1. **Tránsito y Carnet de Conducir**: Turnos de 7:30 a 12:30 hs.
+2. **Rentas e Impuestos**: Cajas y planes de pago.
+3. **Obras Privadas**: Presentación de planos e inspecciones.
+4. **Acción Social**: Asesoramiento prioritario.
+
+📄 **Permisos Provisorios Rápidos (Costo Cero y Resolución en 24 hs):**
+• Permiso para colocación de volquetes en calzada.
+• Permiso de poda estacional o extracción de ramas.
+• Permiso para eventos comunitarios o uso de espacio público.
+
+Para emitir tu turno ahora mismo, decime tu nombre completo, DNI y para qué oficina lo necesitás, ¡y te genero la constancia con código QR oficial!`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 14. ZOONOSIS, BROMATOLOGÍA Y MASCOTAS
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("perro") ||
@@ -272,7 +491,7 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
   }
 
   // --------------------------------------------------------------------------
-  // 8. LAZARILLO VISUAL Y ASISTENCIA ESPACIAL (DISCAPACIDAD VISUAL / NO VIDENTES)
+  // 15. LAZARILLO VISUAL Y ASISTENCIA ESPACIAL (DISCAPACIDAD VISUAL)
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("lazarillo") ||
@@ -291,14 +510,14 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
 
 👁️ **Asistencia Espacial y Lectura en Ventanilla:**
 • **Orientación en Esfera de Reloj**: Te guío indicando obstáculos a tus 12 en punto (al frente), a tus 3 en punto (a tu derecha) o a tus 9 en punto (a tu izquierda).
-• **Lectura Asistida con Cámara**: Si enfocas una boleta municipal, te leo el importe y vencimiento; si enfocas tu carnet o DNI, te confirmo los datos oficiales y vigencia.
+• **Lectura Asistida con Cámara**: Si enfocás una boleta municipal, te leo el importe y vencimiento; si enfocás tu carnet o DNI, te confirmo los datos oficiales y vigencia.
 • **Alertas de Entorno Urbano**: Te aviso al instante sobre escalones, desniveles de vereda, cordones o puertas de ingreso en edificios municipales.
 
-¿Qué documento o sector frente a ti deseas que examine con la cámara ahora mismo?`;
+¿Qué documento o sector frente a ti deseás que examine con la cámara ahora mismo?`;
   }
 
   // --------------------------------------------------------------------------
-  // 9. INCLUSIÓN CIUDADANA Y APOYO EN TRÁMITES (TEA / NEURODIVERGENCIA / DUA)
+  // 16. INCLUSIÓN CIUDADANA Y APOYO EN TRÁMITES (TEA / NEURODIVERGENCIA / DUA)
   // --------------------------------------------------------------------------
   else if (
     mode === "inclusion" ||
@@ -326,7 +545,7 @@ Decime qué trámite querés hacer y te explico exactamente qué llevar.`;
   }
 
   // --------------------------------------------------------------------------
-  // 10. TERMINAL DE ÓMNIBUS Y TRANSPORTE PÚBLICO
+  // 17. TERMINAL DE ÓMNIBUS Y TRANSPORTE PÚBLICO
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("terminal") ||
@@ -346,25 +565,35 @@ Decime qué trámite querés hacer y te explico exactamente qué llevar.`;
 • **Servicios de Larga Distancia**: Conexiones directas a Retiro (Buenos Aires), Rosario, Córdoba y Entre Ríos.
 • **Parada de Remises**: Guardia de remises y taxis disponible en el playón de la terminal las 24 hs.
 
-¿Precisás información de horarios para algún destino en particular?`;
+¿Precisás información de horarios o boleterías para algún destino en particular?`;
   }
 
   // --------------------------------------------------------------------------
-  // 11. ATENCIÓN CIUDADANA GENERAL Y PERSONALIZADA
+  // 18. ATENCIÓN CIUDADANA GENERAL Y CONVERSACIONAL (HUMANA, NUNCA BROCHURE RÍGIDO)
   // --------------------------------------------------------------------------
   else {
-    responseText = `¡Hola! Qué gusto saludarte. Te atiende Susy, Directora Virtual de Atención al Vecino e Innovación Urbana de la Municipalidad de Ituzaingó.
+    // Si es un saludo inicial
+    if (
+      cleanQuery === "hola" ||
+      cleanQuery === "buenas" ||
+      cleanQuery === "buen dia" ||
+      cleanQuery === "buen día" ||
+      cleanQuery === "buenas tardes" ||
+      cleanQuery === "buenas noches" ||
+      cleanQuery.startsWith("hola ")
+    ) {
+      responseText = `¡Hola! Qué gusto saludarte. Soy Susy, tu asistente municipal de Ituzaingó. Estoy acá para resolver tus trámites, brindarte información sobre eventos culturales, obras, turnos, farmacias de turno o cualquier secretaría de la ciudad. Contame con tranquilidad, ¿en qué te puedo colaborar hoy?`;
+    } else {
+      // Respuesta dinámica, humana y empática para cualquier otra consulta
+      responseText = `¡Hola! Te atiende Susy de la Municipalidad de Ituzaingó. Tomé nota de tu consulta sobre "${userQuery.slice(0, 70)}".
 
-Estoy a tu entera disposición para resolver tus dudas de manera ágil y sin demoras. Puedo asistirte en:
+Estoy para resolver tus gestiones sin intermediarios:
+• Si estás buscando **eventos o actividades culturales**, todos los fines de semana tenemos feria y chamamé en el Paseo de los Pescadores y talleres en el Centro Cultural.
+• Si necesitás realizar un **trámite (carnet, tasas, reclamo de luminaria o bache)**, te indico los requisitos o te genero un turno de inmediato.
+• Si buscás **guardias médicas, farmacias de turno o comercios adheridos**, te doy la ubicación exacta y teléfonos.
 
-1. 🏥 **Salud y Farmacias**: Farmacias de turno hoy, guardia del Hospital Billinghurst (107) y centros de salud barriales.
-2. 🚗 **Tránsito y Carnet**: Requisitos, costos y turnos para renovación de licencia de conducir.
-3. 🚧 **Obras y Servicios Urbanos**: Registro formal de reclamos (luminarias, baches, poda y recolección de residuos).
-4. 🏛️ **Rentas y Tasas**: Pago de impuestos municipales, automotor y habilitaciones de comercios.
-5. 🌿 **Turismo y Paseos**: Visitas al Portal Cambyretá (Esteros del Iberá), Represa Yacyretá y playas locales.
-6. 🧩 **Acción Social e Inclusión**: Asesoramiento sobre programas comunitarios y trámites accesibles.
-
-Por favor, contame qué gestión o información necesitás realizar hoy y te guío paso a paso.`;
+Contame un poquito más en detalle qué necesitás y te lo resuelvo al instante.`;
+    }
   }
 
   return { text: responseText, source: "local_webgpu" };

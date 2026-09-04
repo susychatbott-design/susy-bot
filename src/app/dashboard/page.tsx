@@ -38,6 +38,36 @@ import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
 import { MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 
 export default function MunicipalDashboardPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [accessPin, setAccessPin] = useState<string>("");
+  const [pinError, setPinError] = useState<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedAuth = sessionStorage.getItem("susy_municipal_staff_auth");
+      if (savedAuth === "authorized_ituzaingo") {
+        setIsAuthenticated(true);
+      }
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Claves oficiales: 1519 (altura del Palacio Municipal) o ituzaingo2026
+    if (accessPin.trim() === "1519" || accessPin.trim().toLowerCase() === "ituzaingo2026") {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("susy_municipal_staff_auth", "authorized_ituzaingo");
+      setPinError("");
+    } else {
+      setPinError("PIN de acceso incorrecto. Terminal de uso exclusivo para personal municipal asignado.");
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem("susy_municipal_staff_auth");
+  };
+
   const [activeTab, setActiveTab] = useState<"metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa">("metricas");
   
   // Estados de datos
@@ -106,6 +136,70 @@ export default function MunicipalDashboardPage() {
     setShowNewGacetillaModal(false);
   };
 
+    if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#060a12] text-slate-100 flex items-center justify-center p-4 font-sans relative overflow-hidden">
+        {/* Fondo institucional */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-950/40 via-[#060a12] to-[#04070d] pointer-events-none" />
+
+        <div className="max-w-md w-full bg-[#0c121e] border border-sky-600/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative z-10 text-center">
+          <div className="space-y-2">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 mx-auto flex items-center justify-center text-2xl shadow-lg shadow-sky-500/20 mb-3">
+              🏛️
+            </div>
+            <div className="inline-block px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-rose-500/15 border border-rose-500/30 text-rose-400 uppercase tracking-widest">
+              Área Restringida
+            </div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              Centro de Gestión Municipal
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Terminal de control de uso exclusivo para el personal municipal asignado dentro de la dependencia oficial de Ituzaingó.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
+                PIN o Clave de Acceso Institucional:
+              </label>
+              <input
+                type="password"
+                required
+                placeholder="Ingresá el PIN oficial (ej. 1519)"
+                value={accessPin}
+                onChange={(e) => {
+                  setAccessPin(e.target.value);
+                  setPinError("");
+                }}
+                className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-center font-mono tracking-widest text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
+              />
+              {pinError && (
+                <p className="text-[11px] text-rose-400 font-medium mt-1.5 flex items-center gap-1">
+                  ⚠️ {pinError}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white shadow-lg shadow-sky-600/20 transition-all cursor-pointer"
+            >
+              Ingresar a la Terminal Municipal
+            </button>
+          </form>
+
+          <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
+            <Link href="/" className="hover:text-slate-300 transition-colors flex items-center gap-1">
+              ← Volver al Asistente
+            </Link>
+            <span>Ituzaingó • Corrientes</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col font-sans">
       {/* Top Navbar del Dashboard */}
@@ -121,6 +215,13 @@ export default function MunicipalDashboardPage() {
 
           <div className="h-5 w-[1px] bg-slate-800 hidden sm:block" />
 
+          <button
+            onClick={handleLogout}
+            className="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-rose-300 hover:bg-rose-950/40 border border-slate-800 transition-colors"
+            title="Cerrar Sesión Institucional"
+          >
+            Cerrar Sesión
+          </button>
           <div className="flex items-center gap-2">
             <span className="text-xl">🏛️</span>
             <div>

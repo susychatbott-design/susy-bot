@@ -468,32 +468,12 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
     }
   }
 
-  // 2. CAPA 2: Pollinations Open Neural Mesh (100% Gratuito, Sin Keys, Open-Weights)
-  try {
-    const polRes = await fetch("https://text.pollinations.ai/openai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: openAiMessages,
-        model: "openai",
-        stream: true,
-        temperature
-      }),
-      signal: AbortSignal.timeout(6000)
-    });
-
-    if (polRes.ok && polRes.body) {
-      console.log("[Sovereign Core - Capa 2 Pollinations]: Inferencia exitosa en Open Mesh");
-      return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
-    }
-  } catch (polErr) {}
-
-  // 3. CAPA 3: Groq Open Weights Tier (Llama 3.3 70B / Gemma 2 / Qwen Open-Weights)
+  // 2. CAPA 2: Groq Open Weights Tier (Inferencia Ultrarrápida 300ms) (Llama 3.3 70B / Gemma 2 / Qwen Open-Weights)
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
     const groqCandidateModels = isVisionRequest
       ? ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
-      : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b", "groq/compound-mini", "qwen/qwen3.6-27b"];
+      : ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"];
 
     for (const gModel of groqCandidateModels) {
       try {
@@ -520,6 +500,26 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
       } catch (groqErr) {}
     }
   }
+
+  // 3. CAPA 3: Pollinations Open Neural Mesh (100% Gratuito, Sin Keys, Open-Weights)
+  try {
+    const polRes = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: openAiMessages,
+        model: "openai",
+        stream: true,
+        temperature
+      }),
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (polRes.ok && polRes.body) {
+      console.log("[Sovereign Core - Capa 2 Pollinations]: Inferencia exitosa en Open Mesh");
+      return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
+    }
+  } catch (polErr) {}
 
   // 4. CAPA 4: Hugging Face Serverless Open Mesh (Qwen 2.5 / DeepSeek R1 Open Weights)
   const hfToken = cleanKey(process.env.HF_ACCESS_TOKEN) || cleanKey(process.env.HUGGINGFACE_API_KEY) || cleanKey(process.env.HF_TOKEN);
@@ -634,7 +634,7 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
   // 1. Inferencia Abierta Groq Open Weights
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
-    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3.6-27b"];
+    const groqModels = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"];
     for (const gModel of groqModels) {
       try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {

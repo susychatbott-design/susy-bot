@@ -121,7 +121,7 @@ export default function MunicipalOfficesGrid({
       </div>
 
       {/* Botonera Institucional de Trámites Rápidos & Dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 w-full pt-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full pt-1">
         {/* Sacar Turno */}
         <button
           onClick={() => onRequestTurno && onRequestTurno()}
@@ -170,17 +170,7 @@ export default function MunicipalOfficesGrid({
           </div>
         </button>
 
-        {/* Enlace al Dashboard de Gestión */}
-        <Link
-          href="/dashboard"
-          className="p-2.5 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-600/40 text-left transition-all group cursor-pointer flex items-center gap-2"
-        >
-          <BarChart3 size={16} className="text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
-          <div className="truncate">
-            <span className="text-xs font-bold text-indigo-300 block truncate">Dashboard</span>
-            <span className="text-[9px] text-slate-400 truncate hidden xs:block">Panel de Control</span>
-          </div>
-        </Link>
+
       </div>
     </div>
   );

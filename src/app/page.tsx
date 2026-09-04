@@ -100,6 +100,84 @@ interface Session {
   updated_at: string;
 }
 
+
+/**
+ * 🎙️ Selector estricto de Voz Argentina / Cono Sur (Cero acento de España)
+ */
+export function getBestArgentineVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | undefined {
+  if (!voices || voices.length === 0) return undefined;
+
+  // 1. PRIORIDAD MÁXIMA: Voz Argentina (es-AR, es_AR, o nombre con Argentina, Tomas, Brenda, Diego)
+  const argVoice = voices.find(v => {
+    const l = (v.lang || "").toLowerCase();
+    const n = (v.name || "").toLowerCase();
+    return (
+      l.includes("es-ar") || 
+      l.includes("es_ar") || 
+      n.includes("argentina") || 
+      n.includes("tomas") || 
+      n.includes("brenda") || 
+      n.includes("diego")
+    );
+  });
+  if (argVoice) return argVoice;
+
+  // 2. SEGUNDA PRIORIDAD: Voces Latinoamericanas Neutras (es-419, es-US, es-MX, es-UY, Sabina, Paulina, Dalia)
+  // FILTRAR ESTRICTAMENTE CUALQUIER VOZ DE ESPAÑA (es-ES, Helena, Elena, Monica, Pablo, Laura)
+  const latamVoice = voices.find(v => {
+    const l = (v.lang || "").toLowerCase();
+    const n = (v.name || "").toLowerCase();
+    const isSpain = (
+      l.includes("es-es") || 
+      l.includes("es_es") || 
+      n.includes("spain") || 
+      n.includes("españa") || 
+      n.includes("elena") || 
+      n.includes("helena") || 
+      n.includes("monica") || 
+      n.includes("laura") || 
+      n.includes("pablo")
+    );
+    if (isSpain) return false;
+
+    return (
+      l.includes("es-419") || 
+      l.includes("es-us") || 
+      l.includes("es-mx") || 
+      l.includes("es-uy") || 
+      l.includes("es-cl") ||
+      n.includes("sabina") || 
+      n.includes("paulina") || 
+      n.includes("dalia") || 
+      n.includes("natural") ||
+      n.includes("latino")
+    );
+  });
+  if (latamVoice) return latamVoice;
+
+  // 3. TERCERA PRIORIDAD: Cualquier voz en español que NO sea de España
+  const anyNonSpain = voices.find(v => {
+    const l = (v.lang || "").toLowerCase();
+    const n = (v.name || "").toLowerCase();
+    const isSpain = (
+      l.includes("es-es") || 
+      l.includes("es_es") || 
+      n.includes("spain") || 
+      n.includes("españa") || 
+      n.includes("elena") || 
+      n.includes("helena") || 
+      n.includes("monica") || 
+      n.includes("laura") || 
+      n.includes("pablo")
+    );
+    return l.startsWith("es") && !isSpain;
+  });
+  if (anyNonSpain) return anyNonSpain;
+
+  // 4. Último recurso absoluto
+  return voices.find(v => (v.lang || "").toLowerCase().startsWith("es")) || voices[0];
+}
+
 export default function SusybotApp() {
   const hardware = useSusyHardware("visual");
   const [userId, setUserId] = useState<string>("");
@@ -243,7 +321,7 @@ export default function SusybotApp() {
         setShowLiveVisionModal(true);
         setTimeout(() => {
           startLiveVision("environment");
-          speakText("Hola, soy Susybot, tu asistente municipal y lazarillo, tu lazarillo visual. He activado la Cámara Titán. Apunta tu teléfono hacia el frente para guiarte en tu camino.", -99);
+          speakText("Hola, te habla Susy. Ya tenés activa la Cámara Ciudadana de Ituzaingó. Enfocá con tu celu el formulario, boleta o reclamo y te oriento al instante.", -99);
         }, 1000);
       } else if (isCallMode) {
         setShowRealtimeCallModal(true);
@@ -258,7 +336,8 @@ export default function SusybotApp() {
     setUserId(storedUserId);
     fetchSessions(storedUserId);
 
-    // Precargar voces del sistema operativo
+    
+// Precargar voces del sistema operativo
     const loadSystemVoices = () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         const vList = window.speechSynthesis.getVoices();
@@ -268,15 +347,19 @@ export default function SusybotApp() {
 
         const savedVoiceUri = localStorage.getItem("susybot_voice_uri");
         if (savedVoiceUri) {
-          setSelectedVoiceUri(savedVoiceUri);
+          const matched = finalVoices.find(v => v.voiceURI === savedVoiceUri);
+          const l = (matched?.lang || "").toLowerCase();
+          const n = (matched?.name || "").toLowerCase();
+          const isSpain = l.includes("es-es") || l.includes("es_es") || n.includes("spain") || n.includes("españa") || n.includes("elena") || n.includes("helena") || n.includes("monica");
+          if (matched && !isSpain) {
+            setSelectedVoiceUri(savedVoiceUri);
+          } else {
+            const best = getBestArgentineVoice(finalVoices);
+            if (best) setSelectedVoiceUri(best.voiceURI);
+          }
         } else {
-          const defaultNeural = finalVoices.find(v => 
-            v.name.toLowerCase().includes("sabina") || 
-            v.name.toLowerCase().includes("dalia") || 
-            v.name.toLowerCase().includes("natural") ||
-            v.name.toLowerCase().includes("google español")
-          );
-          if (defaultNeural) setSelectedVoiceUri(defaultNeural.voiceURI);
+          const best = getBestArgentineVoice(finalVoices);
+          if (best) setSelectedVoiceUri(best.voiceURI);
         }
       }
     };
@@ -628,12 +711,12 @@ export default function SusybotApp() {
 
       // 🎙️ Locución humana continua sin cortes robóticos
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = voiceRate || 1.02;
-      utterance.pitch = voicePitch || 1.05;
+      utterance.rate = voiceRate || 0.98;
+      utterance.pitch = voicePitch || 1.0;
 
       if (voiceToUse) {
         utterance.voice = voiceToUse;
-        utterance.lang = voiceToUse.lang || "es-AR";
+        utterance.lang = "es-AR";
       } else {
         utterance.lang = "es-AR";
       }
@@ -655,7 +738,7 @@ export default function SusybotApp() {
 
   const handleTestVoice = () => {
     stopSpeaking();
-    speakText("Hola, soy Susybot, tu mentora y asistente de inteligencia artificial. He calibrado mi dicción para brindarte un trato humano, fluido y cercano.", -99);
+    speakText("Hola, soy Susy, tu asistente municipal de Ituzaingó. Estoy lista para resolver tus consultas y trámites de manera simple y cercana.", -99);
   };
 
   const stopSpeaking = () => {
@@ -671,8 +754,25 @@ export default function SusybotApp() {
   };
 
   // 9. Motor de Visión y Audio en Vivo de Susybot (Cámara en Tiempo Real con LLaMA 3.2 Vision)
+  
+  // Sincronizar stream de cámara con elemento video al abrir modal
+  useEffect(() => {
+    if (showLiveVisionModal && liveMediaStreamRef.current && liveVideoRef.current) {
+      const vid = liveVideoRef.current;
+      if (vid.srcObject !== liveMediaStreamRef.current) {
+        vid.srcObject = liveMediaStreamRef.current;
+      }
+      vid.muted = true;
+      vid.defaultMuted = true;
+      vid.setAttribute("playsinline", "true");
+      vid.setAttribute("webkit-playsinline", "true");
+      vid.play().catch(() => {});
+    }
+  }, [showLiveVisionModal]);
+
   const startLiveVision = async (facingMode: "user" | "environment" = liveFacingMode) => {
     stopSpeaking();
+    setShowLiveVisionModal(true);
     setIsLiveStreaming(true);
     setLiveSubtitles("Iniciando Cámara Ciudadana de Ituzaingó...");
     hardware.acquireWakeLock();
@@ -709,7 +809,8 @@ export default function SusybotApp() {
         vid.play().catch(e => console.warn("[Video Play Warn]:", e));
       }
 
-      setLiveSubtitles("👁️ Cámara activa. Enfocá tu trámite o reclamo y Susy te asiste paso a paso.");
+      setLiveSubtitles("👁️ Cámara Ciudadana activa. Enfocá tu trámite o reclamo y te oriento al instante.");
+      speakText("Hola, te habla Susy. Ya tenés activa la Cámara Ciudadana. Enfocá con tu celu el trámite, boleta o reclamo y te oriento al instante.", -99);
 
       if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
 
@@ -966,10 +1067,7 @@ export default function SusybotApp() {
                     fullLiveText += parsed.text;
                     setLiveSubtitles(fullLiveText);
                   }
-                  // 🎙️ Usar siempre síntesis vocal humana natural del navegador (sin audio MP3 robótico)
-                  if (fullLiveText.trim() && !window.speechSynthesis.speaking) {
-                    speakText(fullLiveText.trim(), -99);
-                  }
+                  // Subtítulos en tiempo real sin cortar la síntesis de voz
                 } catch {
                   if (dataContent) {
                     fullLiveText += dataContent;
@@ -2192,17 +2290,7 @@ export default function SusybotApp() {
             <Share2 size={12} className="text-emerald-400" />
           </button>
 
-          {/* Botón Centro de Gestión Municipal / Dashboard */}
-          <Link
-            href="/dashboard"
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-800/70 text-indigo-300 transition-colors shadow-xs"
-          >
-            <div className="flex items-center gap-2">
-              <BarChart3 size={14} className="text-indigo-400" />
-              <span className="font-semibold">Centro de Gestión (/dashboard)</span>
-            </div>
-            <ExternalLink size={12} className="text-indigo-400" />
-          </Link>
+
 
           {/* Botón Números de Emergencia en Sidebar */}
           <button
@@ -3298,8 +3386,8 @@ export default function SusybotApp() {
               <div className="w-3 h-3 rounded-full bg-rose-500 animate-ping shadow-lg shadow-rose-500/50" />
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Susybot Live
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-600 text-rose-300 uppercase">En Vivo</span>
+                  Cámara Ciudadana de Ituzaingó
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500 text-emerald-300 uppercase">En Vivo</span>
                 </h3>
                 <p className="text-[10px] text-slate-300 font-mono">Modo: {activeMode.toUpperCase()}</p>
               </div>
@@ -3348,6 +3436,9 @@ export default function SusybotApp() {
               autoPlay
               playsInline
               muted
+              onLoadedMetadata={(e) => { e.currentTarget.play().catch(() => {}); }}
+              onLoadedData={(e) => { e.currentTarget.play().catch(() => {}); }}
+              onCanPlay={(e) => { e.currentTarget.play().catch(() => {}); }}
               onClick={() => {
                 if (liveVideoRef.current) {
                   liveVideoRef.current.play().catch(() => {});
@@ -3364,7 +3455,7 @@ export default function SusybotApp() {
               </div>
               <div className="flex flex-col items-center justify-center text-center">
                 <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-sky-400/40 text-sky-200 text-xs font-medium backdrop-blur-md">
-                  Apunta a formularios, licencias, boletas o vía pública
+                  Enfocá trámites, boletas, carnets o la vía pública
                 </span>
               </div>
               <div className="flex justify-between">
@@ -3377,7 +3468,7 @@ export default function SusybotApp() {
             {isAnalyzingFrame && (
               <div className="absolute top-6 px-4 py-1.5 rounded-full bg-black/80 border border-rose-500/60 text-rose-300 text-xs font-mono backdrop-blur-md flex items-center gap-2 animate-pulse">
                 <Radio size={14} className="animate-spin" />
-                <span>Susybot está analizando lo que ve...</span>
+                <span>Susy está observando el documento o reclamo...</span>
               </div>
             )}
           </div>
