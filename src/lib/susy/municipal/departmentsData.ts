@@ -21,6 +21,26 @@ export interface MunicipalEvent {
   linkUrl?: string;
 }
 
+
+export interface MunicipalCommerce {
+  id: string;
+  name: string;
+  category: "gastronomia" | "hoteleria" | "supermercado" | "indumentaria" | "servicios" | "construccion" | "salud";
+  categoryLabel: string;
+  address: string;
+  coordinates: [number, number]; // [lat, lng] Ituzaingó
+  schedule: string;
+  phone: string;
+  whatsapp?: string;
+  instagram?: string;
+  facebook?: string;
+  website?: string;
+  habilitacionNumero: string;
+  adheridoPromocion: boolean;
+  descripcion: string;
+  logoEmoji: string;
+}
+
 export interface MunicipalDepartment {
   id: string;
   name: string;
@@ -42,6 +62,44 @@ export interface MunicipalDepartment {
 }
 
 export const MUNICIPAL_DEPARTMENTS: MunicipalDepartment[] = [
+  {
+    id: "comercio",
+    name: "Dirección de Comercio, Industria y Habilitaciones",
+    shortName: "Comercio & Pymes",
+    icon: "🏪",
+    category: "desarrollo",
+    leadTitle: "Dirección de Comercio e Industria Municipal",
+    shortDesc: "Guía comercial oficial, habilitaciones y promoción local",
+    fullDesc: "Área encargada de habilitaciones comerciales e industriales, fiscalización y la Guía Comercial Oficial de Ituzaingó. Conecta a los comercios adheridos con vecinos y miles de turistas, difundiendo sus redes sociales y horarios de atención.",
+    address: "Av. Centenario 1519 (Palacio Municipal)",
+    coordinates: [-27.5843, -56.6836],
+    phone: "(03786) 420090 int. 110",
+    whatsapp: "5493786416610",
+    email: "comercio@ituzaingo.gob.ar",
+    schedule: "Lunes a Viernes de 7:00 a 13:00 hs",
+    services: [
+      "Guía Comercial Oficial Municipal con difusión gratuita para comercios habilitados",
+      "Trámite express de Habilitaciones Comerciales provisorias y definitivas",
+      "Inspecciones de bromatología, seguridad e higiene comercial",
+      "Beneficios impositivos y promociones para comercios con tasa al día"
+    ],
+    events: [
+      {
+        id: "com-01",
+        title: "Ronda de Negocios y Promoción Comercial 'Compre en Ituzaingó'",
+        category: "Comercio",
+        dateStr: "Próximo Miércoles",
+        timeStr: "19:00 hs",
+        locationName: "Centro Cultural Ituzaingó",
+        address: "Corrientes y Belgrano",
+        coordinates: [-27.5852, -56.6821],
+        description: "Encuentro de comerciantes locales para articular promociones de temporada turística, cuotas y difusión en Susy Bot.",
+        admission: "Gratuito"
+      }
+    ],
+    quickPrompt: "Hola Susy, mostrame la Guía Comercial Oficial de Ituzaingó con los comercios habilitados, horarios de atención y redes sociales."
+  },
+
   {
     id: "informatica",
     name: "Dirección de Informática y Modernización",
@@ -532,3 +590,126 @@ export function getOsmDirectionsUrl(lat: number, lng: number, userLat?: number, 
 export function getUniversalGpsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
+
+
+export const MUNICIPAL_COMMERCE_LIST: MunicipalCommerce[] = [
+  {
+    id: "com-01",
+    name: "Restaurante y Parrilla El Pescador",
+    category: "gastronomia",
+    categoryLabel: "Gastronomía & Pescados de Río",
+    address: "Av. Costanera y Buenos Aires",
+    coordinates: [-27.5792, -56.6865],
+    schedule: "Martes a Domingos de 11:30 a 15:30 y 20:00 a 01:00 hs",
+    phone: "(03786) 421050",
+    whatsapp: "5493786421050",
+    instagram: "elpescadorituzaingo",
+    facebook: "ParrillaElPescadorItuzaingo",
+    habilitacionNumero: "HAB-ITU-2024-819",
+    adheridoPromocion: true,
+    descripcion: "Especialidad en surubí, dorado a la parrilla, pacú y empanadas de pescado tradicionales frente al río Paraná.",
+    logoEmoji: "🐟"
+  },
+  {
+    id: "com-02",
+    name: "Hotel & Cabañas Portal del Sol",
+    category: "hoteleria",
+    categoryLabel: "Hotelería & Alojamiento",
+    address: "Av. Centenario 2850",
+    coordinates: [-27.5810, -56.6890],
+    schedule: "Recepción 24 hs los 365 días",
+    phone: "(03786) 420340",
+    whatsapp: "5493786420340",
+    instagram: "portaldelsolituzaingo",
+    website: "https://portaldelsol.ituzaingo.ar",
+    habilitacionNumero: "HAB-ITU-2023-412",
+    adheridoPromocion: true,
+    descripcion: "Habitaciones climatizadas, piscina, parque arbolado y desayuno regional incluido a metros de las playas.",
+    logoEmoji: "🏨"
+  },
+  {
+    id: "com-03",
+    name: "Supermercado El Puente",
+    category: "supermercado",
+    categoryLabel: "Supermercados & Alimentos",
+    address: "Av. 9 de Julio y Corrientes",
+    coordinates: [-27.5835, -56.6810],
+    schedule: "Lunes a Sábados de 08:00 a 13:00 y 16:30 a 21:00 hs",
+    phone: "(03786) 420180",
+    whatsapp: "5493786420180",
+    facebook: "SupermercadoElPuenteItu",
+    habilitacionNumero: "HAB-ITU-2022-105",
+    adheridoPromocion: true,
+    descripcion: "Carnicería de primera calidad, panadería propia, frutas seleccionadas y todos los medios de pago.",
+    logoEmoji: "🛒"
+  },
+  {
+    id: "com-04",
+    name: "Ferretería y Corralón Ituzaingó",
+    category: "construccion",
+    categoryLabel: "Ferretería & Construcción",
+    address: "Av. Centenario 1750",
+    coordinates: [-27.5845, -56.6825],
+    schedule: "Lunes a Viernes de 07:30 a 12:30 y 15:30 a 19:30 hs • Sábados de 08:00 a 13:00 hs",
+    phone: "(03786) 420450",
+    whatsapp: "5493786420450",
+    instagram: "ferreteriaituzaingo",
+    habilitacionNumero: "HAB-ITU-2021-998",
+    adheridoPromocion: true,
+    descripcion: "Materiales eléctricos, plomería, pinturas, herramientas y entregas a domicilio en todos los barrios.",
+    logoEmoji: "🔨"
+  },
+  {
+    id: "com-05",
+    name: "Heladería y Cafetería Colonial",
+    category: "gastronomia",
+    categoryLabel: "Helados Artesanales & Café",
+    address: "Peatonal Centenario y Belgrano",
+    coordinates: [-27.5842, -56.6832],
+    schedule: "Todos los días de 09:00 a 02:00 hs",
+    phone: "(03786) 420990",
+    whatsapp: "5493786420990",
+    instagram: "heladoscolonial.itu",
+    habilitacionNumero: "HAB-ITU-2024-301",
+    adheridoPromocion: true,
+    descripcion: "Helados artesanales premiados, café de especialidad, medialunas caseras y waffles en pleno centro.",
+    logoEmoji: "🍦"
+  },
+  {
+    id: "com-06",
+    name: "Farmacia y Perfumería Del Pueblo",
+    category: "salud",
+    categoryLabel: "Farmacia & Perfumería",
+    address: "Av. Centenario y Belgrano",
+    coordinates: [-27.5846, -56.6828],
+    schedule: "Lunes a Sábados de 08:00 a 22:00 hs (Guardia 24hs según cronograma)",
+    phone: "(03786) 420310",
+    whatsapp: "5493786420310",
+    facebook: "FarmaciaDelPuebloItuzaingo",
+    habilitacionNumero: "HAB-ITU-2020-055",
+    adheridoPromocion: true,
+    descripcion: "Medicamentos de todas las obras sociales, atención farmacéutica profesional, dermocosmética y perfumería.",
+    logoEmoji: "💊"
+  },
+  {
+    id: "com-07",
+    name: "Boutique y Moda Iguazú",
+    category: "indumentaria",
+    categoryLabel: "Indumentaria & Calzado",
+    address: "Calle Buenos Aires 1120",
+    coordinates: [-27.5848, -56.6840],
+    schedule: "Lunes a Sábados de 08:30 a 12:30 y 17:00 a 21:00 hs",
+    phone: "(03786) 421220",
+    whatsapp: "5493786421220",
+    instagram: "boutiqueiguazu.itu",
+    habilitacionNumero: "HAB-ITU-2023-670",
+    adheridoPromocion: true,
+    descripcion: "Ropa informal, trajes de baño de temporada, calzados y accesorios para toda la familia.",
+    logoEmoji: "👗"
+  }
+];
+
+export function getAllMunicipalCommerce(): MunicipalCommerce[] {
+  return MUNICIPAL_COMMERCE_LIST;
+}
+

@@ -10,7 +10,8 @@ import {
   FileText, 
   ShieldCheck, 
   Newspaper, 
-  MapPin, 
+  MapPin,
+  Store, 
   Search, 
   Plus, 
   CheckCircle2, 
@@ -33,9 +34,11 @@ import {
 import { MUNICIPAL_DEPARTMENTS } from "@/lib/susy/municipal/departmentsData";
 import MunicipalDocumentModal from "@/components/Susy/MunicipalDocumentModal";
 import MunicipalLocationCard from "@/components/Susy/MunicipalLocationCard";
+import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
+import { MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 
 export default function MunicipalDashboardPage() {
-  const [activeTab, setActiveTab] = useState<"metricas" | "turnos" | "permisos" | "prensa" | "mapa">("metricas");
+  const [activeTab, setActiveTab] = useState<"metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa">("metricas");
   
   // Estados de datos
   const [turnos, setTurnos] = useState<MunicipalTurno[]>([]);
@@ -159,6 +162,7 @@ export default function MunicipalDashboardPage() {
           { id: "turnos", label: `Turnos (${turnos.length})`, icon: Clock },
           { id: "permisos", label: `Permisos con QR (${permisos.length})`, icon: ShieldCheck },
           { id: "prensa", label: `Gacetillas de Prensa (${gacetillas.length})`, icon: Newspaper },
+          { id: "comercio", label: `Guía Comercial (${MUNICIPAL_COMMERCE_LIST.length})`, icon: Store },
           { id: "mapa", label: "Mapa de Oficinas", icon: MapPin }
         ].map((tab) => (
           <button
@@ -410,6 +414,13 @@ export default function MunicipalDashboardPage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* PESTAÑA: GUÍA COMERCIAL MUNICIPAL */}
+        {activeTab === "comercio" && (
+          <div className="space-y-4">
+            <MunicipalCommerceGuide />
           </div>
         )}
 

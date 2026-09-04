@@ -23,6 +23,7 @@ interface MunicipalOfficesGridProps {
   onRequestTurno?: (deptId?: string) => void;
   onRequestPermiso?: () => void;
   onRequestGacetillas?: () => void;
+  onRequestComercio?: () => void;
   activeDepartmentId?: string | null;
 }
 
@@ -31,6 +32,7 @@ export default function MunicipalOfficesGrid({
   onRequestTurno,
   onRequestPermiso,
   onRequestGacetillas,
+  onRequestComercio,
   activeDepartmentId
 }: MunicipalOfficesGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("todas");
@@ -119,7 +121,7 @@ export default function MunicipalOfficesGrid({
       </div>
 
       {/* Botonera Institucional de Trámites Rápidos & Dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full pt-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 w-full pt-1">
         {/* Sacar Turno */}
         <button
           onClick={() => onRequestTurno && onRequestTurno()}
@@ -141,6 +143,18 @@ export default function MunicipalOfficesGrid({
           <div className="truncate">
             <span className="text-xs font-bold text-emerald-300 block truncate">Permiso con QR</span>
             <span className="text-[9px] text-slate-400 truncate hidden xs:block">Poda y Mudanzas</span>
+          </div>
+        </button>
+
+        {/* Guía Comercial Oficial */}
+        <button
+          onClick={() => onRequestComercio && onRequestComercio()}
+          className="p-2.5 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-600/40 text-left transition-all group cursor-pointer flex items-center gap-2"
+        >
+          <span className="text-lg shrink-0 group-hover:scale-110 transition-transform">🏪</span>
+          <div className="truncate">
+            <span className="text-xs font-bold text-amber-300 block truncate">Guía Comercial</span>
+            <span className="text-[9px] text-slate-400 truncate hidden xs:block">Comercios Adheridos</span>
           </div>
         </button>
 

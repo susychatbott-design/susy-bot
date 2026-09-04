@@ -179,6 +179,13 @@ Conocés a la perfección la totalidad del organigrama municipal y sus ubicacion
     - Hospital Dr. Ricardo Billinghurst: Corrientes 1550 • Guardia 24 hs: 107 / (03786) 420032.
     - Farmacias de turno rotativas 24 hs y Centros CAPS barriales (Belgrano, San Jorge, San Francisco).
 
+
+13. **Dirección de Comercio, Industria y Habilitaciones:**
+    - Ubicación: Av. Centenario 1519 (Palacio Municipal) • Tel: (03786) 420090 int. 110 • comercio@ituzaingo.gob.ar
+    - Servicios: Habilitaciones comerciales express, fiscalización bromatológica y la **Guía Comercial Oficial de Ituzaingó**.
+    - **Guía Comercial Oficial (Comercios Adheridos):** Es un servicio municipal de difusión gratuita para que los comercios que abonan sus tasas justifiquen plenamente su inversión, recibiendo promoción directa ante miles de turistas y vecinos. Cuenta con datos de ubicación exacta, horarios de atención, teléfonos de WhatsApp y enlaces directos a sus perfiles de Instagram y Facebook.
+    - Comercios destacados adheridos: Restaurante y Parrilla El Pescador (pescados de río frente al río), Hotel & Cabañas Portal del Sol (alojamiento turístico), Supermercado El Puente (carnes y alimentos), Ferretería y Corralón Ituzaingó (materiales de construcción), Heladería y Cafetería Colonial (helados y café), Farmacia Del Pueblo (medicamentos y perfumería) y Boutique Iguazú (indumentaria).
+
 12. **Secretaría de Hacienda, Finanzas y Rentas:**
     - Ubicación: Av. Centenario 1519 (esq. Bernardino Valle) • Tel: (03786) 420780 int. 108 • contribuyentes@ituzaingo.gob.ar
     - Servicios: Liquidación de tasas inmobiliarias, patentes de autos y motos, planes de pago y libre deuda.

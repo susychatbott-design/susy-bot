@@ -67,6 +67,7 @@ import { syncOnlineDeltasIfAvailable } from "@/lib/susy/offline/knowledgeCache";
 import SusyConnectionBadge from "@/components/Susy/SusyConnectionBadge";
 import MunicipalOfficesGrid from "@/components/Susy/MunicipalOfficesGrid";
 import MunicipalLocationCard from "@/components/Susy/MunicipalLocationCard";
+import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
 import MunicipalDocumentModal from "@/components/Susy/MunicipalDocumentModal";
 import { MunicipalDepartment, getDepartmentById } from "@/lib/susy/municipal/departmentsData";
 import { municipalStore, MunicipalTurno, PermisoProvisorio } from "@/lib/susy/municipal/municipalActions";
@@ -136,6 +137,7 @@ export default function SusybotApp() {
   // Estados de Compartir / Viralización WhatsApp y QR
   const [showShareModal, setShowShareModal] = useState(false);
   const [activeDepartment, setActiveDepartment] = useState<MunicipalDepartment | null>(null);
+  const [showCommerceGuideModal, setShowCommerceGuideModal] = useState(false);
   const [selectedDocumentModal, setSelectedDocumentModal] = useState<{
     type: "turno" | "permiso";
     turno?: MunicipalTurno;
@@ -2540,6 +2542,7 @@ export default function SusybotApp() {
                 onRequestPermiso={() => {
                   handleSendMessage("Hola Susy, necesito tramitar un permiso provisorio municipal (poda / carga / mudanza) con código QR de verificación.");
                 }}
+                onRequestComercio={() => setShowCommerceGuideModal(true)}
                 onRequestGacetillas={() => {
                   handleSendMessage("Hola Susy, mostrame las últimas gacetillas de prensa y comunicados oficiales emitidos por el Municipio de Ituzaingó.");
                 }}
