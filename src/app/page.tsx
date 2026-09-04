@@ -47,7 +47,9 @@ import {
   FlipHorizontal,
   Radio,
   Presentation,
-  PhoneCall
+  PhoneCall,
+  Siren,
+  Phone
 } from "lucide-react";
 import jsQR from "jsqr";
 import ReactMarkdown from "react-markdown";
@@ -150,6 +152,7 @@ export default function SusybotApp() {
   // Estados de Susybot Live Vision y Realtime Voice Call
   const [showRealtimeCallModal, setShowRealtimeCallModal] = useState(false);
   const [showLiveVisionModal, setShowLiveVisionModal] = useState(false);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [isLiveStreaming, setIsLiveStreaming] = useState(false);
   const [liveFacingMode, setLiveFacingMode] = useState<"user" | "environment">("environment");
   const [liveSubtitles, setLiveSubtitles] = useState<string>("Iniciando visión en vivo...");
@@ -594,20 +597,19 @@ export default function SusybotApp() {
         voiceToUse =
           voices.find(
             (v) =>
-              (v.lang.startsWith("es") || v.lang.includes("es-")) &&
+              (v.lang.startsWith("es-AR") || v.lang.startsWith("es-419") || v.lang.startsWith("es-US") || v.lang.startsWith("es")) &&
               (
-                v.name.toLowerCase().includes("google español") ||
+                v.name.toLowerCase().includes("natural") ||
+                v.name.toLowerCase().includes("paulina") ||
                 v.name.toLowerCase().includes("elena") ||
                 v.name.toLowerCase().includes("sabina") ||
+                v.name.toLowerCase().includes("monica") ||
                 v.name.toLowerCase().includes("dalia") ||
-                v.name.toLowerCase().includes("argentina")
+                v.name.toLowerCase().includes("female") ||
+                v.name.toLowerCase().includes("mujer")
               )
           ) ||
-          voices.find(
-            (v) =>
-              (v.lang.includes("419") || v.lang.includes("MX") || v.lang.includes("AR") || v.lang.startsWith("es")) &&
-              (v.name.toLowerCase().includes("natural") || v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("mujer"))
-          ) ||
+          voices.find((v) => v.lang.startsWith("es-AR") || v.lang.startsWith("es-419")) ||
           voices.find((v) => v.lang.startsWith("es"));
       }
 
@@ -671,7 +673,7 @@ export default function SusybotApp() {
   const startLiveVision = async (facingMode: "user" | "environment" = liveFacingMode) => {
     stopSpeaking();
     setIsLiveStreaming(true);
-    setLiveSubtitles("Activando cámara y visor neuronal de Susybot (LLaMA 3.2 / Qwen VL)...");
+    setLiveSubtitles("Iniciando Cámara Ciudadana de Ituzaingó...");
     hardware.acquireWakeLock();
 
     try {
@@ -689,7 +691,7 @@ export default function SusybotApp() {
         liveVideoRef.current.play();
       }
 
-      setLiveSubtitles("👁️ Susybot está observando en vivo. Apunta a lo que deseas analizar...");
+      setLiveSubtitles("👁️ Cámara activa. Enfocá tu trámite o reclamo y Susy te asiste paso a paso.");
 
       if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
 
@@ -946,16 +948,9 @@ export default function SusybotApp() {
                     fullLiveText += parsed.text;
                     setLiveSubtitles(fullLiveText);
                   }
-                  if (parsed.audioBase64) {
-                    try {
-                      const audio = new Audio("data:audio/mp3;base64," + parsed.audioBase64);
-                      audioPlayerRef.current = audio;
-                      audio.play().catch(() => {
-                        if (fullLiveText.trim()) speakText(fullLiveText.trim(), -99);
-                      });
-                    } catch (e) {
-                      if (fullLiveText.trim()) speakText(fullLiveText.trim(), -99);
-                    }
+                  // 🎙️ Usar siempre síntesis vocal humana natural del navegador (sin audio MP3 robótico)
+                  if (fullLiveText.trim() && !window.speechSynthesis.speaking) {
+                    speakText(fullLiveText.trim(), -99);
                   }
                 } catch {
                   if (dataContent) {
@@ -995,17 +990,7 @@ export default function SusybotApp() {
           const data = await res.json();
           if (data.text) {
             setLiveSubtitles(data.text);
-            if (data.audioBase64) {
-              try {
-                const audio = new Audio("data:audio/mp3;base64," + data.audioBase64);
-                audioPlayerRef.current = audio;
-                audio.play().catch(() => speakText(data.text, -99));
-              } catch {
-                speakText(data.text, -99);
-              }
-            } else {
-              speakText(data.text, -99);
-            }
+            speakText(data.text, -99);
           }
         }
       }
@@ -2189,16 +2174,16 @@ export default function SusybotApp() {
             <Share2 size={12} className="text-emerald-400" />
           </button>
 
-          {/* Botón Sincronizar con PC en Sidebar */}
+          {/* Botón Números de Emergencia en Sidebar */}
           <button
-            onClick={() => setShowSyncModal(true)}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-800/70 text-indigo-300 transition-colors shadow-xs"
+            onClick={() => setShowEmergencyModal(true)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs bg-rose-950/50 hover:bg-rose-900/60 border border-rose-800/70 text-rose-300 transition-colors shadow-xs"
           >
             <div className="flex items-center gap-2">
-              <Laptop size={14} className="text-indigo-400" />
-              <span className="font-medium">Sincronizar con PC</span>
+              <Siren size={14} className="text-rose-400" />
+              <span className="font-medium">Teléfonos de Emergencia</span>
             </div>
-            <RefreshCw size={12} className="text-indigo-400" />
+            <Phone size={12} className="text-rose-400" />
           </button>
 
           {/* Botón Instalar App en Sidebar */}
@@ -2292,21 +2277,26 @@ export default function SusybotApp() {
       {/* ================================================================= */}
       <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-radial from-[#101827] via-[#090d16] to-[#06080e]">
         
-        {/* Top Navbar Ultra-Limpia y Adaptable */}
-        <header className="h-14 border-b border-slate-800/80 px-3 sm:px-4 flex items-center justify-between bg-[#090d16]/90 backdrop-blur-md z-30 shrink-0">
+        {/* Top Navbar Institucional y Limpia */}
+        <header className="h-14 border-b border-slate-800/80 px-3 sm:px-4 flex items-center justify-between bg-[#090d16]/95 backdrop-blur-md z-30 shrink-0">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSidebarOpen(true)}
               className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/80 transition-colors"
               aria-label="Abrir menú"
             >
-              <Menu size={19} />
+              <Menu size={20} />
             </button>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50 shrink-0" />
-              <span className="font-bold text-sm text-slate-100 tracking-tight">Susybot</span>
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-mono bg-sky-950/80 text-sky-400 border border-sky-800/40">
-                Municipalidad de Ituzaingó • Atención al Vecino
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-bold text-base sm:text-lg text-white tracking-tight">Susy</span>
+                <span className="px-1.5 py-0.5 rounded bg-sky-950/90 text-sky-300 border border-sky-700/50 text-[10px] font-semibold tracking-wide uppercase">
+                  Municipal
+                </span>
+              </div>
+              <span className="hidden xl:inline-block text-[11px] text-slate-400 font-medium ml-1">
+                • Ituzaingó, Corrientes
               </span>
               <SusyConnectionBadge />
             </div>
@@ -2366,18 +2356,27 @@ export default function SusybotApp() {
               </button>
             )}
 
-            {/* Botón Susybot Realtime Voice Call */}
+            {/* Botón Llamada de Voz en Vivo */}
             <button
               onClick={() => {
-                hardware.switchMode("voice");
                 stopLiveVision();
                 setShowRealtimeCallModal(true);
               }}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-gradient-to-r from-cyan-600 via-teal-500 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white transition-all shadow-md shadow-cyan-500/20 active:scale-95 cursor-pointer shrink-0"
-              title="Iniciar Llamada en Vivo con Susybot"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white transition-all shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer shrink-0"
+              title="Iniciar Llamada en Vivo con Susy"
             >
-              <PhoneCall size={13} className="text-white shrink-0" />
+              <PhoneCall size={13} className="text-white shrink-0 animate-pulse" />
               <span className="font-extrabold tracking-wide">Llamada</span>
+            </button>
+
+            {/* Botón Emergencias 107 */}
+            <button
+              onClick={() => setShowEmergencyModal(true)}
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 transition-all cursor-pointer shrink-0"
+              title="Teléfonos de Emergencia (107, 101, 100)"
+            >
+              <Siren size={13} className="text-rose-400 shrink-0" />
+              <span className="hidden sm:inline">Emergencias</span>
             </button>
 
             {/* Botón Calibrar y Afinar Voz de Susy (SIEMPRE VISIBLE EN CELULAR Y PC) */}
@@ -2390,15 +2389,7 @@ export default function SusybotApp() {
               <span className="hidden sm:inline">Voz</span>
             </button>
 
-            {/* Botón Sincronizar PC (Visible en tablet/desktop) */}
-            <button
-              onClick={handleOpenSyncModal}
-              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 transition-colors shrink-0"
-              title="Sincronizar tus conversaciones en PC o Celular"
-            >
-              <Laptop size={13} className="text-indigo-400" />
-              <span>Sincronizar</span>
-            </button>
+
 
             {/* Botón Compartir / QR (Visible en tablet/desktop) */}
             <button
@@ -2506,53 +2497,54 @@ export default function SusybotApp() {
                 <Radio size={15} className="text-sky-400 animate-pulse shrink-0 ml-1" />
               </button>
 
-              {/* Selector Deslizable de Categorías Municipales (Sin cortes, con margen y desplazamiento táctil suave) */}
-              <div className="w-full py-2 my-1 shrink-0">
-                <div className="flex items-center justify-start sm:justify-center gap-2.5 overflow-x-auto px-1 py-1.5 max-w-full touch-pan-x overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {[
-                    { id: "general", label: "🌟 Atención General" },
-                    { id: "salud", label: "🏥 Salud & Farmacias" },
-                    { id: "transito", label: "🚗 Tránsito & Licencias" },
-                    { id: "reclamos", label: "🚧 Obras & Reclamos" },
-                    { id: "turismo", label: "🌿 Turismo & Iberá" },
-                    { id: "inclusion", label: "🧩 Inclusión & Social" },
-                  ].map((mode) => (
-                    <button
-                      key={mode.id}
-                      onClick={() => setActiveMode(mode.id)}
-                      className={`h-9 px-4 rounded-full text-xs font-medium border whitespace-nowrap transition-all shrink-0 inline-flex items-center justify-center cursor-pointer select-none ${
-                        activeMode === mode.id
-                          ? "bg-gradient-to-r from-sky-600 via-sky-500 to-emerald-600 text-white border-sky-300 ring-2 ring-sky-400/50 shadow-md shadow-sky-950/50 font-semibold"
-                          : "bg-slate-900/95 text-slate-300 border-slate-700/70 hover:text-white hover:border-slate-500 hover:bg-slate-800/90 shadow-sm"
-                      }`}
-                    >
-                      {mode.label}
-                    </button>
-                  ))}
-                </div>
+              {/* Selector de Categorías Municipales (Grid 100% visible, sin cortes laterales ni scroll forzado) */}
+              <div className="w-full grid grid-cols-2 sm:grid-cols-3 gap-2 my-2.5 shrink-0">
+                {[
+                  { id: "general", label: "🌟 Atención General", desc: "Consultas y gestiones" },
+                  { id: "salud", label: "🏥 Salud & Farmacias", desc: "Hospital 107 y turnos" },
+                  { id: "transito", label: "🚗 Tránsito & Licencias", desc: "Carnet y requisitos" },
+                  { id: "reclamos", label: "🚧 Obras & Reclamos", desc: "Bacheo y luminarias" },
+                  { id: "turismo", label: "🌿 Turismo & Iberá", desc: "Playas e información" },
+                  { id: "inclusion", label: "🧩 Inclusión & Social", desc: "Acción Social y DUA" },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setActiveMode(mode.id)}
+                    className={`p-2.5 rounded-2xl text-left border transition-all cursor-pointer select-none flex flex-col justify-center ${
+                      activeMode === mode.id
+                        ? "bg-gradient-to-r from-sky-600 via-sky-500 to-emerald-600 text-white border-sky-300 ring-2 ring-sky-400/50 shadow-md shadow-sky-950/50"
+                        : "bg-slate-900/95 text-slate-200 border-slate-800 hover:border-slate-600 hover:bg-slate-800/80 shadow-sm"
+                    }`}
+                  >
+                    <span className="text-xs font-bold truncate">{mode.label}</span>
+                    <span className={`text-[10px] truncate mt-0.5 ${activeMode === mode.id ? "text-sky-100" : "text-slate-400"}`}>
+                      {mode.desc}
+                    </span>
+                  </button>
+                ))}
               </div>
 
-              {/* Banners Compartir y Sincronizar (1 fila compacta) */}
+              {/* Banners Institucionales de Acción Rápida */}
               <div className="grid grid-cols-2 gap-2 w-full shrink-0">
                 <button
                   onClick={() => setShowShareModal(true)}
-                  className="p-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-700/40 flex items-center gap-2 text-left transition-all group cursor-pointer"
+                  className="p-2.5 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/70 border border-emerald-700/50 flex items-center gap-2.5 text-left transition-all group cursor-pointer"
                 >
-                  <QrCode size={15} className="text-emerald-400 shrink-0" />
+                  <QrCode size={18} className="text-emerald-400 shrink-0" />
                   <div className="truncate">
-                    <span className="text-[11px] font-bold text-emerald-300 block truncate">Recomendar / QR</span>
-                    <span className="text-[9px] text-slate-400 hidden sm:block">Compartir con vecinos</span>
+                    <span className="text-xs font-bold text-emerald-300 block truncate">Recomendar / QR</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:block">Compartir con vecinos</span>
                   </div>
                 </button>
 
                 <button
-                  onClick={handleOpenSyncModal}
-                  className="p-2.5 rounded-xl bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-700/40 flex items-center gap-2 text-left transition-all group cursor-pointer"
+                  onClick={() => setShowEmergencyModal(true)}
+                  className="p-2.5 rounded-2xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-700/50 flex items-center gap-2.5 text-left transition-all group cursor-pointer"
                 >
-                  <Laptop size={15} className="text-indigo-400 shrink-0" />
+                  <Siren size={18} className="text-rose-400 shrink-0" />
                   <div className="truncate">
-                    <span className="text-[11px] font-bold text-indigo-300 block truncate">Sincronizar Kiosco</span>
-                    <span className="text-[9px] text-slate-400 hidden sm:block">Continuar en tótem o PC</span>
+                    <span className="text-xs font-bold text-rose-300 block truncate">Emergencias & Guardia</span>
+                    <span className="text-[10px] text-slate-400 hidden sm:block">Hospital 107 • Policía • Bomberos</span>
                   </div>
                 </button>
               </div>
@@ -3312,20 +3304,20 @@ export default function SusybotApp() {
               className={`w-full h-full object-cover ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
             />
 
-            {/* Retícula de enfoque táctico / radar */}
-            <div className="absolute inset-8 sm:inset-16 pointer-events-none border border-rose-500/30 rounded-3xl flex flex-col justify-between p-4">
+            {/* Marco Guía Institucional para Documentos y Reclamos */}
+            <div className="absolute inset-6 sm:inset-12 pointer-events-none border border-sky-400/30 rounded-3xl flex flex-col justify-between p-4 shadow-inner">
               <div className="flex justify-between">
-                <div className="w-6 h-6 border-t-2 border-l-2 border-rose-400 rounded-tl-lg" />
-                <div className="w-6 h-6 border-t-2 border-r-2 border-rose-400 rounded-tr-lg" />
+                <div className="w-8 h-8 border-t-3 border-l-3 border-sky-400 rounded-tl-xl" />
+                <div className="w-8 h-8 border-t-3 border-r-3 border-sky-400 rounded-tr-xl" />
               </div>
-              <div className="flex justify-center items-center">
-                <div className={`w-20 h-20 rounded-full border-2 border-dashed border-rose-400/60 flex items-center justify-center ${isAnalyzingFrame ? "animate-spin border-rose-400" : "animate-pulse"}`}>
-                  <Eye size={24} className="text-rose-400" />
-                </div>
+              <div className="flex flex-col items-center justify-center text-center">
+                <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-sky-400/40 text-sky-200 text-xs font-medium backdrop-blur-md">
+                  Apunta a formularios, licencias, boletas o vía pública
+                </span>
               </div>
               <div className="flex justify-between">
-                <div className="w-6 h-6 border-b-2 border-l-2 border-rose-400 rounded-bl-lg" />
-                <div className="w-6 h-6 border-b-2 border-r-2 border-rose-400 rounded-br-lg" />
+                <div className="w-8 h-8 border-b-3 border-l-3 border-sky-400 rounded-bl-xl" />
+                <div className="w-8 h-8 border-b-3 border-r-3 border-sky-400 rounded-br-xl" />
               </div>
             </div>
 

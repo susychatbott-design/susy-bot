@@ -78,20 +78,31 @@ export function useSusyHardware(initialMode: NoraHardwareMode = "visual") {
     async (facingMode: "user" | "environment" = "environment"): Promise<MediaStream | null> => {
       try {
         setHardwareError(null);
-        // Si hay una cámara previa, liberarla primero
         if (videoStreamRef.current) {
           releaseCamera();
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 15, max: 30 }
-          },
-          audio: false
-        });
+        let stream: MediaStream | null = null;
+
+        // 1. Intentar con facingMode ideal (ideal para móviles con cámara trasera/frontal)
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: facingMode ? { ideal: facingMode } : undefined,
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+              frameRate: { ideal: 24, max: 30 }
+            },
+            audio: false
+          });
+        } catch (firstErr) {
+          console.warn("[HardwareManager] Reintentando con configuración de cámara universal:", firstErr);
+          // 2. Fallback universal (laptops, PCs de escritorio con webcam USB o sensor único)
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
 
         videoStreamRef.current = stream;
         setIsCameraActive(true);
@@ -99,10 +110,10 @@ export function useSusyHardware(initialMode: NoraHardwareMode = "visual") {
       } catch (err: any) {
         console.warn("[HardwareManager] Error al adquirir cámara:", err);
         const msg = err.name === "NotAllowedError"
-          ? "Permiso de cámara denegado."
+          ? "Permiso de cámara denegado. Por favor permite el acceso en tu navegador."
           : err.name === "NotReadableError"
-          ? "La cámara está siendo utilizada por otra aplicación o pestaña."
-          : "No se pudo acceder a la cámara.";
+          ? "La cámara está ocupada por otra aplicación. Ciérrala y vuelve a intentar."
+          : "No se pudo iniciar la cámara en este dispositivo.";
         setHardwareError(msg);
         setIsCameraActive(false);
         return null;

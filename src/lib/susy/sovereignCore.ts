@@ -665,17 +665,12 @@ function transformOpenAiStreamToSSE(
         if (isInsideThinkTag) {
           thinkBuffer = "";
           if (!accumulatedText.trim()) {
-            const rescue = "He analizado tu consulta pedagógica. Continuemos avanzando juntos con el tema.";
+            const rescue = "Te escucho con atención, vecino. ¿En qué trámite o consulta municipal de Ituzaingó te puedo colaborar?";
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: rescue, session_id: sessionId })}\n\n`));
           }
         }
 
-        if (isVision && accumulatedText.trim()) {
-          const audioB64 = await synthesizeRealAudio(accumulatedText);
-          if (audioB64) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ audioBase64: audioB64 })}\n\n`));
-          }
-        }
+        // 🎙️ Síntesis vocal humana delegada al navegador (cero audio MP3 robótico de Google Translate)
 
         controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
       } catch (err) {
