@@ -272,7 +272,33 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
   }
 
   // --------------------------------------------------------------------------
-  // 8. INCLUSIÓN, ACCESIBILIDAD UNIVERSAL Y APOYO (TEA / DUA)
+  // 8. LAZARILLO VISUAL Y ASISTENCIA ESPACIAL (DISCAPACIDAD VISUAL / NO VIDENTES)
+  // --------------------------------------------------------------------------
+  else if (
+    cleanQuery.includes("lazarillo") ||
+    cleanQuery.includes("ciego") ||
+    cleanQuery.includes("no vidente") ||
+    cleanQuery.includes("baja vision") ||
+    cleanQuery.includes("baja visión") ||
+    cleanQuery.includes("guíame") ||
+    cleanQuery.includes("guiame") ||
+    cleanQuery.includes("qué hay enfrente") ||
+    cleanQuery.includes("que hay enfrente") ||
+    cleanQuery.includes("leer boleta") ||
+    cleanQuery.includes("leer carnet")
+  ) {
+    responseText = `¡Hola! Activo el **Servicio Lazarillo de Susybot** para acompañarte de forma directa y clara:
+
+👁️ **Asistencia Espacial y Lectura en Ventanilla:**
+• **Orientación en Esfera de Reloj**: Te guío indicando obstáculos a tus 12 en punto (al frente), a tus 3 en punto (a tu derecha) o a tus 9 en punto (a tu izquierda).
+• **Lectura Asistida con Cámara**: Si enfocas una boleta municipal, te leo el importe y vencimiento; si enfocas tu carnet o DNI, te confirmo los datos oficiales y vigencia.
+• **Alertas de Entorno Urbano**: Te aviso al instante sobre escalones, desniveles de vereda, cordones o puertas de ingreso en edificios municipales.
+
+¿Qué documento o sector frente a ti deseas que examine con la cámara ahora mismo?`;
+  }
+
+  // --------------------------------------------------------------------------
+  // 9. INCLUSIÓN CIUDADANA Y APOYO EN TRÁMITES (TEA / NEURODIVERGENCIA / DUA)
   // --------------------------------------------------------------------------
   else if (
     mode === "inclusion" ||
@@ -284,18 +310,23 @@ Para asentar la dirección exacta en el legajo del ticket, ¿podrías indicarme 
     cleanQuery.includes("sencillo") ||
     cleanQuery.includes("paso a paso")
   ) {
-    responseText = `¡Hola! Qué alegría saludarte. Estoy acá para acompañarte de manera clara, tranquila y paso a paso.
+    responseText = `¡Hola! Qué alegría saludarte. Estoy acá para acompañarte paso a paso, con tranquilidad y sin apuros.
 
-En Ituzaingó trabajamos por una ciudad accesible para todos:
-• **Gestión del CUD (Certificado Único de Discapacidad)**: Asesoramiento y acompañamiento en el área de Acción Social Municipal.
-• **Plazas y Espacios Inclusivos**: Juegos adaptados y bajadas accesibles en costanera y playas.
-• **Atención Prioritaria**: En todas las dependencias municipales para personas con movilidad reducida o neurodivergencias.
+[PICTO: calma] Vamos a hacer tu gestión juntos:
 
-Decime en qué trámite o duda puedo ayudarte hoy y te lo explico de forma bien sencilla y directa.`;
+• **Paso 1** [PICTO: documento]: Tené a mano tu DNI original.
+• **Paso 2** [PICTO: ventanilla]: En el edificio municipal o Acción Social tenés atención prioritaria y sin filas largas.
+• **Paso 3** [PICTO: firma]: El personal municipal te ayuda a completar el formulario.
+• **Paso 4** [PICTO: correcto]: Te entregan tu constancia o comprobante.
+
+💡 **Trámites de Inclusión en Ituzaingó:**
+Asesoramos sobre el **CUD (Certificado Único de Discapacidad)**, pase libre de transporte y bajadas accesibles a las playas.
+
+Decime qué trámite querés hacer y te explico exactamente qué llevar.`;
   }
 
   // --------------------------------------------------------------------------
-  // 9. TERMINAL DE ÓMNIBUS Y TRANSPORTE PÚBLICO
+  // 10. TERMINAL DE ÓMNIBUS Y TRANSPORTE PÚBLICO
   // --------------------------------------------------------------------------
   else if (
     cleanQuery.includes("terminal") ||
@@ -319,7 +350,7 @@ Decime en qué trámite o duda puedo ayudarte hoy y te lo explico de forma bien 
   }
 
   // --------------------------------------------------------------------------
-  // 10. ATENCIÓN CIUDADANA GENERAL Y PERSONALIZADA
+  // 11. ATENCIÓN CIUDADANA GENERAL Y PERSONALIZADA
   // --------------------------------------------------------------------------
   else {
     responseText = `¡Hola! Qué gusto saludarte. Te atiende Susy, Directora Virtual de Atención al Vecino e Innovación Urbana de la Municipalidad de Ituzaingó.

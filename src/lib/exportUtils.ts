@@ -101,7 +101,7 @@ export function downloadAsWord(filename: string, title: string, markdownContent:
       <h1>${title}</h1>
       <div>${cleanBodyHtml}</div>
       <div class="corporate-footer">
-        Nexativa News | Ecosistema Periodístico e Inbound de Alta Velocidad (nexativanews.com.ar)<br/>
+        Municipalidad de Ituzaingó | Susybot - Atención al Vecino e Innovación Urbana (ituzaingo.gob.ar)<br/>
         Documento confidencial para uso institucional reservado.
       </div>
     </body>
@@ -175,7 +175,7 @@ export function exportToPdf(title: string, markdownContent: string) {
         <h1>${title}</h1>
         <div>${cleanBodyHtml}</div>
         <div class="corporate-footer">
-          Nexativa News | nexativanews.com.ar — Copia Institucional Verificada
+          Municipalidad de Ituzaingó | ituzaingo.gob.ar — Copia Institucional Verificada
         </div>
         <script>
           window.onload = function() { window.print(); }

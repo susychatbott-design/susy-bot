@@ -35,7 +35,7 @@ export async function POST(req: Request) {
         token_id: fallbackTokenId,
         pin_code: pinCode,
         expires_at: expiresAt,
-        sync_url: `https://nexativanews.com.ar/susybot?sync_token=${fallbackTokenId}`
+        sync_url: `${cleanOrigin}?sync_token=${fallbackTokenId}`
       });
     }
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       token_id: data.token_id,
       pin_code: pinCode,
       expires_at: data.expires_at,
-      sync_url: `https://nexativanews.com.ar/susybot?sync_token=${data.token_id}`
+      sync_url: `${cleanOrigin}?sync_token=${data.token_id}`
     });
   } catch (err: any) {
     console.error("[Susybot Sync POST Exception]:", err);

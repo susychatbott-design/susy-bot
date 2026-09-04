@@ -454,7 +454,8 @@ export default function SusybotApp() {
         const data = await res.json();
         setSyncTokenId(data.token_id);
         setSyncPinCode(data.pin_code || "");
-        const targetUrl = data.sync_url || `https://nexativanews.com.ar/susybot?sync_token=${data.token_id}`;
+        const municipalBase = typeof window !== "undefined" && window.location.origin ? window.location.origin : "https://susy-bot.vercel.app";
+      const targetUrl = data.sync_url || `${municipalBase}?sync_token=${data.token_id}`;
         setSyncQrUrl(targetUrl);
 
         // Iniciar Sondeo / Polling cada 2.5 segundos para detectar autorización del celular
@@ -2079,7 +2080,7 @@ export default function SusybotApp() {
           <div className="bg-[#0c121e] border border-sky-500/40 rounded-3xl p-6 max-w-md w-full text-center space-y-5 shadow-2xl relative">
             <button
               onClick={() => setShowShareModal(false)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -2088,17 +2089,17 @@ export default function SusybotApp() {
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 via-sky-500 to-indigo-600 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-3">
                 <QrCode size={26} className="text-white" />
               </div>
-              <h3 className="text-xl font-bold text-white">Recomendar Susybot</h3>
+              <h3 className="text-xl font-bold text-white">Recomendar Susybot Municipal</h3>
               <p className="text-xs text-slate-400">
-                Comparte la IA Soberana por WhatsApp o escanea el QR desde cualquier celular.
+                Compartí la asistente virtual de la Municipalidad de Ituzaingó por WhatsApp o escaneá el QR desde cualquier celular.
               </p>
             </div>
 
-            {/* Código QR Generado en Tiempo Real */}
+            {/* Código QR Generado Dinámicamente para Ituzaingó */}
             <div className="p-4 bg-white rounded-2xl max-w-[210px] mx-auto shadow-inner border border-slate-700">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(typeof window !== "undefined" ? `${window.location.origin}/susybot` : "https://nexativanews.com.ar/susybot")}&bgcolor=ffffff&color=090d16`}
-                alt="Código QR de Susybot"
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(typeof window !== "undefined" && window.location.origin ? window.location.origin : "https://susy-bot.vercel.app")}&bgcolor=ffffff&color=090d16`}
+                alt="Código QR de Susybot Municipal"
                 className="w-full h-auto rounded-lg mx-auto"
               />
             </div>
@@ -2106,10 +2107,10 @@ export default function SusybotApp() {
             <div className="space-y-2.5">
               {/* Botón Compartir Directo en WhatsApp */}
               <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`¡Hola! Te recomiendo probar Susybot, la IA Soberana desarrollada en Ituzaingó por MyJNexoraVisual. Transcribe audios, crea imágenes, traduce y planifica clases gratis: ${typeof window !== "undefined" ? `${window.location.origin}/susybot` : "https://nexativanews.com.ar/susybot"}`)}`}
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`¡Hola vecino! Te comparto Susybot, la Directora Virtual de Atención al Vecino e Innovación Urbana de la Municipalidad de Ituzaingó. Podés consultar turnos de licencias de conducir, farmacias de turno, guardias y reportar reclamos de obras públicas (#ITU): ${typeof window !== "undefined" && window.location.origin ? window.location.origin : "https://susy-bot.vercel.app"}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs md:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-95"
+                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs md:text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
               >
                 <MessageCircle size={18} />
                 <span>Enviar por WhatsApp</span>
@@ -2118,20 +2119,20 @@ export default function SusybotApp() {
               {/* Botón Copiar Enlace */}
               <button
                 onClick={() => {
-                  const url = typeof window !== "undefined" ? `${window.location.origin}/susybot` : "https://nexativanews.com.ar/susybot";
+                  const url = typeof window !== "undefined" && window.location.origin ? window.location.origin : "https://susy-bot.vercel.app";
                   navigator.clipboard.writeText(url);
                   setCopiedShareLink(true);
                   setTimeout(() => setCopiedShareLink(false), 2500);
                 }}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 {copiedShareLink ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
                 <span>{copiedShareLink ? "¡Enlace copiado al portapapeles!" : "Copiar Enlace Directo"}</span>
               </button>
             </div>
 
-            <div className="text-[11px] text-slate-500 font-mono">
-              Desarrollada por MyJNexoraVisual • Ituzaingó, Corrientes
+            <div className="text-[11px] text-slate-400 font-medium">
+              Municipalidad de Ituzaingó, Corrientes • Atención al Vecino
             </div>
           </div>
         </div>
@@ -2843,63 +2844,6 @@ export default function SusybotApp() {
       </main>
 
       {/* ================================================================= */}
-      {/* 📲 MODAL: COMPARTIR Y RECOMENDAR POR WHATSAPP & CÓDIGO QR         */}
-      {/* ================================================================= */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-700/80 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-center">
-            <button
-              onClick={() => setShowShareModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-500/20">
-              <QrCode size={24} className="text-white" />
-            </div>
-
-            <h3 className="text-lg font-bold text-white mb-1">Compartir Susybot AI</h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Invita a otros a usar Susybot para educación, inclusión DUA, planificación docente y documentos formales.
-            </p>
-
-            {/* Código QR Dinámico */}
-            <div className="bg-white p-3 rounded-2xl inline-block mb-4 shadow-md">
-              <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https%3A%2F%2Fnexativanews.com.ar%2Fsusybot"
-                alt="QR Susybot"
-                className="w-44 h-44 mx-auto rounded-lg"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <a
-                href="https://api.whatsapp.com/send?text=%C2%A1Hola!%20Te%20recomiendo%20probar%20Susybot%2C%20la%20inteligencia%20artificial%20de%20Ituzaing%C3%B3%20para%20educaci%C3%B3n%2C%20planificaci%C3%B3n%20docente%2C%20inclusi%C3%B3n%20DUA%20y%20documentos%20formales%3A%20https%3A%2F%2Fnexativanews.com.ar%2Fsusybot"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30"
-              >
-                <MessageCircle size={16} />
-                <span>Compartir por WhatsApp</span>
-              </a>
-
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText("https://nexativanews.com.ar/susybot");
-                  setCopiedShareLink(true);
-                  setTimeout(() => setCopiedShareLink(false), 2500);
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-medium flex items-center justify-center gap-2 transition-colors"
-              >
-                {copiedShareLink ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                <span>{copiedShareLink ? "¡Enlace Copiado al Portapapeles!" : "Copiar Enlace Directo"}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ================================================================= */}
       {/* 🔄 MODAL: SINCRONIZAR MULTI-DISPOSITIVO (PC ↔ CELULAR)           */}
       {/* ================================================================= */}

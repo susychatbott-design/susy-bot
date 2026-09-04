@@ -306,7 +306,7 @@ async function fetchSemanticArticlesRAG(supabase: any, userQuery: string): Promi
           const dateStr = a.created_at ? new Date(a.created_at).toLocaleDateString("es-AR") : "Agosto 2026";
           const cat = (a.category || "ACTUALIDAD").toUpperCase();
           const resume = a.content?.slice(0, 220) || "Sin resumen disponible.";
-          const link = a.source_url || "https://www.nexativanews.com.ar";
+          const link = a.source_url || "https://ituzaingo.gob.ar";
           return `[Noticia ${i + 1} - ${cat} | ${dateStr}]:\n• Titular: "${a.title}"\n• Síntesis: ${resume}\n• Fuente/Enlace: ${link}`;
         })
         .join("\n\n");

@@ -49,7 +49,7 @@ export async function fetchHybridRAGDocuments(
           title: r.title || "Documento",
           content: r.excerpt || r.content || "",
           category: r.category || "GENERAL",
-          source_url: r.external_url || "https://nexativanews.com.ar",
+          source_url: r.external_url || "https://ituzaingo.gob.ar",
           created_at: r.created_at,
           score: r.score || 1.0,
           match_type: "hybrid"
