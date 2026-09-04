@@ -1,3 +1,18 @@
+import { NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { generateTextEmbedding } from "@/lib/susy/embeddings";
+import { resolveAdaptiveEducationalContext } from "@/lib/susy/educationalRouter";
+import { NORA_CONSTITUTIONAL_AXIOMS, sanitizeAndInspectPrompt } from "@/lib/susy/constitutionalShield";
+import { fetchUserContinuousMemory } from "@/lib/susy/userMemory";
+import { dispatchSovereignInference } from "@/lib/susy/sovereignRouter";
+import { fetchHybridRAGDocuments } from "@/lib/susy/hybridRag";
+import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
+export const maxDuration = 60;
 
 /**
  * ⚡ MÓDULO ZÁRATE: Registro automático de reclamos urbanos
@@ -51,21 +66,7 @@ async function processZarateTransactions(aiResponseText: string, citizenId?: str
   );
 }
 
-﻿import { NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { generateTextEmbedding } from "@/lib/susy/embeddings";
-import { resolveAdaptiveEducationalContext } from "@/lib/susy/educationalRouter";
-import { NORA_CONSTITUTIONAL_AXIOMS, sanitizeAndInspectPrompt } from "@/lib/susy/constitutionalShield";
-import { fetchUserContinuousMemory } from "@/lib/susy/userMemory";
-import { dispatchSovereignInference } from "@/lib/susy/sovereignRouter";
-import { fetchHybridRAGDocuments } from "@/lib/susy/hybridRag";
-import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const fetchCache = "force-no-store";
-export const maxDuration = 60;
 
 const SUSY_SYSTEM_PROMPT = `
 # 🏛️ SYSTEM PROMPT: SUSYBOT - AGENTE INTELIGENTE MUNICIPAL (ITUZAINGÓ)
