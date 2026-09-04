@@ -1,7 +1,7 @@
 /**
  * ========================================================================
  * 🎓 SUSYBOT EDUCATIONAL & ACCESSIBILITY BENCHMARK ROUTER
- * Ubicación: /src/lib/nora/educationalRouter.ts
+ * Ubicación: /src/lib/susy/educationalRouter.ts
  * Estándares: DUA 3.0 (CAST), Taxonomía de Bloom Revisada, Marco UNESCO TIC y Protocolo TCR
  * ========================================================================
  */
@@ -62,7 +62,7 @@ export function resolveAdaptiveEducationalContext(arg1: any, arg2?: any): string
 ========================================================================
 DIRECTIVA SUPREMA PARA SOLICITUDES DE DOCENTES:
 - Queda TERMINANTEMENTE PROHIBIDO entregar una simple actividad aislada o un resumen de 5 renglones cuando un docente solicita ayuda para planificar o armar un programa/clase.
-- NORA DEBE DESPLEGAR LA SECUENCIA DIDÁCTICA INTEGRAL COMPLETA con:
+- SUSYBOT DEBE DESPLEGAR LA SECUENCIA DIDÁCTICA INTEGRAL COMPLETA con:
   1. Encuadre Curricular y Fundamentación (NAP / Grado / UC / Tiempo).
   2. CONTENIDOS TRIPARTITOS OBLIGATORIOS: Conceptuales (Saber), Procedimentales (Saber Hacer) y Actitudinales (Saber Ser / Convivir).
   3. Propósitos y Objetivos de Aprendizaje (Bloom / Capacidades).

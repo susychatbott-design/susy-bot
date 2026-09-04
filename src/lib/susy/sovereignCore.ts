@@ -13,7 +13,7 @@
  * - Capa 2: Pollinations Open Neural Mesh (100% Gratuito, Sin API Keys, Open-Weights)
  * - Capa 3: Groq Open Weights Tier (Llama 3.3 70B, Llama 3.1 8B, Gemma 2 9B)
  * - Capa 4: Hugging Face Serverless Open Mesh (Qwen 2.5, DeepSeek R1)
- * - Capa 5: Motor Pedagógico Autónomo On-Device (0ms, 100% Offline)
+ * - Capa 5: Motor Autónomo Municipal On-Device (0ms, 100% Offline)
  * ========================================================================
  */
 
@@ -269,6 +269,42 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
   const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
 
+  // 🌟 CAPA 0: Google Gemini Multi-Key Redundancy (Cero Caídas, Ultra-Rápido <500ms)
+  const geminiKeys = [
+    cleanKey(process.env.GEMINI_API_KEY),
+    cleanKey(process.env.GEMINI_API_KEY_FALLBACK),
+    cleanKey(process.env.GEMINI_API_KEY_FALLBACK_2)
+  ].filter(Boolean);
+
+  for (const gKey of geminiKeys) {
+    const candidateModels = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    for (const model of candidateModels) {
+      try {
+        const geminiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${gKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model,
+            messages: openAiMessages,
+            stream: true,
+            temperature
+          }),
+          signal: AbortSignal.timeout(6000)
+        });
+
+        if (geminiRes.ok && geminiRes.body) {
+          console.log(`[Sovereign Core - Capa 0 Gemini]: Inferencia exitosa (${model})`);
+          return transformOpenAiStreamToSSE(geminiRes.body, sessionId, isVisionRequest);
+        }
+      } catch (gemErr) {
+        console.warn(`[Gemini ${model} Warn]:`, gemErr);
+      }
+    }
+  }
+
   // 1. CAPA 1: Groq Open Inference Tier (LLaMA 3.2 Vision / LLaMA 3.3 70B / Qwen)
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
@@ -433,26 +469,29 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
     }
   }
 
-  // 5. CAPA 5: Pollinations Open Neural Mesh (100% Gratuito, Cero Keys, Open-Weights)
-  try {
-    const polRes = await fetch("https://text.pollinations.ai/openai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: openAiMessages,
-        model: "openai",
-        stream: true,
-        temperature
-      }),
-      signal: AbortSignal.timeout(5000)
-    });
+  // 5. CAPA 5: Pollinations Open Neural Mesh Multi-Model (100% Gratuito, Cero Keys, Open-Weights)
+  const polModels = ["openai", "mistral", "qwen"];
+  for (const pModel of polModels) {
+    try {
+      const polRes = await fetch("https://text.pollinations.ai/openai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: openAiMessages,
+          model: pModel,
+          stream: true,
+          temperature
+        }),
+        signal: AbortSignal.timeout(7000)
+      });
 
-    if (polRes.ok && polRes.body) {
-      console.log(`[Sovereign Core - Capa 5 Pollinations]: Inferencia exitosa`);
-      return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
+      if (polRes.ok && polRes.body) {
+        console.log(`[Sovereign Core - Capa 5 Pollinations]: Inferencia exitosa (${pModel})`);
+        return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
+      }
+    } catch (polErr) {
+      console.warn(`[Pollinations ${pModel} Warn]:`, polErr);
     }
-  } catch (polErr) {
-    console.warn("[Pollinations Stream Warn]:", polErr);
   }
 
   // 6. CAPA 6: Motor Pedagógico Autónomo On-Device (0ms - Imposible de Caer)

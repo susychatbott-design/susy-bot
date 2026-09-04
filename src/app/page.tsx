@@ -2442,7 +2442,7 @@ export default function SusybotApp() {
         >
           {messages.length === 0 ? (
             /* Vista de Bienvenida Optimizada para Móvil y Desktop */
-            <div className="max-w-xl mx-auto h-full flex flex-col items-center justify-center text-center px-2 sm:px-4 my-auto space-y-3 sm:space-y-4">
+            <div className="max-w-xl mx-auto min-h-full flex flex-col items-center justify-start sm:justify-center text-center px-2 sm:px-4 py-4 space-y-4">
               
               {/* Logo e Identidad Municipal de Ituzaingó */}
               <div className="flex flex-col items-center text-center">
@@ -2458,7 +2458,7 @@ export default function SusybotApp() {
                   Directora Virtual de Atención al Vecino e Innovación Urbana
                 </p>
                 <p className="text-[11px] sm:text-xs text-slate-400 max-w-md mt-1">
-                  Municipalidad de Ituzaingó, Corrientes • Trámites, Reclamos Urbanos, Turismo en Esteros del Iberá y Accesibilidad Universal.
+                  Municipalidad de Ituzaingó, Corrientes • Trámites, Reclamos Urbanos, Farmacias de Turno, Turismo en Esteros del Iberá y Accesibilidad Universal.
                 </p>
               </div>
 
@@ -2468,7 +2468,7 @@ export default function SusybotApp() {
                   setShowLiveVisionModal(true);
                   startLiveVision();
                 }}
-                className="w-full p-3 rounded-2xl bg-gradient-to-r from-sky-950/80 via-indigo-950/80 to-emerald-950/80 hover:from-sky-900/90 hover:to-emerald-900/90 border border-sky-500/40 flex items-center justify-between text-left transition-all shadow-md shadow-sky-950/30 group active:scale-[0.99] cursor-pointer"
+                className="w-full p-3 rounded-2xl bg-gradient-to-r from-sky-950/80 via-indigo-950/80 to-emerald-950/80 hover:from-sky-900/90 hover:to-emerald-900/90 border border-sky-500/40 flex items-center justify-between text-left transition-all shadow-md shadow-sky-950/30 group active:scale-[0.99] cursor-pointer shrink-0"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 to-emerald-500 flex items-center justify-center shrink-0 shadow-sm shadow-sky-500/30">
@@ -2485,22 +2485,23 @@ export default function SusybotApp() {
                 <Radio size={15} className="text-sky-400 animate-pulse shrink-0 ml-1" />
               </button>
 
-              {/* Selector de Modos de Atención Municipal */}
-              <div className="w-full flex items-center justify-start sm:justify-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
+              {/* Selector de Categorías de Atención Municipal (Legible, con margen y sin recortes) */}
+              <div className="w-full flex items-center justify-start sm:justify-center gap-2 overflow-x-auto py-2 my-1 max-w-full scrollbar-thin scrollbar-thumb-slate-800 shrink-0">
                 {[
                   { id: "general", label: "🌟 Atención General" },
-                  { id: "transito", label: "🚗 Tránsito y Licencias" },
-                  { id: "reclamos", label: "🚧 Obras y Reclamos" },
+                  { id: "salud", label: "🏥 Salud & Farmacias" },
+                  { id: "transito", label: "🚗 Tránsito & Licencias" },
+                  { id: "reclamos", label: "🚧 Obras & Reclamos" },
                   { id: "turismo", label: "🌿 Turismo & Iberá" },
-                  { id: "inclusion", label: "🧩 Inclusión TEA / DUA" },
+                  { id: "inclusion", label: "🧩 Inclusión & Social" },
                 ].map((mode) => (
                   <button
                     key={mode.id}
                     onClick={() => setActiveMode(mode.id)}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium border whitespace-nowrap transition-all shrink-0 ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border whitespace-nowrap transition-all shrink-0 shadow-sm ${
                       activeMode === mode.id
-                        ? "bg-gradient-to-r from-sky-600 to-emerald-600 text-white border-sky-400 shadow-sm shadow-sky-500/30"
-                        : "bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200"
+                        ? "bg-gradient-to-r from-sky-600 to-emerald-600 text-white border-sky-400 shadow-sky-500/30 scale-105"
+                        : "bg-slate-900/90 text-slate-300 border-slate-700/60 hover:text-white hover:border-slate-500"
                     }`}
                   >
                     {mode.label}
@@ -2508,11 +2509,11 @@ export default function SusybotApp() {
                 ))}
               </div>
 
-              {/* Banners Compartir y Sincronizar */}
-              <div className="grid grid-cols-2 gap-2 w-full">
+              {/* Banners Compartir y Sincronizar (1 fila compacta) */}
+              <div className="grid grid-cols-2 gap-2 w-full shrink-0">
                 <button
                   onClick={() => setShowShareModal(true)}
-                  className="p-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-700/40 flex items-center gap-2 text-left transition-all group"
+                  className="p-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-700/40 flex items-center gap-2 text-left transition-all group cursor-pointer"
                 >
                   <QrCode size={15} className="text-emerald-400 shrink-0" />
                   <div className="truncate">
@@ -2523,7 +2524,7 @@ export default function SusybotApp() {
 
                 <button
                   onClick={handleOpenSyncModal}
-                  className="p-2.5 rounded-xl bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-700/40 flex items-center gap-2 text-left transition-all group"
+                  className="p-2.5 rounded-xl bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-700/40 flex items-center gap-2 text-left transition-all group cursor-pointer"
                 >
                   <Laptop size={15} className="text-indigo-400 shrink-0" />
                   <div className="truncate">
@@ -2533,9 +2534,15 @@ export default function SusybotApp() {
                 </button>
               </div>
 
-              {/* Grid de Sugerencias Compacto Municipal */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full text-left pt-1">
+              {/* Grid de Sugerencias Oficiales de Ituzaingó (4 Tarjetas Clave) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full text-left pt-1 shrink-0">
                 {[
+                  { 
+                    icon: Bell, 
+                    title: "Farmacias de Turno & Salud", 
+                    desc: "Hospital Billinghurst (107) y turnos de farmacia", 
+                    prompt: "Hola Susybot, por favor indícame qué farmacia se encuentra de turno hoy en Ituzaingó y los números de guardia de salud." 
+                  },
                   { 
                     icon: FileText, 
                     title: "Renovación de Licencia de Conducir", 
@@ -2549,12 +2556,6 @@ export default function SusybotApp() {
                     prompt: "Hola Susybot, deseo registrar un reclamo formal por una luminaria que no funciona en la esquina de mi barrio para que la cuadrilla de Obras Públicas acuda a revisarla." 
                   },
                   { 
-                    icon: Bell, 
-                    title: "Guardias de Salud y Emergencias", 
-                    desc: "Hospital Billinghurst (107) y Bomberos (100)", 
-                    prompt: "Hola Susybot, por favor indícame los números y guardias de emergencia de Ituzaingó: Hospital Dr. Ricardo Billinghurst, Bomberos Voluntarios y Defensa Civil." 
-                  },
-                  { 
                     icon: Presentation, 
                     title: "Turismo: Esteros del Iberá y Yacyretá", 
                     desc: "Portal Cambyretá y visitas a la Represa", 
@@ -2564,78 +2565,7 @@ export default function SusybotApp() {
                   <button
                     key={i}
                     onClick={() => handleSendMessage(card.prompt)}
-                    className="p-2.5 sm:p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-sky-500/40 text-left transition-all active:scale-[0.98] group flex items-start gap-2.5"
-                  >
-                    <card.icon size={16} className="text-sky-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
-                    <div className="truncate">
-                      <h4 className="text-xs font-semibold text-slate-200 group-hover:text-sky-300 transition-colors truncate">
-                        {card.title}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 truncate">
-                        {card.desc}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Banners Compartir y Sincronizar (1 fila compacta) */}
-              <div className="grid grid-cols-2 gap-2 w-full">
-                <button
-                  onClick={() => setShowShareModal(true)}
-                  className="p-2.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-700/40 flex items-center gap-2 text-left transition-all group"
-                >
-                  <QrCode size={15} className="text-emerald-400 shrink-0" />
-                  <div className="truncate">
-                    <span className="text-[11px] font-bold text-emerald-300 block truncate">Recomendar / QR</span>
-                    <span className="text-[9px] text-slate-400 hidden sm:block">Vía WhatsApp</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={handleOpenSyncModal}
-                  className="p-2.5 rounded-xl bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-700/40 flex items-center gap-2 text-left transition-all group"
-                >
-                  <Laptop size={15} className="text-indigo-400 shrink-0" />
-                  <div className="truncate">
-                    <span className="text-[11px] font-bold text-indigo-300 block truncate">Sincronizar PC</span>
-                    <span className="text-[9px] text-slate-400 hidden sm:block">Continuar en PC</span>
-                  </div>
-                </button>
-              </div>
-
-              {/* Grid de Sugerencias Compacto */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full text-left pt-1">
-                {[
-                  { 
-                    icon: Puzzle, 
-                    title: "Inclusión y Apoyo (TEA)", 
-                    desc: "Lenguaje directo y pictogramas", 
-                    prompt: "Hola Susybot, conversemos de forma clara, directa y paso a paso con pictogramas. ¿Qué podemos hacer o aprender juntos hoy?" 
-                  },
-                  { 
-                    icon: GraduationCap, 
-                    title: "Planificación Docente & Rúbrica", 
-                    desc: "Secuencia didáctica oficial y tabla", 
-                    prompt: "Arma una planificación de clase para secundaria sobre el cuidado del agua en Corrientes, con objetivos, secuencia didáctica (inicio, desarrollo, cierre), grilla en tabla Markdown y rúbrica." 
-                  },
-                  { 
-                    icon: BookOpen, 
-                    title: "Cátedra y Doctrina", 
-                    desc: "Marco teórico universitario", 
-                    prompt: "Explica la teoría de la responsabilidad civil y el nexo causal con fundamentos doctrinarios del Código Civil y Comercial argentino." 
-                  },
-                  { 
-                    icon: ImageIcon, 
-                    title: "Generar Imagen con IA", 
-                    desc: "Arte hiperrealista en 8k", 
-                    prompt: "Crea una imagen hiperrealista en 8k de un atardecer sobre el Río Paraná en Ituzaingó, Corrientes." 
-                  },
-                ].map((card, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSendMessage(card.prompt)}
-                    className="p-2.5 sm:p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-sky-500/40 text-left transition-all active:scale-[0.98] group flex items-start gap-2.5"
+                    className="p-2.5 sm:p-3 rounded-xl bg-slate-900/60 hover:bg-slate-800/80 border border-slate-800/80 hover:border-sky-500/40 text-left transition-all active:scale-[0.98] group flex items-start gap-2.5 cursor-pointer"
                   >
                     <card.icon size={16} className="text-sky-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
                     <div className="truncate">
