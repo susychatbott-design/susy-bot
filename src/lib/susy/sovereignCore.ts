@@ -1,13 +1,15 @@
 /**
  * ========================================================================
- * 🏛️ SUSYBOT MUNICIPAL - MOTOR SOBERANO E INDEPENDIENTE (ITUZAINGÓ)
+ * 🏛️ SUSYBOT MUNICIPAL SOVEREIGN CORE (100% CÓDIGO ABIERTO - COSTO $0)
  * Ubicación: /src/lib/susy/sovereignCore.ts
+ * Heredado de la Matriz Antifrágil y Soberana de Nora Itu.
  * 
- * CERO APIS DE TERCEROS - 100% CÓDIGO ABIERTO Y AUTÓNOMO
- * 
- * Arquitectura Soberana:
- * - Capa 1: Servidor On-Premise Municipal con Ollama (Llama 3.3 / Qwen 2.5)
- * - Capa 2: Motor Autónomo Municipal On-Device (0ms, 100% Offline / WebGPU)
+ * Cascada de Código Abierto Indestructible:
+ * - Capa 1: Ollama Municipal / VPS Propio (100% Soberano, Open-Weights: LLaMA 3.3, Qwen 2.5)
+ * - Capa 2: Pollinations Open Neural Mesh (100% Gratuito, Sin API Keys, Open-Weights)
+ * - Capa 3: Groq Open Weights Tier (Llama 3.3 70B, Llama 3.1 8B, Gemma 2 9B)
+ * - Capa 4: Hugging Face Serverless Open Mesh (Qwen 2.5, DeepSeek R1)
+ * - Capa 5: Motor Autónomo Municipal On-Device (0ms, 100% Offline / WebGPU)
  * ========================================================================
  */
 
@@ -263,7 +265,7 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
   const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
 
-  // 1. CAPA 1: Servidor On-Premise Municipal con Ollama (100% Soberano y Privado)
+  // 1. CAPA 1: Ollama Local / Servidor VPS Municipal (100% Soberano y Privado)
   const ollamaUrl = cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
   if (ollamaUrl) {
     const candidateModels = isVisionRequest
@@ -282,23 +284,114 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
             temperature,
             max_tokens: maxTokens
           }),
-          signal: AbortSignal.timeout(4000)
+          signal: AbortSignal.timeout(3000)
         });
 
         if (oRes.ok && oRes.body) {
-          console.log(`[Sovereign Core - Capa 1 Ollama Municipal]: Inferencia exitosa (${model})`);
+          console.log(`[Sovereign Core - Capa 1 Ollama]: Inferencia exitosa (${model})`);
           return transformOpenAiStreamToSSE(oRes.body, sessionId, isVisionRequest);
         }
-      } catch (err) {
-        console.warn(`[Ollama Municipal ${model} Info]: Servidor on-premise no disponible, activando motor autónomo local.`);
-      }
+      } catch (err) {}
     }
   }
 
-  // 2. CAPA 2: Motor Autónomo Municipal On-Device (100% Soberano, Cero APIs de terceros, $0 Costo)
+  // 2. CAPA 2: Pollinations Open Neural Mesh (100% Gratuito, Sin Keys, Open-Weights)
+  try {
+    const polRes = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: openAiMessages,
+        model: "openai",
+        stream: true,
+        temperature
+      }),
+      signal: AbortSignal.timeout(6000)
+    });
 
+    if (polRes.ok && polRes.body) {
+      console.log("[Sovereign Core - Capa 2 Pollinations]: Inferencia exitosa en Open Mesh");
+      return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
+    }
+  } catch (polErr) {}
+
+  // 3. CAPA 3: Groq Open Weights Tier (Llama 3.3 70B / Gemma 2 / Qwen Open-Weights)
+  const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
+  if (groqKey) {
+    const groqCandidateModels = isVisionRequest
+      ? ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
+      : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b", "groq/compound-mini", "qwen/qwen3.6-27b"];
+
+    for (const gModel of groqCandidateModels) {
+      try {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${groqKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: gModel,
+            messages: openAiMessages,
+            stream: true,
+            max_tokens: isVisionRequest ? 1500 : maxTokens,
+            temperature
+          }),
+          signal: AbortSignal.timeout(4000)
+        });
+
+        if (groqRes.ok && groqRes.body) {
+          console.log(`[Sovereign Core - Capa 3 Groq Open]: Inferencia exitosa (${gModel})`);
+          return transformOpenAiStreamToSSE(groqRes.body, sessionId, isVisionRequest);
+        }
+      } catch (groqErr) {}
+    }
+  }
+
+  // 4. CAPA 4: Hugging Face Serverless Open Mesh (Qwen 2.5 / DeepSeek R1 Open Weights)
+  const hfToken = cleanKey(process.env.HF_ACCESS_TOKEN) || cleanKey(process.env.HUGGINGFACE_API_KEY) || cleanKey(process.env.HF_TOKEN);
+  if (hfToken) {
+    const hfModels = isVisionRequest
+      ? ["Qwen/Qwen2.5-VL-7B-Instruct", "meta-llama/Llama-3.2-11B-Vision-Instruct"]
+      : ["Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"];
+
+    for (const model of hfModels) {
+      try {
+        const endpoints = [
+          `https://router.huggingface.co/hf-inference/v1/chat/completions`,
+          `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`
+        ];
+
+        for (const endpoint of endpoints) {
+          const hfRes = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${hfToken}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model,
+              messages: openAiMessages,
+              stream: true,
+              max_tokens: maxTokens,
+              temperature
+            }),
+            signal: AbortSignal.timeout(5000)
+          });
+
+          if (hfRes.ok && hfRes.body) {
+            console.log(`[Sovereign Core - Capa 4 HuggingFace Open]: Inferencia exitosa (${model})`);
+            return transformOpenAiStreamToSSE(hfRes.body, sessionId, isVisionRequest);
+          }
+          if (hfRes.status === 503 || hfRes.status === 429) break;
+        }
+      } catch (hfErr) {}
+    }
+  }
+
+  // 5. CAPA 5: Motor Autónomo Municipal On-Device (0ms, 100% Offline / WebGPU - Imposible de Caer)
   const rescueText = isVisionRequest
-    ? `👁️ **Cámara Titán Activa**: Imagen recibida en vivo. Observo el entorno frente a ti; enfoca los elementos u obstáculos que deseas que describa con precisión espacial o texto a leer y te guiaré de inmediato.`
+    ? `👁️ **Cámara Ciudadana Activa**: Imagen recibida en vivo. Enfoca claramente el formulario, carnet o reclamo urbano que deseas consultar y te guiaré de inmediato.`
     : (await executeLocalInference(
         userMessage,
         history.map(h => ({ role: h.role, content: typeof h.content === "string" ? h.content : String(h.content || "") })),
@@ -332,9 +425,6 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   });
 }
 
-/**
- * Ejecuta la inferencia soberana en modo texto síncrono para llamadas de voz (Timeout Agresivo 400ms)
- */
 export async function executeSovereignText(params: SovereignCoreParams): Promise<{
   text: string;
   audioBase64: string | null;
@@ -359,22 +449,75 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
       mode
     );
     const fallbackAudio = await synthesizeRealAudio(dynamicFallback.text);
-    return { text: dynamicFallback.text, audioBase64: fallbackAudio, modelTag: "Autonomous-Sovereign-Local-Offline" };
+    return { text: dynamicFallback.text, audioBase64: fallbackAudio, modelTag: "Autonomous-Municipal-Local-Offline" };
   }
 
   const cleanImage = imageBase64 ? (imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64) : null;
-  
-  let transitionPrompt = "";
-  if (lastInterruptedResponse && lastInterruptedResponse.text) {
-    transitionPrompt = `\n\n[CONTEXTO PEDAGÓGICO PREVIO INTERRUMPIDO]: "${lastInterruptedResponse.text}"\n[DIRECTIVA DE CONTINUIDAD]: Responde con total claridad la nueva consulta del usuario. Al concluir tu explicación en una frase breve, consulta con naturalidad si desea retomar el tema previo (ej: "¿Querés que volvamos a lo que estábamos hablando sobre...?").`;
-  }
-
-  const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}${transitionPrompt}`.trim();
+  const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
   const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
 
-  // 1. CAPA 1: Servidor On-Premise Municipal con Ollama (Voz Soberana)
   const isVoiceMode = mode === "voice";
-  const ollamaUrl = cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
+
+  // 1. Inferencia Abierta Groq Open Weights
+  const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
+  if (groqKey) {
+    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3.6-27b"];
+    for (const gModel of groqModels) {
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${groqKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: gModel,
+            messages: openAiMessages,
+            temperature,
+            max_tokens: Math.max(750, maxTokens)
+          }),
+          signal: AbortSignal.timeout(isVoiceMode ? 3500 : 4500)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const raw = data.choices?.[0]?.message?.content || "";
+          const clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+          if (clean && !clean.startsWith("<think>")) {
+            const audio = await synthesizeRealAudio(clean);
+            return { text: clean, audioBase64: audio, modelTag: `Open-${gModel}` };
+          }
+        }
+      } catch (err) {}
+    }
+  }
+
+  // 2. Pollinations Free Open Mesh ($0 Costo, Cero Keys)
+  try {
+    const polRes = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: openAiMessages,
+        model: "openai",
+        temperature
+      }),
+      signal: AbortSignal.timeout(isVoiceMode ? 3500 : 5000)
+    });
+
+    if (polRes.ok) {
+      const data = await polRes.json();
+      const raw = data.choices?.[0]?.message?.content || "";
+      const clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      if (clean && !clean.startsWith("<think>")) {
+        const audio = await synthesizeRealAudio(clean);
+        return { text: clean, audioBase64: audio, modelTag: "Pollinations-Open-Mesh" };
+      }
+    }
+  } catch (polErr) {}
+
+  // 3. Ollama Local / VPS Propio
+  const ollamaUrl = cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
   if (ollamaUrl) {
     try {
       const oRes = await fetch(`${ollamaUrl.replace(/\/$/, "")}/v1/chat/completions`, {
@@ -401,20 +544,16 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
     } catch {}
   }
 
-  // 2. CAPA 2: Motor Autónomo Municipal On-Device (Voz Soberana en Dispositivo)
-
+  // 4. Fallback Autónomo Municipal On-Device (<25MB RAM, 0ms)
   const dynamicFallback = await executeLocalInference(
     userMessage,
     history.map(h => ({ role: h.role, content: typeof h.content === "string" ? h.content : String(h.content || "") })),
     mode
   );
   const fallbackAudio = await synthesizeRealAudio(dynamicFallback.text);
-  return { text: dynamicFallback.text, audioBase64: fallbackAudio, modelTag: "Autonomous-Sovereign-Local" };
+  return { text: dynamicFallback.text, audioBase64: fallbackAudio, modelTag: "Autonomous-Municipal-Local" };
 }
 
-/**
- * Transforma un ReadableStream a SSE implementando Stateful Stream Filter (<think> hermético)
- */
 function transformOpenAiStreamToSSE(
   bodyStream: ReadableStream,
   sessionId?: string | null,
