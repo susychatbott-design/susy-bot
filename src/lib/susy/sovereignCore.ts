@@ -1,19 +1,13 @@
 /**
  * ========================================================================
- * 🏛️ SUSYBOT SOVEREIGN CORE (100% CÓDIGO ABIERTO - COSTO $0 - CERO APIS PROPIETARIAS)
- * Ubicación: /src/lib/nora/sovereignCore.ts
+ * 🏛️ SUSYBOT MUNICIPAL - MOTOR SOBERANO E INDEPENDIENTE (ITUZAINGÓ)
+ * Ubicación: /src/lib/susy/sovereignCore.ts
  * 
- * Unifica la inferencia para:
- * 1. Chat Multiturno (/api/chat)
- * 2. Voz en Tiempo Real (/api/realtime-proxy)
- * 3. Visión y Cámara Titán en Vivo (/api/live)
+ * CERO APIS DE TERCEROS - 100% CÓDIGO ABIERTO Y AUTÓNOMO
  * 
- * Cascada de Código Abierto:
- * - Capa 1: Ollama Local / VPS Propio (100% Soberano, Open-Weights: LLaMA 3.3, Qwen 2.5)
- * - Capa 2: Pollinations Open Neural Mesh (100% Gratuito, Sin API Keys, Open-Weights)
- * - Capa 3: Groq Open Weights Tier (Llama 3.3 70B, Llama 3.1 8B, Gemma 2 9B)
- * - Capa 4: Hugging Face Serverless Open Mesh (Qwen 2.5, DeepSeek R1)
- * - Capa 5: Motor Autónomo Municipal On-Device (0ms, 100% Offline)
+ * Arquitectura Soberana:
+ * - Capa 1: Servidor On-Premise Municipal con Ollama (Llama 3.3 / Qwen 2.5)
+ * - Capa 2: Motor Autónomo Municipal On-Device (0ms, 100% Offline / WebGPU)
  * ========================================================================
  */
 
@@ -269,232 +263,40 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
   const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
 
-  // 🌟 CAPA 0: Google Gemini Multi-Key Redundancy (Cero Caídas, Ultra-Rápido <500ms)
-  const geminiKeys = [
-    cleanKey(process.env.GEMINI_API_KEY),
-    cleanKey(process.env.GEMINI_API_KEY_FALLBACK),
-    cleanKey(process.env.GEMINI_API_KEY_FALLBACK_2)
-  ].filter(Boolean);
-
-  for (const gKey of geminiKeys) {
-    const candidateModels = ["gemini-2.0-flash", "gemini-1.5-flash"];
-    for (const model of candidateModels) {
-      try {
-        const geminiRes = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${gKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model,
-            messages: openAiMessages,
-            stream: true,
-            temperature
-          }),
-          signal: AbortSignal.timeout(6000)
-        });
-
-        if (geminiRes.ok && geminiRes.body) {
-          console.log(`[Sovereign Core - Capa 0 Gemini]: Inferencia exitosa (${model})`);
-          return transformOpenAiStreamToSSE(geminiRes.body, sessionId, isVisionRequest);
-        }
-      } catch (gemErr) {
-        console.warn(`[Gemini ${model} Warn]:`, gemErr);
-      }
-    }
-  }
-
-  // 1. CAPA 1: Groq Open Inference Tier (LLaMA 3.2 Vision / LLaMA 3.3 70B / Qwen)
-  const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
-  if (groqKey) {
-    const groqCandidateModels = isVisionRequest
-      ? [
-          "llama-3.2-11b-vision-preview",
-          "llama-3.2-90b-vision-preview"
-        ]
-      : [
-          "llama-3.3-70b-versatile",
-          "llama-3.1-8b-instant",
-          "openai/gpt-oss-120b",
-          "groq/compound-mini",
-          "qwen/qwen3.6-27b",
-          "openai/gpt-oss-20b",
-          "groq/compound"
-        ];
-
-    for (const gModel of groqCandidateModels) {
-      try {
-        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${groqKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: gModel,
-            messages: openAiMessages,
-            stream: true,
-            max_tokens: isVisionRequest ? 1500 : maxTokens,
-            temperature
-          }),
-          signal: AbortSignal.timeout(4000)
-        });
-
-        if (groqRes.ok && groqRes.body) {
-          console.log(`[Sovereign Core - Capa 1 Groq]: Inferencia exitosa (${gModel}${isVisionRequest ? " - Visión Titán" : ""})`);
-          return transformOpenAiStreamToSSE(groqRes.body, sessionId, isVisionRequest);
-        }
-      } catch (groqErr) {
-        console.warn(`[Groq ${gModel} Warn]:`, groqErr);
-      }
-    }
-  }
-
-  // 2. CAPA 2: OpenRouter Open Weights Mesh (:free Tier - Qwen 2.5 VL / LLaMA 3.2 Vision / LLaMA 3.3 70B)
-  const openRouterKey = cleanKey(process.env.OPENROUTER_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_OPENROUTER_API_KEY);
-  if (openRouterKey) {
-    const openRouterModels = isVisionRequest
-      ? [
-          "qwen/qwen-2.5-vl-72b-instruct:free",
-          "meta-llama/llama-3.2-11b-vision-instruct:free"
-        ]
-      : [
-          "meta-llama/llama-3.3-70b-instruct:free",
-          "deepseek/deepseek-r1:free",
-          "qwen/qwen-2.5-72b-instruct:free"
-        ];
-
-    for (const orModel of openRouterModels) {
-      try {
-        const orRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openRouterKey}`,
-            "HTTP-Referer": "https://nexativanews.com.ar",
-            "X-Title": "Susybot Sovereign Core",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: orModel,
-            messages: openAiMessages,
-            stream: true,
-            temperature
-          }),
-          signal: AbortSignal.timeout(5000)
-        });
-
-        if (orRes.ok && orRes.body) {
-          console.log(`[Sovereign Core - Capa 2 OpenRouter]: Inferencia exitosa (${orModel})`);
-          return transformOpenAiStreamToSSE(orRes.body, sessionId, isVisionRequest);
-        }
-      } catch (orErr) {
-        console.warn(`[OpenRouter ${orModel} Warn]:`, orErr);
-      }
-    }
-  }
-
-  // 3. CAPA 3: Hugging Face Serverless Open Mesh (Qwen 2.5-VL / LLaMA Vision / DeepSeek R1)
-  const hfToken = cleanKey(process.env.HF_ACCESS_TOKEN) || cleanKey(process.env.HUGGINGFACE_API_KEY) || cleanKey(process.env.HF_TOKEN);
-  if (hfToken) {
-    const hfModels = isVisionRequest
-      ? ["Qwen/Qwen2.5-VL-7B-Instruct", "meta-llama/Llama-3.2-11B-Vision-Instruct"]
-      : ["Qwen/Qwen2.5-72B-Instruct", "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B"];
-
-    for (const model of hfModels) {
-      try {
-        const endpoints = [
-          `https://router.huggingface.co/hf-inference/v1/chat/completions`,
-          `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`
-        ];
-
-        for (const endpoint of endpoints) {
-          const hfRes = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${hfToken}`,
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              model,
-              messages: openAiMessages,
-              stream: true,
-              max_tokens: maxTokens,
-              temperature
-            }),
-            signal: AbortSignal.timeout(5000)
-          });
-
-          if (hfRes.ok && hfRes.body) {
-            console.log(`[Sovereign Core - Capa 3 HuggingFace]: Inferencia exitosa (${model})`);
-            return transformOpenAiStreamToSSE(hfRes.body, sessionId, isVisionRequest);
-          }
-          if (hfRes.status === 503 || hfRes.status === 429) break;
-        }
-      } catch (hfErr) {
-        console.warn(`[HuggingFace ${model} Warn]:`, hfErr);
-      }
-    }
-  }
-
-  // 4. CAPA 4: Ollama Local / VPS Propio (100% Privado y Autónomo)
-  const ollamaUrl = cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
+  // 1. CAPA 1: Servidor On-Premise Municipal con Ollama (100% Soberano y Privado)
+  const ollamaUrl = cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
   if (ollamaUrl) {
-    const ollamaModels = isVisionRequest
-      ? ["qwen2.5-vl", "llava", "llama3.2-vision"]
-      : ["llama3.3:70b", "llama3.1:8b", "qwen2.5:72b", "qwen2.5-coder", "mistral"];
+    const candidateModels = isVisionRequest
+      ? [cleanKey(process.env.OLLAMA_VISION_MODEL) || "llava", "qwen2.5-vl"]
+      : [cleanKey(process.env.OLLAMA_TEXT_MODEL) || "llama3.3", "llama3.1:8b", "qwen2.5:72b"];
 
-    for (const oModel of ollamaModels) {
+    for (const model of candidateModels) {
       try {
         const oRes = await fetch(`${ollamaUrl.replace(/\/$/, "")}/v1/chat/completions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: oModel,
+            model,
             messages: openAiMessages,
             stream: true,
             temperature,
             max_tokens: maxTokens
           }),
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(4000)
         });
 
         if (oRes.ok && oRes.body) {
-          console.log(`[Sovereign Core - Capa 4 Ollama]: Inferencia exitosa (${oModel})`);
+          console.log(`[Sovereign Core - Capa 1 Ollama Municipal]: Inferencia exitosa (${model})`);
           return transformOpenAiStreamToSSE(oRes.body, sessionId, isVisionRequest);
         }
       } catch (err) {
-        console.warn(`[Ollama ${oModel} Warn]:`, err);
+        console.warn(`[Ollama Municipal ${model} Info]: Servidor on-premise no disponible, activando motor autónomo local.`);
       }
     }
   }
 
-  // 5. CAPA 5: Pollinations Open Neural Mesh Multi-Model (100% Gratuito, Cero Keys, Open-Weights)
-  const polModels = ["openai", "mistral", "qwen"];
-  for (const pModel of polModels) {
-    try {
-      const polRes = await fetch("https://text.pollinations.ai/openai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: openAiMessages,
-          model: pModel,
-          stream: true,
-          temperature
-        }),
-        signal: AbortSignal.timeout(7000)
-      });
+  // 2. CAPA 2: Motor Autónomo Municipal On-Device (100% Soberano, Cero APIs de terceros, $0 Costo)
 
-      if (polRes.ok && polRes.body) {
-        console.log(`[Sovereign Core - Capa 5 Pollinations]: Inferencia exitosa (${pModel})`);
-        return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
-      }
-    } catch (polErr) {
-      console.warn(`[Pollinations ${pModel} Warn]:`, polErr);
-    }
-  }
-
-  // 6. CAPA 6: Motor Pedagógico Autónomo On-Device (0ms - Imposible de Caer)
   const rescueText = isVisionRequest
     ? `👁️ **Cámara Titán Activa**: Imagen recibida en vivo. Observo el entorno frente a ti; enfoca los elementos u obstáculos que deseas que describa con precisión espacial o texto a leer y te guiaré de inmediato.`
     : (await executeLocalInference(
@@ -570,86 +372,16 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
   const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}${transitionPrompt}`.trim();
   const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
 
-  // 1. Inferencia Abierta Ultrarrápida Groq (Timeout seguro de 3500ms en voz para permitir respuestas completas)
+  // 1. CAPA 1: Servidor On-Premise Municipal con Ollama (Voz Soberana)
   const isVoiceMode = mode === "voice";
-  const voiceTimeoutMs = 4000;
-  const standardTimeoutMs = 5000;
-  const timeoutToUse = isVoiceMode ? voiceTimeoutMs : standardTimeoutMs;
-
-  const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
-  if (groqKey) {
-    const groqModels = [
-      "llama-3.3-70b-versatile",
-      "llama-3.1-8b-instant",
-      "openai/gpt-oss-120b",
-      "groq/compound-mini",
-      "qwen/qwen3.6-27b"
-    ];
-    for (const gModel of groqModels) {
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${groqKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: gModel,
-            messages: openAiMessages,
-            temperature,
-            max_tokens: Math.max(750, maxTokens)
-          }),
-          signal: AbortSignal.timeout(timeoutToUse)
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const raw = data.choices?.[0]?.message?.content || "";
-          const clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-          if (clean && !clean.startsWith("<think>")) {
-            const audio = await synthesizeRealAudio(clean);
-            return { text: clean, audioBase64: audio, modelTag: `Open-${gModel}` };
-          }
-        }
-      } catch (err) {
-        // Salto inmediato al siguiente modelo en cascada
-      }
-    }
-  }
-
-  // 2. Pollinations Free Open Mesh ($0 Costo, Cero Keys)
-  try {
-    const polRes = await fetch("https://text.pollinations.ai/openai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: openAiMessages,
-        model: "openai",
-        temperature
-      }),
-      signal: AbortSignal.timeout(isVoiceMode ? 3500 : 5000)
-    });
-
-    if (polRes.ok) {
-      const data = await polRes.json();
-      const raw = data.choices?.[0]?.message?.content || "";
-      const clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-      if (clean && !clean.startsWith("<think>")) {
-        const audio = await synthesizeRealAudio(clean);
-        return { text: clean, audioBase64: audio, modelTag: "Pollinations-Open-Mesh" };
-      }
-    }
-  } catch (polErr) {}
-
-  // 3. Ollama Local / VPS Propio
-  const ollamaUrl = cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
+  const ollamaUrl = cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
   if (ollamaUrl) {
     try {
       const oRes = await fetch(`${ollamaUrl.replace(/\/$/, "")}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "llama3.3:70b",
+          model: cleanKey(process.env.OLLAMA_TEXT_MODEL) || "llama3.3",
           messages: openAiMessages,
           temperature,
           max_tokens: Math.max(750, maxTokens)
@@ -663,13 +395,14 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
         const clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
         if (clean && !clean.startsWith("<think>")) {
           const audio = await synthesizeRealAudio(clean);
-          return { text: clean, audioBase64: audio, modelTag: "Ollama-Local" };
+          return { text: clean, audioBase64: audio, modelTag: "Ollama-Municipal-Soberano" };
         }
       }
     } catch {}
   }
 
-  // 4. Fallback Autónomo Local con Memoria (<25MB RAM, 0ms)
+  // 2. CAPA 2: Motor Autónomo Municipal On-Device (Voz Soberana en Dispositivo)
+
   const dynamicFallback = await executeLocalInference(
     userMessage,
     history.map(h => ({ role: h.role, content: typeof h.content === "string" ? h.content : String(h.content || "") })),

@@ -35,7 +35,7 @@ export default function SusyConnectionBadge() {
       }`}
       title={
         isOnline
-          ? "Conectado a la Red Soberana Cloudflare / Gemini (<150ms)"
+          ? "Conectado a la Red Soberana Municipal de Ituzaingó"
           : hasWebGPU
           ? "Modo Campo Activo: Ejecutando en la GPU local del dispositivo (WebGPU)"
           : "Modo Campo Activo: Ejecutando en la CPU local del dispositivo (Wasm)"
