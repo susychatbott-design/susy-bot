@@ -2457,15 +2457,6 @@ export default function SusybotApp() {
             <Newspaper size={14} className="text-sky-400 shrink-0" />
             <span className="font-medium">Gacetillas y Noticias</span>
           </button>
-
-          <Link
-            href="/dashboard"
-            onClick={() => setSidebarOpen(false)}
-            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs text-amber-400 hover:text-amber-300 hover:bg-amber-950/40 border border-amber-500/30 transition-colors text-left font-semibold"
-          >
-            <Lock size={13} className="text-amber-400 shrink-0" />
-            <span>Panel Funcionarios (PIN)</span>
-          </Link>
         </div>
 
         {/* Footer del Sidebar */}
