@@ -23,20 +23,24 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
-// Activación y limpieza de cachés antiguas
+// Activación y control inmediato de clientes
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then((keys) => {
+        return Promise.all(
+          keys.map((key) => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        );
+      })
+    ])
   );
 });
+
 
 // Interceptor de Fetch (Requerido por Chrome/Android para instalación PWA nativa)
 self.addEventListener("fetch", (event) => {

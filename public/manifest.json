@@ -1,16 +1,18 @@
 {
   "name": "Susy Bot - Asistente Ciudadana",
   "short_name": "Susy Bot",
-  "description": "Directora Virtual de Atención al Vecino e Innovación Urbana de Ituzaingó, Corrientes. Trámites, emergencias, turismo y reclamos.",
-  "start_url": "/",
-  "id": "/",
+  "description": "Directora Virtual de Atención al Vecino e Innovación Urbana de Ituzaingó, Corrientes. Desarrollado por MyJNexoraVisual.",
+  "start_url": "/?utm_source=pwa",
+  "id": "/?utm_source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "minimal-ui"],
   "background_color": "#080d1a",
   "theme_color": "#0ea5e9",
   "orientation": "portrait",
   "lang": "es-AR",
   "dir": "ltr",
+  "prefer_related_applications": false,
   "categories": ["government", "productivity", "utilities"],
   "icons": [
     {
@@ -36,6 +38,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-preview.png",
+      "sizes": "540x960",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Susy Bot en tu celular"
+    },
+    {
+      "src": "/screenshots/desktop-preview.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Susy Bot en PC y Tablet"
     }
   ],
   "shortcuts": [

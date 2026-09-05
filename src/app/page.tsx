@@ -270,7 +270,9 @@ export default function SusybotApp() {
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const liveCanvasRef = useRef<HTMLCanvasElement>(null);
   const liveMediaStreamRef = useRef<MediaStream | null>(null);
+  const [liveStream, setLiveStream] = useState<MediaStream | null>(null);
   const liveIntervalRef = useRef<any>(null);
+
   
   // Estado de Modo Adaptativo (General, Inclusión TEA, Docente, Cátedra)
   const [activeMode, setActiveMode] = useState<string>("general");
@@ -820,11 +822,13 @@ export default function SusybotApp() {
         return;
       }
 
+      setLiveStream(stream);
       liveMediaStreamRef.current = stream;
       if (liveVideoRef.current) {
         liveVideoRef.current.srcObject = stream;
         liveVideoRef.current.play().catch(() => {});
       }
+
 
       setLiveSubtitles("👁️ Cámara Ciudadana activa. Enfocá tu trámite o reclamo y te oriento al instante.");
       speakText("Hola, te habla Susy. Ya tenés activa la Cámara Ciudadana. Enfocá con tu celu el trámite, boleta o reclamo y te oriento al instante.", -99);
@@ -996,6 +1000,7 @@ export default function SusybotApp() {
     }
     hardware.releaseCamera();
     hardware.releaseWakeLock();
+    setLiveStream(null);
     liveMediaStreamRef.current = null;
     setIsLiveStreaming(false);
     setIsAnalyzingFrame(false);
@@ -1003,6 +1008,19 @@ export default function SusybotApp() {
     setShowLiveVisionModal(false);
     stopSpeaking();
   };
+
+  // Sincronización continua y reactiva del stream en el elemento <video>
+  useEffect(() => {
+    if (showLiveVisionModal && liveVideoRef.current && liveStream) {
+      if (liveVideoRef.current.srcObject !== liveStream) {
+        liveVideoRef.current.srcObject = liveStream;
+      }
+      liveVideoRef.current.play().catch((err) => {
+        console.warn("[CameraVision] Video play auto:", err);
+      });
+    }
+  }, [liveStream, showLiveVisionModal]);
+
 
   const toggleLiveCamera = () => {
     const nextMode = liveFacingMode === "environment" ? "user" : "environment";
@@ -3557,8 +3575,9 @@ export default function SusybotApp() {
             <video
               ref={(el) => {
                 liveVideoRef.current = el;
-                if (el && liveMediaStreamRef.current && el.srcObject !== liveMediaStreamRef.current) {
-                  el.srcObject = liveMediaStreamRef.current;
+                const activeStream = liveStream || liveMediaStreamRef.current;
+                if (el && activeStream && el.srcObject !== activeStream) {
+                  el.srcObject = activeStream;
                   el.play().catch(() => {});
                 }
               }}
@@ -3567,6 +3586,7 @@ export default function SusybotApp() {
               muted
               className={`w-full h-full object-cover ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
             />
+
 
             {/* Retícula de Enfoque Táctico Nora Titán */}
             <div className="absolute inset-8 sm:inset-16 pointer-events-none border border-sky-400/30 rounded-3xl flex flex-col justify-between p-4">

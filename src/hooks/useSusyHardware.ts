@@ -227,7 +227,7 @@ export function useSusyHardware(initialMode: NoraHardwareMode = "visual") {
     [currentMode, releaseCamera, releaseMicrophone]
   );
 
-  // Cargar modo preferido de localStorage al montar y escuchar visibilidad
+  // Cargar modo preferido de localStorage al montar
   useEffect(() => {
     try {
       const savedMode = localStorage.getItem("susybot_interaction_mode") as NoraHardwareMode | null;
@@ -235,21 +235,32 @@ export function useSusyHardware(initialMode: NoraHardwareMode = "visual") {
         setCurrentMode(savedMode);
       }
     } catch (e) {}
+  }, []);
 
+  // Escuchar cambio de visibilidad de pestaña (sin reiniciar ni matar hardware)
+  useEffect(() => {
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === "visible" && (isCameraActive || isMicActive)) {
-        await acquireWakeLock();
+      if (document.visibilityState === "visible") {
+        if (videoStreamRef.current || audioStreamRef.current) {
+          await acquireWakeLock();
+        }
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [acquireWakeLock]);
+
+  // Limpieza ÚNICA al desmontar el hook de la aplicación
+  useEffect(() => {
+    return () => {
       releaseWakeLock();
       releaseAllHardware();
     };
-  }, [releaseAllHardware, acquireWakeLock, releaseWakeLock, isCameraActive, isMicActive]);
+  }, [releaseAllHardware, releaseWakeLock]);
+
 
   return {
     currentMode,

@@ -36,9 +36,6 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark">
       <head>
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <meta name="theme-color" content="#080d1a" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -52,6 +49,7 @@ export default function RootLayout({
           }}
         />
       </head>
+
       <body className="antialiased bg-[#080d1a] text-slate-100 min-h-screen">
         {children}
       </body>
