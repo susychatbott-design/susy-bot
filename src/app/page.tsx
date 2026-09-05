@@ -216,6 +216,8 @@ export default function SusybotApp() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [showInstallGuideModal, setShowInstallGuideModal] = useState(false);
+
 
   // Estados de Compartir / Viralización WhatsApp y QR
   const [showShareModal, setShowShareModal] = useState(false);
@@ -407,9 +409,9 @@ export default function SusybotApp() {
       (window.navigator as any).standalone === true
     );
 
-    // Registrar Service Worker de Susybot para instalación nativa PWA en Chrome/Android
+    // Registrar Service Worker de Susybot para instalación nativa PWA en Chrome/Android (scope raíz "/")
     if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/susybot-sw.js", { scope: "/susybot" })
+      navigator.serviceWorker.register("/susybot-sw.js", { scope: "/" })
         .then((reg) => console.log("Susybot Service Worker activo:", reg.scope))
         .catch((err) => console.warn("Susybot SW aviso:", err));
       
@@ -421,13 +423,28 @@ export default function SusybotApp() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredInstallPrompt(e);
+      if (typeof window !== "undefined") {
+        (window as any).__susyInstallPrompt = e;
+      }
       const dismissed = sessionStorage.getItem("susybot_install_dismissed");
       if (!dismissed) {
         setShowInstallBanner(true);
       }
     };
 
+    // Si layout.tsx capturó el evento temprano antes del montaje de React
+    if (typeof window !== "undefined" && (window as any).__susyInstallPrompt) {
+      setDeferredInstallPrompt((window as any).__susyInstallPrompt);
+    }
+
+    const handleCustomInstallReady = (ev: any) => {
+      if (ev.detail) {
+        setDeferredInstallPrompt(ev.detail);
+      }
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("susy:install-ready", handleCustomInstallReady);
 
     // Mostrar banner de instalación directo en móviles si no está instalada aún
     const dismissed = typeof window !== "undefined" ? sessionStorage.getItem("susybot_install_dismissed") : null;
@@ -440,11 +457,13 @@ export default function SusybotApp() {
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("susy:install-ready", handleCustomInstallReady);
       if (installTimer) clearTimeout(installTimer);
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
     };
+
   }, []);
 
   // 2. Cargar sesiones del usuario
@@ -521,19 +540,35 @@ export default function SusybotApp() {
 
   // 7. Instalación Nativa PWA
   const handleInstallApp = async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      const choiceResult = await deferredInstallPrompt.userChoice;
-      if (choiceResult.outcome === "accepted") {
-        setShowInstallBanner(false);
+    const promptEvent = deferredInstallPrompt || (typeof window !== "undefined" ? (window as any).__susyInstallPrompt : null);
+
+    if (promptEvent) {
+      try {
+        await promptEvent.prompt();
+        const choiceResult = await promptEvent.userChoice;
+        if (choiceResult && choiceResult.outcome === "accepted") {
+          setShowInstallBanner(false);
+          setShowInstallGuideModal(false);
+        }
+        setDeferredInstallPrompt(null);
+        if (typeof window !== "undefined") {
+          (window as any).__susyInstallPrompt = null;
+        }
+        return;
+      } catch (err) {
+        console.warn("Aviso al invocar prompt nativo PWA:", err);
       }
-      setDeferredInstallPrompt(null);
-    } else if (isIOS) {
-      setShowIOSModal(true);
-    } else {
-      alert("Para instalar Susybot, abre el menú de tu navegador y selecciona 'Instalar aplicación' o 'Agregar a la pantalla principal'.");
     }
+
+    if (isIOS) {
+      setShowIOSModal(true);
+      return;
+    }
+
+    // Modal visual interactivo para guiar al usuario sin alertas toscas del navegador
+    setShowInstallGuideModal(true);
   };
+
 
   const handleDismissInstall = () => {
     setShowInstallBanner(false);
@@ -3291,6 +3326,52 @@ export default function SusybotApp() {
           </div>
         </div>
       )}
+
+      {/* ================================================================= */}
+      {/* 🤖 MODAL GUÍA DE INSTALACIÓN ANDROID / CHROME / PWA               */}
+      {/* ================================================================= */}
+      {showInstallGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-sky-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowInstallGuideModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
+              <Download size={24} className="text-white" />
+            </div>
+
+            <h3 className="text-lg font-bold text-white mb-1">Instalar Susybot en tu Celular</h3>
+            <p className="text-xs text-sky-400 mb-4 font-medium">Aplicación nativa municipal sin ocupar espacio</p>
+
+            <div className="text-xs text-slate-300 text-left space-y-2.5 mb-5 bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800">
+              <div className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center text-[11px] shrink-0 mt-0.5">1</span>
+                <p>Toca los <strong>tres puntos (⋮)</strong> en la esquina superior derecha del navegador.</p>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center text-[11px] shrink-0 mt-0.5">2</span>
+                <p>Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla principal"</strong>.</p>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 font-bold flex items-center justify-center text-[11px] shrink-0 mt-0.5">3</span>
+                <p>¡Listo! Se agregará el acceso directo con el icono oficial de Ituzaingó.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowInstallGuideModal(false)}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-sky-500/20 transition-all"
+            >
+              ¡Entendido!
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {/* ================================================================= */}
       {/* 🎛️ MODAL: CALIBRADOR Y AFINADOR DE VOZ DE SUSYBOT               */}

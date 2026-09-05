@@ -1,0 +1,57 @@
+{
+  "name": "Susy Bot - Asistente Ciudadana",
+  "short_name": "Susy Bot",
+  "description": "Directora Virtual de Atención al Vecino e Innovación Urbana de Ituzaingó, Corrientes. Trámites, emergencias, turismo y reclamos.",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#080d1a",
+  "theme_color": "#0ea5e9",
+  "orientation": "portrait",
+  "lang": "es-AR",
+  "dir": "ltr",
+  "categories": ["government", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Llamada a Susy",
+      "short_name": "Llamar",
+      "description": "Iniciar llamada de voz con Susy Bot",
+      "url": "/?action=call",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Cámara Titán",
+      "short_name": "Cámara",
+      "description": "Abrir reconocimiento de cámara urbana",
+      "url": "/?action=camera",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
