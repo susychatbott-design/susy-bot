@@ -5,7 +5,7 @@
  * 
  * Inspección automática de baches, luminarias y obras públicas mediante
  * modelos multimodales soberanos (Ollama LLaVA / Qwen2-VL On-Premise) con
- * fallback en Gemini Flash, devolviendo un esquema JSON estructurado vinculante.
+ * contingencia institucional soberana, devolviendo un esquema JSON estructurado vinculante.
  * ==============================================================================
  */
 

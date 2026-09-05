@@ -5,7 +5,7 @@
  * 
  * Permite decodificar, procesar y estructurar documentos extensos (PDFs, 
  * TXT, Markdown, CSV, JSON, Word/Docs) para que cualquier nodo de la red 
- * soberana (Ollama, Cloudflare, Hugging Face, OpenRouter, Gemini, Groq)
+ * soberana (Ollama, Cloudflare, Hugging Face, OpenRouter, Groq, WebGPU)
  * los comprenda y audite sin saturar buffers ni fallar por payloads binarios.
  * ========================================================================
  */

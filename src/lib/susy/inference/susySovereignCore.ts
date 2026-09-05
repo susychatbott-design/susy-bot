@@ -6,8 +6,7 @@
  * Cascada Soberana Municipal en Alta Disponibilidad:
  * 1. Servidor Ollama On-Premise (Palacio Municipal)
  * 2. Groq Cloud Open-Weights (Llama 3.3 70B / $0 Costo de Inferencia)
- * 3. Gemini Flash Gov Cloud (Visión Multimodal para Trámites y DNI)
- * 4. Contingencia Sintética Inmediata (< 1800ms)
+ * 3. Contingencia Sintética Inmediata Municipal (< 1800ms)
  * 
  * Incluye Stateful Stream Filter que pulveriza atómicamente tags <think>
  * para proteger la investidura institucional ante el contribuyente.

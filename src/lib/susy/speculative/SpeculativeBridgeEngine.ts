@@ -45,7 +45,7 @@ export class SpeculativeBridgeEngine {
   }
 
   /**
-   * Generación especulativa instantánea a 0ms (mientras viaja el paquete a Groq/Gemini)
+   * Generación especulativa instantánea a 0ms (mientras viaja el paquete a Llama/Qwen Soberano)
    */
   public generateSpeculativeBridge(citizenQuery: string): SpeculativeBridgeResult {
     const clean = citizenQuery.toLowerCase();

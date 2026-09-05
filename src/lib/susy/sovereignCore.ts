@@ -473,7 +473,7 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   if (groqKey) {
     const groqCandidateModels = isVisionRequest
       ? ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
-      : ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"];
+      : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
 
     for (const gModel of groqCandidateModels) {
       try {
@@ -490,7 +490,7 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
             max_tokens: isVisionRequest ? 1500 : maxTokens,
             temperature
           }),
-          signal: AbortSignal.timeout(4000)
+          signal: AbortSignal.timeout(2800)
         });
 
         if (groqRes.ok && groqRes.body) {
@@ -512,7 +512,7 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
         stream: true,
         temperature
       }),
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(2800)
     });
 
     if (polRes.ok && polRes.body) {
@@ -634,7 +634,7 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
   // 1. Inferencia Abierta Groq Open Weights
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
-    const groqModels = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"];
+    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
     for (const gModel of groqModels) {
       try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -649,7 +649,7 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
             temperature,
             max_tokens: Math.max(750, maxTokens)
           }),
-          signal: AbortSignal.timeout(isVoiceMode ? 3500 : 4500)
+          signal: AbortSignal.timeout(isVoiceMode ? 2500 : 3000)
         });
 
         if (res.ok) {

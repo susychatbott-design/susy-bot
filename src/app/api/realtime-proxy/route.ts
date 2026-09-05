@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     let effectiveUserText = (message || "").trim();
     let sttDuration = 0;
 
-    // Si viene audio y no hay texto previo, transcribir con Cascada Soberana (Whisper + Gemini)
+    // Si viene audio y no hay texto previo, transcribir con Cascada Soberana Whisper (Groq/HF)
     if (!effectiveUserText && audioBase64) {
       const tSttStart = Date.now();
       const transcribed = await transcribeAudioWithWhisper({
