@@ -13,6 +13,8 @@ import { normalizePhoneticTextForSpeech } from "@/lib/susy/phoneticNormalizer";
 import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 import { generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 import { MUNICIPAL_DEPARTMENTS, MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
+import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,6 +149,13 @@ export async function POST(req: Request) {
       const sampleDepts = MUNICIPAL_DEPARTMENTS.slice(0, 6).map((d) => `- ${d.name}: ${d.address}, Horario: ${d.schedule}, Tel: ${d.phone}`).join("\n");
       contextualSystemPrompt += `\n\n[DEPENDENCIAS Y TRÁMITES MUNICIPALES]:\n${sampleDepts}`;
     }
+
+    // 4. Módulo de Identidad Histórica y Memoria Colectiva (Guía Cultural Oficial)
+    const isHistoryQuery = /historia|fundador|fundaci[oó]n|origen|pasado|bernardino valle|batalla|guaran|chamam[eé]|yacyret[aá]|pionero|patrimonio/i.test(promptToInfer);
+    if (isHistoryQuery) {
+      contextualSystemPrompt += `\n\n${generarContextoPatrimonialHistorico()}\n\nDIRECTIVA DE GUÍA CULTURAL OFICIAL: Responde con rigurosidad histórica fundamentada en el Grafo Patrimonial, respeto, calidez y tono educativo institucional destacando a Don Bernardino Valle, la fundación del 24 de octubre de 1864, la herencia guaraní, los pioneros del puerto maderero, la cultura chamamecera y la transformación de Yacyretá.`;
+    }
+
 
     const tInferStart = Date.now();
     const sovereignRes = await executeSovereignText({

@@ -9,6 +9,8 @@ import { fetchHybridRAGDocuments } from "@/lib/susy/hybridRag";
 import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 import { applyReputationalShield } from "@/lib/susy/security/susyReputationalPatch";
 import { buscarEventosCulturalesEnVivo, generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
+import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -123,8 +125,12 @@ Cuando el frontend detecte modo sin conexión:
 
 ---
 
+### 🏛️ 6. MÓDULO DE IDENTIDAD HISTÓRICA Y MEMORIA COLECTIVA
+* **Rol Patrimonial:** Cuando un vecino, estudiante o turista formule preguntas sobre el pasado, el fundador, las batallas, los orígenes guaraníes o las transformaciones de la ciudad, actuarás como Guía Cultural Oficial.
+* **Rigor Histórico:** Responderás fundamentándote de forma estricta en el Grafo Patrimonial del Digesto. Tu narrativa debe ser respetuosa, educativa y descriptiva, resaltando el valor de los pioneros, la identidad chamamecera y el desarrollo productivo e hidroeléctrico de la región.
 
 ---
+
 
 ### 🚗 INFORMACIÓN OFICIAL: COSTOS Y VALORES DE LICENCIA DE CONDUCIR (TRÁNSITO ITUZAINGÓ)
 Cuando el vecino pregunte por el VALOR, COSTO, PRECIO o DÓNDE PAGAR para renovar o sacar el carnet:
@@ -634,6 +640,12 @@ export async function POST(req: Request) {
     if (weatherData) fullSystemPrompt += `\n\n${weatherData}`;
     if (ragNewsData) fullSystemPrompt += ragNewsData;
     if (ragBizData) fullSystemPrompt += ragBizData;
+
+    const isHistoryOrPatrimony = /historia|fundador|fundaci[oó]n|origen|pasado|bernardino valle|batalla|guaran|chamam[eé]|yacyret[aá]|pionero|patrimonio|pueblo|cultura/i.test(effectiveMessage);
+    if (isHistoryOrPatrimony) {
+      fullSystemPrompt += `\n\n${generarContextoPatrimonialHistorico()}`;
+    }
+
 
     if (rawHistory.length > 0) {
       fullSystemPrompt += `\n\n========================================================================\n🔗 DIRECTIVA DE CONTINUIDAD, COHESIÓN Y MEMORIA VIVA (TURNO ACUMULADO: ${rawHistory.length + 1}):\n- La conversación ya está en curso y tiene un hilo activo consolidado.\n- PROHIBIDO TERMINANTEMENTE repetir saludos formales o volver a recitar la lista de requisitos ya mencionada, formular de nuevo preguntas del inicio o desviar la charla a temas no pedidos.\n- Mantén intacto el andamiaje conceptual y responde con coherencia inmediata sobre lo último dialogado con el usuario.\n========================================================================`;
