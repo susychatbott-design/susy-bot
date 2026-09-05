@@ -234,3 +234,7 @@ export class SusyAudioHardware {
     }
   }
 }
+
+// Alias de retrocompatibilidad arquitectónica institucional
+export { SusyAudioHardware as AudioHardwareManager };
+

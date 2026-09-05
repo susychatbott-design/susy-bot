@@ -15,6 +15,9 @@ import {
   Signal
 } from "lucide-react";
 import { SusyMeshBridge } from "@/lib/susy/mesh/SusyMeshBridge";
+import { RadioGatewayControl } from "@/components/Dashboard/RadioGatewayControl";
+
+
 
 interface MeshAlertItem {
   id: string;
@@ -294,6 +297,12 @@ export function PanelDefensaCivil() {
           ))}
         </div>
       </div>
+
+      {/* Pasarela de Radiodifusión Comercial AM/FM, RDS y Tonos AFSK */}
+      <div className="pt-2">
+        <RadioGatewayControl />
+      </div>
     </div>
   );
 }
+
