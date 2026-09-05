@@ -22,7 +22,9 @@ import {
   Printer, 
   RefreshCw,
   Eye,
-  Sliders
+  Sliders,
+  Radio,
+  ShieldAlert
 } from "lucide-react";
 import { 
   municipalStore, 
@@ -36,6 +38,8 @@ import MunicipalDocumentModal from "@/components/Susy/MunicipalDocumentModal";
 import MunicipalLocationCard from "@/components/Susy/MunicipalLocationCard";
 import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
 import { MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
+import { PanelDefensaCivil } from "@/components/Dashboard/PanelDefensaCivil";
+
 
 export default function MunicipalDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -68,7 +72,8 @@ export default function MunicipalDashboardPage() {
     sessionStorage.removeItem("susy_municipal_staff_auth");
   };
 
-  const [activeTab, setActiveTab] = useState<"metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa">("metricas");
+  const [activeTab, setActiveTab] = useState<"metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa" | "defensa_civil">("metricas");
+
   
   // Estados de datos
   const [turnos, setTurnos] = useState<MunicipalTurno[]>([]);
@@ -264,8 +269,10 @@ export default function MunicipalDashboardPage() {
           { id: "permisos", label: `Permisos con QR (${permisos.length})`, icon: ShieldCheck },
           { id: "prensa", label: `Gacetillas de Prensa (${gacetillas.length})`, icon: Newspaper },
           { id: "comercio", label: `Guía Comercial (${MUNICIPAL_COMMERCE_LIST.length})`, icon: Store },
-          { id: "mapa", label: "Mapa de Oficinas", icon: MapPin }
+          { id: "mapa", label: "Mapa de Oficinas", icon: MapPin },
+          { id: "defensa_civil", label: "🚨 Defensa Civil LoRa Mesh", icon: Radio }
         ].map((tab) => (
+
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
@@ -543,7 +550,16 @@ export default function MunicipalDashboardPage() {
             </div>
           </div>
         )}
+
+        {/* PESTAÑA 6: COMANDANCIA OPERATIVA DE DEFENSA CIVIL MESH */}
+        {activeTab === "defensa_civil" && (
+          <div className="space-y-4">
+            <PanelDefensaCivil />
+          </div>
+        )}
       </main>
+
+
 
       {/* Modal Emisor de Permiso Provisorio */}
       {showNewPermisoModal && (
