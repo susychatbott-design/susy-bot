@@ -768,106 +768,28 @@ export default function SusybotApp() {
 
   // 9. Motor de Visión y Audio en Vivo de Susybot (Cámara en Tiempo Real con LLaMA 3.2 Vision)
   
-  // Sincronizar stream de cámara con elemento video de forma continua y reactiva
-  useEffect(() => {
-    if (!showLiveVisionModal) return;
-
-    let timer: any;
-    const tryAttach = () => {
-      if (liveMediaStreamRef.current && liveVideoRef.current) {
-        const vid = liveVideoRef.current;
-        if (vid.srcObject !== liveMediaStreamRef.current) {
-          vid.srcObject = liveMediaStreamRef.current;
-        }
-        vid.muted = true;
-        vid.defaultMuted = true;
-        vid.playsInline = true;
-        vid.setAttribute("playsinline", "true");
-        vid.setAttribute("webkit-playsinline", "true");
-        vid.setAttribute("muted", "true");
-        vid.setAttribute("autoplay", "true");
-
-        vid.play()
-          .then(() => setCameraVideoReady(true))
-          .catch(() => {});
-      }
-    };
-
-    tryAttach();
-    timer = setInterval(tryAttach, 400);
-
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [showLiveVisionModal]);
-
+  // 9. Motor de Visión y Audio en Vivo de Susybot (Arquitectura Nora Titán Live)
   const startLiveVision = async (facingMode: "user" | "environment" = liveFacingMode) => {
     stopSpeaking();
     setShowLiveVisionModal(true);
     setIsLiveStreaming(true);
-    setCameraVideoReady(false);
-    setLiveSubtitles("Iniciando Cámara Ciudadana de Ituzaingó...");
+    setLiveSubtitles("Activando Cámara Ciudadana de Susy Bot...");
     hardware.acquireWakeLock();
-
-    // 🛡️ Detener pistas previas para que el hardware móvil libere el sensor de cámara
-    if (liveMediaStreamRef.current) {
-      liveMediaStreamRef.current.getTracks().forEach(t => t.stop());
-      liveMediaStreamRef.current = null;
-    }
 
     try {
       const stream = await hardware.acquireCamera(facingMode);
       if (!stream) {
-        setLiveSubtitles("⚠️ No se pudo acceder a la cámara. Por favor permite el acceso en los ajustes de tu navegador.");
+        setLiveSubtitles("⚠️ No se pudo acceder a la cámara o el permiso fue denegado.");
         setIsLiveStreaming(false);
         hardware.releaseWakeLock();
         return;
       }
 
       liveMediaStreamRef.current = stream;
-      const vTrack = stream.getVideoTracks()[0];
-      if (vTrack) {
-        vTrack.enabled = true;
-        setActiveCameraLabel(vTrack.label || (facingMode === "user" ? "Cámara Frontal" : "Cámara Trasera"));
+      if (liveVideoRef.current) {
+        liveVideoRef.current.srcObject = stream;
+        liveVideoRef.current.play().catch(() => {});
       }
-
-      // Enlace atómico con reintentos para asegurar render inmediato
-      const attachVideo = (attempt = 0) => {
-        const vid = liveVideoRef.current;
-        if (!vid) {
-          if (attempt < 15) setTimeout(() => attachVideo(attempt + 1), 80);
-          return;
-        }
-
-        vid.muted = true;
-        vid.defaultMuted = true;
-        vid.playsInline = true;
-        vid.setAttribute("playsinline", "true");
-        vid.setAttribute("webkit-playsinline", "true");
-        vid.setAttribute("muted", "true");
-        vid.setAttribute("autoplay", "true");
-
-        if (vid.srcObject !== stream) {
-          vid.srcObject = stream;
-        }
-
-        const handlePlay = () => {
-          vid.play()
-            .then(() => {
-              setCameraVideoReady(true);
-            })
-            .catch((e) => {
-              console.warn("[Video Autoplay Warn]:", e);
-            });
-        };
-
-        vid.onloadedmetadata = handlePlay;
-        vid.onloadeddata = handlePlay;
-        vid.oncanplay = handlePlay;
-        handlePlay();
-      };
-
-      attachVideo();
 
       setLiveSubtitles("👁️ Cámara Ciudadana activa. Enfocá tu trámite o reclamo y te oriento al instante.");
       speakText("Hola, te habla Susy. Ya tenés activa la Cámara Ciudadana. Enfocá con tu celu el trámite, boleta o reclamo y te oriento al instante.", -99);
@@ -3549,71 +3471,42 @@ export default function SusybotApp() {
             </div>
           </div>
 
-          {/* Visor de Video en Tiempo Real con HUD Inteligente */}
+          {/* Visor de Video en Tiempo Real - Arquitectura Nora Titán Live */}
           <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
             <video
-              ref={liveVideoRef}
+              ref={(el) => {
+                liveVideoRef.current = el;
+                if (el && liveMediaStreamRef.current && el.srcObject !== liveMediaStreamRef.current) {
+                  el.srcObject = liveMediaStreamRef.current;
+                  el.play().catch(() => {});
+                }
+              }}
               autoPlay
               playsInline
               muted
-              onLoadedMetadata={(e) => {
-                setCameraVideoReady(true);
-                e.currentTarget.play().catch(() => {});
-              }}
-              onLoadedData={(e) => {
-                setCameraVideoReady(true);
-                e.currentTarget.play().catch(() => {});
-              }}
-              onCanPlay={(e) => {
-                setCameraVideoReady(true);
-                e.currentTarget.play().catch(() => {});
-              }}
-              onClick={() => {
-                if (liveVideoRef.current) {
-                  liveVideoRef.current.play().then(() => setCameraVideoReady(true)).catch(() => {});
-                }
-              }}
-              className={`w-full h-full object-cover cursor-pointer ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
+              className={`w-full h-full object-cover ${liveFacingMode === "user" ? "scale-x-[-1]" : ""}`}
             />
 
-            {/* Estado de espera / recuperación si la cámara tarda en emitir frames */}
-            {!cameraVideoReady && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/95 text-center p-6 z-10 animate-fade-in">
-                <div className="w-12 h-12 rounded-full border-3 border-sky-400 border-t-transparent animate-spin mb-4" />
-                <p className="text-sm font-bold text-white mb-1">Iniciando Sensor de Video...</p>
-                <p className="text-xs text-slate-400 max-w-xs mb-4">
-                  {activeCameraLabel ? `Conectado: ${activeCameraLabel}` : "Sincronizando sensor óptico..."}
-                </p>
-                <button
-                  onClick={toggleLiveCamera}
-                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shadow-lg shadow-sky-600/30 active:scale-95"
-                >
-                  <FlipHorizontal size={14} />
-                  <span>Alternar Cámara (Frontal / Trasera)</span>
-                </button>
-              </div>
-            )}
-
-            {/* Marco Guía Institucional para Documentos y Reclamos */}
-            <div className="absolute inset-6 sm:inset-12 pointer-events-none border border-sky-400/30 rounded-3xl flex flex-col justify-between p-4 shadow-inner">
+            {/* Retícula de Enfoque Táctico Nora Titán */}
+            <div className="absolute inset-8 sm:inset-16 pointer-events-none border border-sky-400/30 rounded-3xl flex flex-col justify-between p-4">
               <div className="flex justify-between">
-                <div className="w-8 h-8 border-t-3 border-l-3 border-sky-400 rounded-tl-xl" />
-                <div className="w-8 h-8 border-t-3 border-r-3 border-sky-400 rounded-tr-xl" />
+                <div className="w-6 h-6 border-t-2 border-l-2 border-sky-400 rounded-tl-lg" />
+                <div className="w-6 h-6 border-t-2 border-r-2 border-sky-400 rounded-tr-lg" />
               </div>
-              <div className="flex flex-col items-center justify-center text-center">
-                <span className="px-3 py-1 rounded-full bg-slate-900/80 border border-sky-400/40 text-sky-200 text-xs font-medium backdrop-blur-md">
-                  Enfocá trámites, boletas, carnets o la vía pública
-                </span>
+              <div className="flex justify-center items-center">
+                <div className={`w-20 h-20 rounded-full border-2 border-dashed border-sky-400/60 flex items-center justify-center ${isAnalyzingFrame ? "animate-spin border-sky-400" : "animate-pulse"}`}>
+                  <Eye size={24} className="text-sky-400" />
+                </div>
               </div>
               <div className="flex justify-between">
-                <div className="w-8 h-8 border-b-3 border-l-3 border-sky-400 rounded-bl-xl" />
-                <div className="w-8 h-8 border-b-3 border-r-3 border-sky-400 rounded-br-xl" />
+                <div className="w-6 h-6 border-b-2 border-l-2 border-sky-400 rounded-bl-lg" />
+                <div className="w-6 h-6 border-b-2 border-r-2 border-sky-400 rounded-br-lg" />
               </div>
             </div>
 
             {/* Badge de análisis en progreso */}
             {isAnalyzingFrame && (
-              <div className="absolute top-6 px-4 py-1.5 rounded-full bg-black/80 border border-rose-500/60 text-rose-300 text-xs font-mono backdrop-blur-md flex items-center gap-2 animate-pulse">
+              <div className="absolute top-6 px-4 py-1.5 rounded-full bg-black/80 border border-sky-500/60 text-sky-300 text-xs font-mono backdrop-blur-md flex items-center gap-2 animate-pulse">
                 <Radio size={14} className="animate-spin" />
                 <span>Susy está observando el documento o reclamo...</span>
               </div>
