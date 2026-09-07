@@ -36,10 +36,21 @@ export function normalizePhoneticTextForSpeech(rawText: string): string {
     .replace(/\bkm\b/gi, "kilómetros")
     .replace(/\bhs\b/gi, "horas");
 
-  // 2. Limpieza de Estructuras Markdown que provocan pausas robóticas
+  // 2. Eliminación de Etiquetas de Sistema, Function Calling y Bloques entre Corchetes
+  text = text
+    .replace(/\[(?:CALL_FUNCTION|RECLAMO|PICTO|INSTRUCCI[OÓ]N|DIRECTIVA|MODO|CONSEJO|ESTADO)[^\]]*\]/gi, "")
+    .replace(/\[RECLAMO REGISTRADO[^\]]*\]/gi, "Reclamo registrado oficialmente en el sistema municipal.")
+    .replace(/\[[^\]]{1,80}\]/g, "") // Limpiar cualquier corchete residual corto
+    .replace(/<[^>]*>/g, ""); // Limpiar tags HTML
+
+  // 3. Eliminación Completa de Emojis y Pictogramas (Causantes de cuelgues en SpeechSynthesis móvil)
+  text = text.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F000}-\u{1F2FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, "");
+
+  // 4. Limpieza Profunda de Estructuras Markdown que provocan pausas y excepciones
   text = text
     .replace(/^#+\s+/gm, "") // Encabezados #, ##
-    .replace(/[*_~`#$|>]/g, "") // Símbolos de formato
+    .replace(/[*_~`#$|>]/g, "") // Símbolos de formato markdown
+    .replace(/["“”«»]/g, "") // Comillas tipográficas
     .replace(/^\s*[-•*]\s+/gm, ", ") // Viñetas convertidas en comas suaves
     .replace(/^\s*\d+\.\s+/gm, ", ") // Listas numeradas convertidas en pausas suaves
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Enlaces markdown
@@ -48,7 +59,7 @@ export function normalizePhoneticTextForSpeech(rawText: string): string {
     .replace(/\n/g, " ") // Saltos simples como espacio
     .replace(/\s{2,}/g, " "); // Espacios múltiples
 
-  // 3. Suavizado de Puntuación
+  // 5. Suavizado de Puntuación
   text = text
     .replace(/\.{2,}/g, ".")
     .replace(/,{2,}/g, ",")

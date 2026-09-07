@@ -10,6 +10,7 @@ import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 import { applyReputationalShield } from "@/lib/susy/security/susyReputationalPatch";
 import { buscarEventosCulturalesEnVivo, generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
+import { queryMunicipalGraphRAG } from "@/lib/susy/graphrag/susyGraphRAG";
 
 
 export const runtime = "nodejs";
@@ -91,10 +92,11 @@ Sos Susybot, la plataforma de Inteligencia Artificial Cívica desarrollada ínte
 
 ---
 
-### 🧠 2. ARQUITECTURA DE CONOCIMIENTO (DIGESTO MUNICIPAL ITUZAINGÓ - RAG)
-Operás bajo un esquema de Generación Aumentada por Recuperación (RAG). Tu cerebro está conectado a la base de datos vectorial de Supabase (pgvector) que contiene el Digesto Municipal de Ituzaingó.
-- **Regla Estricta:** Solo respondés preguntas de trámites (carnet de conducir, tasas, habilitaciones) basándote en los fragmentos de texto provistos por el contexto indexado. 
-- **Si el dato no existe o está fuera de contexto:** No inventes. Respondé con calidez y rigor: "Como asistente virtual del municipio, no dispongo de ese dato exacto en este momento. Podés consultar de forma presencial en la Mesa de Entradas del Municipio o aguardar a que actualicemos la base de datos."
+### 🧠 2. ARQUITECTURA DE CONOCIMIENTO (DIGESTO MUNICIPAL ITUZAINGÓ - RAG DE ALTA PRECISIÓN)
+Operás bajo un esquema de Generación Aumentada por Recuperación (RAG) conectado al Digesto Municipal y Grafo Normativo de Ituzaingó (pgvector & GraphRAG con umbral >= 0.72).
+- **Prohibición Total de Relleno Genérico:** ESTÁ TERMINANTEMENTE PROHIBIDO emitir respuestas plantilla vacías como "no dispongo de esa información", "soy solo una inteligencia artificial", o textos genéricos de folleto.
+- **Rigor y Consulta de Parámetros Específicos:** Si la consulta del contribuyente carece de un parámetro indispensable para cotizar o resolver el trámite (ej. categoría de vehículo, si es primera vez o renovación, metros de poda, o ubicación exacta), solicitá con calidez el dato faltante exacto manteniendo un tono hospitalario y cercano: *"¡Hola! Con mucho gusto te colaboro con la licencia. Para darte el importe y requisitos precisos, ¿me confirmás si es renovación o por primera vez, y para qué categoría (auto o moto)?"*.
+- **Transparencia Institucional:** Si el trámite requiere inspección presencial o no está digitalizado, guialo de forma puntual y cordial a la Mesa de Entradas del Palacio Municipal (Centenario 1519, de lunes a viernes de 7:00 a 13:00 hs).
 
 ---
 
@@ -404,6 +406,108 @@ async function fetchDirectoryBusinessesRAG(supabase: any, userQuery: string): Pr
   }
 }
 
+interface MunicipalKnowledgeResult {
+  contextText: string;
+  maxConfidence: number;
+  hasDirectMatch: boolean;
+}
+
+async function fetchMunicipalKnowledgeRAG(
+  supabase: any,
+  userQuery: string
+): Promise<MunicipalKnowledgeResult> {
+  if (!supabase || !userQuery || !userQuery.trim()) {
+    return { contextText: "", maxConfidence: 0, hasDirectMatch: false };
+  }
+
+  let embedding: number[] | null = null;
+  try {
+    embedding = await generateTextEmbedding(userQuery);
+  } catch (e) {
+    console.warn("[Embedding Gen Fallback]:", e);
+  }
+
+  let maxConfidence = 0;
+  let combinedContext = "";
+
+  // 1. Búsqueda Vectorial de Alta Precisión sobre susy_municipal_documents con umbral 0.72
+  if (embedding && embedding.length > 0) {
+    try {
+      const { data: vectorDocs, error: vecErr } = await supabase.rpc("match_susy_documents", {
+        query_embedding: embedding,
+        match_threshold: 0.72,
+        match_count: 4
+      });
+
+      if (!vecErr && vectorDocs && vectorDocs.length > 0) {
+        vectorDocs.forEach((doc: any) => {
+          if (typeof doc.similarity === "number" && doc.similarity > maxConfidence) {
+            maxConfidence = doc.similarity;
+          }
+        });
+
+        const formattedDocs = vectorDocs
+          .map((d: any, idx: number) => `[Documento Oficial #${idx + 1} - Área: ${d.department || "General"} | Relevancia: ${((d.similarity || 0.8) * 100).toFixed(1)}%]:\n• Título: "${d.title}"\n• Contenido Normativo: ${d.content}`)
+          .join("\n\n");
+
+        combinedContext += `\n\n========================================================================\n📜 GUÍAS DE TRÁMITES Y DIGESTO MUNICIPAL (pgvector >= 0.72):\n${formattedDocs}\n========================================================================\n`;
+      }
+    } catch (e) {
+      console.warn("[Municipal Docs Vector Error]:", e);
+    }
+  }
+
+  // Fallback de texto si no hubo vectores o confianza baja
+  if (maxConfidence < 0.72) {
+    try {
+      const cleanTerms = userQuery.replace(/[¿?¡!]/g, "").trim().split(/\s+/).filter(w => w.length > 3);
+      if (cleanTerms.length > 0) {
+        const filterOr = cleanTerms.map(t => `title.ilike.%${t}%,content.ilike.%${t}%`).join(",");
+        const { data: textMatches } = await supabase
+          .from("susy_municipal_documents")
+          .select("title, department, content")
+          .or(filterOr)
+          .eq("is_active", true)
+          .limit(3);
+
+        if (textMatches && textMatches.length > 0) {
+          maxConfidence = Math.max(maxConfidence, 0.75);
+          const formattedText = textMatches
+            .map((d: any, idx: number) => `[Guía Trámite #${idx + 1} - ${d.department || "General"}]:\n• ${d.title}: ${d.content}`)
+            .join("\n\n");
+          combinedContext += `\n\n========================================================================\n📜 GUÍAS DE TRÁMITES (Búsqueda Literal):\n${formattedText}\n========================================================================\n`;
+        }
+      }
+    } catch (e) {
+      console.warn("[Municipal Text Fallback Error]:", e);
+    }
+  }
+
+  // 2. Búsqueda en Grafo Relacional (GraphRAG) con CTE Recursiva y umbral 0.72
+  try {
+    const graphRes = await queryMunicipalGraphRAG(supabase, embedding, userQuery, {
+      threshold: 0.72,
+      maxSeeds: 3,
+      maxDepth: 2
+    });
+
+    if (graphRes && typeof graphRes.maxConfidence === "number" && graphRes.maxConfidence > maxConfidence) {
+      maxConfidence = graphRes.maxConfidence;
+    }
+    if (graphRes && graphRes.contextText) {
+      combinedContext += graphRes.contextText;
+    }
+  } catch (graphErr) {
+    console.warn("[Municipal GraphRAG Call Error]:", graphErr);
+  }
+
+  return {
+    contextText: combinedContext,
+    maxConfidence,
+    hasDirectMatch: maxConfidence >= 0.72
+  };
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -624,11 +728,12 @@ export async function POST(req: Request) {
       "grados hace", "sensación térmica", "sensacion termica"
     ].some(w => lowerMessageForIntent.includes(w));
 
-    const [weatherData, ragNewsData, ragBizData, continuousUserMemory] = await Promise.all([
+    const [weatherData, ragNewsData, ragBizData, continuousUserMemory, municipalKnowledge] = await Promise.all([
       isWeatherExplicit ? fetchRealtimeWeather() : Promise.resolve(null),
       supabase ? fetchSemanticArticlesRAG(supabase, effectiveMessage) : Promise.resolve(""),
       supabase ? fetchDirectoryBusinessesRAG(supabase, effectiveMessage) : Promise.resolve(""),
-      (supabase && user_id) ? fetchUserContinuousMemory(supabase, user_id) : Promise.resolve(null)
+      (supabase && user_id) ? fetchUserContinuousMemory(supabase, user_id) : Promise.resolve(null),
+      supabase ? fetchMunicipalKnowledgeRAG(supabase, effectiveMessage) : Promise.resolve({ contextText: "", maxConfidence: 0, hasDirectMatch: false })
     ]);
 
     const activeMode = contextData?.mode || "general";
@@ -640,6 +745,19 @@ export async function POST(req: Request) {
     if (weatherData) fullSystemPrompt += `\n\n${weatherData}`;
     if (ragNewsData) fullSystemPrompt += ragNewsData;
     if (ragBizData) fullSystemPrompt += ragBizData;
+    if (municipalKnowledge.contextText) fullSystemPrompt += municipalKnowledge.contextText;
+
+    // 🎯 CONTROL DE PRECISIÓN Y FUNCTION CALLING SI LA CONFIANZA ES MENOR A 0.72
+    if (!municipalKnowledge.hasDirectMatch) {
+      fullSystemPrompt += `\n\n========================================================================
+🚨 DIRECTIVA DE CONTROL DE PRECISIÓN ESTRICTA (Confianza Vectorial < 0.72):
+- La base de datos vectorial no arrojó una ordenanza o guía idéntica para esta consulta exacta.
+- PROHIBIDO TERMINANTEMENTE inventar requisitos o responder con plantillas genéricas tipo "no dispongo de información".
+- RECLAMOS URBANOS: Si el vecino describe un bache, luminaria rota, ramas caídas o basura en la vía pública, invoca OBLIGATORIAMENTE:
+  [CALL_FUNCTION: registrarReclamoMunicipal(tipo_reclamo="infraestructura", ubicacion_exacta="...", descripcion_vecino="...")]
+- TRÁMITES Y TASAS: Si faltan datos clave del contribuyente (ej. tipo de vehículo, categoría de libreta sanitaria o si es renovación), solicítale cordialmente el dato específico manteniendo el tono hospitalario correntino/rioplatense.
+========================================================================\n`;
+    }
 
     const isHistoryOrPatrimony = /historia|fundador|fundaci[oó]n|origen|pasado|bernardino valle|batalla|guaran|chamam[eé]|yacyret[aá]|pionero|patrimonio|pueblo|cultura/i.test(effectiveMessage);
     if (isHistoryOrPatrimony) {

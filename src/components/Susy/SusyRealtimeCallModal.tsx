@@ -118,6 +118,7 @@ export default function SusyRealtimeCallModal({
   const interruptionSoundStartRef = useRef<number | null>(null);
   const lastInterruptedResponseRef = useRef<{ text: string; timestamp: number } | null>(null);
   const lastCompletedAssistantTextRef = useRef<string>("");
+  const vadLockoutUntilRef = useRef<number>(0);
 
   useEffect(() => {
     activeModeRef.current = activeMode;
@@ -292,16 +293,19 @@ export default function SusyRealtimeCallModal({
       }
     }, timeout);
 
-    // 🛡️ Chrome/Chromium SpeechSynthesis Keep-Alive Pulse (Evita que el navegador pause a los 15s)
+    // 🛡️ Chrome/Chromium SpeechSynthesis Keep-Alive Pulse (Solo en Desktop, NUNCA en Mobile para evitar congelamiento de segundo renglón)
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      speechKeepAliveRef.current = setInterval(() => {
-        try {
-          if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-            window.speechSynthesis.pause();
-            window.speechSynthesis.resume();
-          }
-        } catch {}
-      }, 5000);
+      const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (!isMobile) {
+        speechKeepAliveRef.current = setInterval(() => {
+          try {
+            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+              window.speechSynthesis.pause();
+              window.speechSynthesis.resume();
+            }
+          } catch {}
+        }, 5000);
+      }
     }
   }, [clearSpeechHeartbeat, playAccessibleChime, resumeListening]);
 
@@ -631,6 +635,19 @@ export default function SusyRealtimeCallModal({
 
       const source = audioCtx.createMediaStreamSource(stream);
 
+      // 🎧 CADENA DSP DE AISLAMIENTO ACÚSTICO ANTIRRUIDO (Web Audio API)
+      // 1. Filtro Pasa-Altos (High-Pass ~80Hz): Elimina viento, soplidos y retumbes de tráfico/colectivos
+      const highPassFilter = audioCtx.createBiquadFilter();
+      highPassFilter.type = "highpass";
+      highPassFilter.frequency.setValueAtTime(80, audioCtx.currentTime);
+      highPassFilter.Q.setValueAtTime(0.707, audioCtx.currentTime);
+
+      // 2. Filtro Pasa-Bajos (Low-Pass ~3400Hz): Aísla la banda de voz humana contra chillidos y frecuencias parásitas
+      const lowPassFilter = audioCtx.createBiquadFilter();
+      lowPassFilter.type = "lowpass";
+      lowPassFilter.frequency.setValueAtTime(3400, audioCtx.currentTime);
+      lowPassFilter.Q.setValueAtTime(0.707, audioCtx.currentTime);
+
       // GainNode de Control Permanente
       const micGain = audioCtx.createGain();
       micGain.gain.setValueAtTime(1.0, audioCtx.currentTime);
@@ -640,8 +657,14 @@ export default function SusyRealtimeCallModal({
       analyser.fftSize = 256;
       analyser.smoothingTimeConstant = 0.2;
 
-      source.connect(micGain);
+      // Destino procesado para MediaRecorder (aislamiento acústico limpio para Whisper STT)
+      const cleanAudioDest = audioCtx.createMediaStreamDestination();
+
+      source.connect(highPassFilter);
+      highPassFilter.connect(lowPassFilter);
+      lowPassFilter.connect(micGain);
       micGain.connect(analyser);
+      micGain.connect(cleanAudioDest);
       analyserRef.current = analyser;
 
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -658,7 +681,7 @@ export default function SusyRealtimeCallModal({
         }
         audioChunksRef.current = [];
         speechStartTimeRef.current = Date.now();
-        recorder = new MediaRecorder(stream, { mimeType });
+        recorder = new MediaRecorder(cleanAudioDest.stream, { mimeType });
 
         recorder.ondataavailable = (e) => {
           if (e.data && e.data.size > 0) {
@@ -769,16 +792,16 @@ export default function SusyRealtimeCallModal({
           return;
         }
 
-        // Umbral dinámico adaptativo calibrado según el entorno real
-        const dynamicThreshold = Math.max(10, noiseFloorRef.current + 5);
+        // Umbral dinámico adaptativo calibrado según el entorno real con DSP activo
+        const dynamicThreshold = Math.max(12, noiseFloorRef.current + 6);
 
         if (avg > dynamicThreshold) {
           silenceStartRef.current = null;
           if (!isSpeakingRef.current) {
             if (voiceStartRef.current === null) {
               voiceStartRef.current = now;
-            } else if (now - voiceStartRef.current >= 180) {
-              // 🛡️ Detección de habla humana sostenida (>180ms) para descartar ruidos y clics breves
+            } else if (now - voiceStartRef.current >= 200) {
+              // 🛡️ Detección de habla humana sostenida (>200ms) para descartar ruidos y clics breves
               isSpeakingRef.current = true;
               voiceStartRef.current = null;
               speechStartTimeRef.current = now;

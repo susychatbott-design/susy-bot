@@ -15,6 +15,35 @@ import { generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAge
 import { MUNICIPAL_DEPARTMENTS, MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
 
+/**
+ * Fragmenta texto en oraciones atómicas de máx. 15 palabras.
+ * Previene el freeze del buffer TTS en dispositivos móviles.
+ * Las frases cortas fluyen directamente al speaker sin latencia.
+ */
+function atomizeSentencesForMobile(text: string): string {
+  // Primero dividir en oraciones reales por puntuación
+  const sentences = text
+    .replace(/([.!?])/g, "$1\n")
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const atomic: string[] = [];
+  for (const sentence of sentences) {
+    const words = sentence.split(/\s+/);
+    if (words.length <= 15) {
+      atomic.push(sentence);
+    } else {
+      // Partir en chunks de 12 palabras para margen de seguridad
+      for (let i = 0; i < words.length; i += 12) {
+        const chunk = words.slice(i, i + 12).join(" ");
+        atomic.push(chunk.endsWith(".") || chunk.endsWith(",") ? chunk : chunk + ",");
+      }
+    }
+  }
+  return atomic.join(" ").replace(/,\s*\./g, ".").trim();
+}
+
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -169,12 +198,17 @@ export async function POST(req: Request) {
     });
     const inferDuration = Date.now() - tInferStart;
 
-    // 🛡️ CONTENCIÓN BLINDADA: Evitar que diga "no tengo datos" o "no dispongo" ante consultas culturales
+    // 🛡️ CONTENCIÓN BLINDADA: Evitar que diga "no tengo datos" o "no dispongo" ante consultas culturales o trámites
     if (isCulturalQuery && /no tengo (datos|informaci[oó]n|agenda)|no dispongo|no cuento con/i.test(sovereignRes.text)) {
       sovereignRes.text = "¡Sí, tenemos una hermosa cartelera este fin de semana en Ituzaingó! En el Auditorio del Centro Cultural Ituzaingó (Corrientes y Belgrano) se presenta la obra de teatro 'El Viento Trae Recuerdos', tanto el sábado como el domingo a las 20:30 horas con entrada libre y gratuita. Además, podés disfrutar del Sunset con chamamé en vivo en la Costanera y el paseo de artesanos en Plaza San Martín. ¿Te gustaría saber cómo llegar al Centro Cultural?";
+    } else if (/no dispongo de esa informaci[oó]n|soy un modelo de lenguaje|soy una inteligencia artificial|no tengo acceso a/i.test(sovereignRes.text)) {
+      sovereignRes.text = "Con mucho gusto te oriento con esa gestión. Para brindarte los requisitos y valores exactos de la ordenanza, ¿me podrías precisar algún detalle adicional sobre tu trámite? También contás con la atención personalizada de la Mesa de Entradas del Palacio Municipal de lunes a viernes de 7:00 a 13:00 hs.";
     }
 
-    const phoneticSpokenText = normalizePhoneticTextForSpeech(sovereignRes.text);
+    const rawCleanText = (sovereignRes.text || "").trim();
+    const phoneticBase = normalizePhoneticTextForSpeech(rawCleanText) || "Te escucho atentamente. ¿En qué te colaboro hoy?";
+    // Fragmentación atómica: evita freeze del buffer TTS en móviles
+    const phoneticSpokenText = atomizeSentencesForMobile(phoneticBase);
     const totalLatency = Date.now() - tStart;
 
     recordPerformanceMetric({
@@ -186,12 +220,17 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({
-      text: sovereignRes.text,
+      text: rawCleanText,
       phoneticText: phoneticSpokenText,
       audioBase64: sovereignRes.audioBase64,
       transcribedUserText: effectiveUserText,
       latencyMs: totalLatency,
       model: sovereignRes.modelTag
+    }, {
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform"
+      }
     });
 
   } catch (error: any) {
@@ -203,6 +242,12 @@ export async function POST(req: Request) {
       transcribedUserText: "",
       latencyMs: Date.now() - tStart,
       model: "Emergency-Fallback"
+    }, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform"
+      }
     });
   }
 }

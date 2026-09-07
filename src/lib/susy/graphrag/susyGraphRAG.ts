@@ -34,12 +34,12 @@ export async function queryMunicipalGraphRAG(
   queryEmbedding: number[] | null,
   rawQueryText: string,
   options: GraphRAGContextOptions = {}
-): Promise<{ contextText: string; nodes: GraphRAGNodeResult[] }> {
+): Promise<{ contextText: string; nodes: GraphRAGNodeResult[]; maxConfidence: number }> {
   if (!supabase) {
-    return { contextText: "", nodes: [] };
+    return { contextText: "", nodes: [], maxConfidence: 0 };
   }
 
-  const threshold = options.threshold ?? 0.5;
+  const threshold = options.threshold ?? 0.72;
   const maxSeeds = options.maxSeeds ?? 3;
   const maxDepth = options.maxDepth ?? 2;
 
@@ -55,8 +55,9 @@ export async function queryMunicipalGraphRAG(
 
       if (!error && Array.isArray(data) && data.length > 0) {
         const nodes: GraphRAGNodeResult[] = data;
+        const maxConfidence = nodes.reduce((max, n) => Math.max(max, n.similitud_coseno || 0), 0);
         const formattedContext = formatGraphResultsToContext(nodes);
-        return { contextText: formattedContext, nodes };
+        return { contextText: formattedContext, nodes, maxConfidence };
       }
     } catch (rpcErr) {
       console.warn("[GraphRAG RPC Fallback]:", rpcErr);
@@ -94,7 +95,8 @@ export async function queryMunicipalGraphRAG(
 
         return {
           contextText: formatGraphResultsToContext(simulatedNodes),
-          nodes: simulatedNodes
+          nodes: simulatedNodes,
+          maxConfidence: 0.85
         };
       }
     }
@@ -102,7 +104,7 @@ export async function queryMunicipalGraphRAG(
     console.warn("[GraphRAG Text Fallback]:", textErr);
   }
 
-  return { contextText: "", nodes: [] };
+  return { contextText: "", nodes: [], maxConfidence: 0 };
 }
 
 /**
