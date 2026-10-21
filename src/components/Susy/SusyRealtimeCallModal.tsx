@@ -369,6 +369,7 @@ export default function SusyRealtimeCallModal({
 
       stopSusySpeech();
       isSusySpeakingRef.current = true;
+      vadLockoutUntilRef.current = Date.now() + 1500; // 🛡️ Lockout de 1500ms para silenciar VAD ante eco del parlante
       liveTranscriptRef.current = "";
       if (micStreamRef.current) {
         micStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
@@ -391,19 +392,19 @@ export default function SusyRealtimeCallModal({
 
       setAccessibleAnnouncement("Susy está respondiendo.");
 
-      // Reproducción continua de texto completo mediante SpeechSynthesis con Heartbeat
+      // Reproducción continua mediante cola de frases atómicas (erradica freeze móvil en segundo renglón)
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
           window.speechSynthesis.cancel();
 
-          const spokenText = customPhoneticText || normalizePhoneticTextForSpeech(fullText);
-          const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 8) * 1000) + 8000);
+          // 🛡️ Segmentación Atómica en Frases: Erradica el congelamiento del segundo renglón en móviles
+          const rawSentences = spokenText
+            .split(/(?<=[.!?])\s+|\n+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
 
-          const utterance = new SpeechSynthesisUtterance(spokenText);
-          activeUtteranceRef.current = utterance; // 🛡️ Evita Garbage Collection prematuro en Chrome/Edge
-          utterance.lang = "es-AR";
-          utterance.rate = 1.02;
-          utterance.pitch = 1.05;
+          const sentences = rawSentences.length > 0 ? rawSentences : [spokenText];
+          const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 7) * 1000) + 6000);
 
           const voices = window.speechSynthesis.getVoices();
           const spanishVoice = voices.find(v =>
@@ -411,35 +412,51 @@ export default function SusyRealtimeCallModal({
             (v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("paulina") || v.name.toLowerCase().includes("elena") || v.name.toLowerCase().includes("sabina") || v.name.toLowerCase().includes("monica") || v.name.toLowerCase().includes("natural"))
           ) || voices.find(v => v.lang.startsWith("es"));
 
-          if (spanishVoice) {
-            utterance.voice = spanishVoice;
-          }
-
-          utterance.onstart = () => {
-            resetSpeechHeartbeat(estimatedDurationMs);
-          };
-
-          utterance.onend = () => {
-            clearSpeechHeartbeat();
-            activeUtteranceRef.current = null;
-            isSusySpeakingRef.current = false;
-            if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
-            // Delay de seguridad de 350ms para evitar que el micrófono capture el eco final
-            cooldownTimerRef.current = setTimeout(() => {
-              resumeListening();
-            }, 500);
-          };
-
-          utterance.onerror = (err) => {
-            console.warn("[SpeechSynthesis Error]:", err);
-            clearSpeechHeartbeat();
-            activeUtteranceRef.current = null;
-            isSusySpeakingRef.current = false;
-            resumeListening();
-          };
-
           resetSpeechHeartbeat(estimatedDurationMs);
-          window.speechSynthesis.speak(utterance);
+
+          let currentSentenceIndex = 0;
+
+          const playSentenceQueue = () => {
+            if (!isSusySpeakingRef.current) return;
+
+            if (currentSentenceIndex >= sentences.length) {
+              clearSpeechHeartbeat();
+              activeUtteranceRef.current = null;
+              isSusySpeakingRef.current = false;
+              vadLockoutUntilRef.current = Date.now() + 600; // 🛡️ Lockout post-locución para evitar eco final
+              if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+              cooldownTimerRef.current = setTimeout(() => {
+                resumeListening();
+              }, 600);
+              return;
+            }
+
+            const sentence = sentences[currentSentenceIndex];
+            const utterance = new SpeechSynthesisUtterance(sentence);
+            activeUtteranceRef.current = utterance;
+            utterance.lang = "es-AR";
+            utterance.rate = 1.02;
+            utterance.pitch = 1.05;
+
+            if (spanishVoice) {
+              utterance.voice = spanishVoice;
+            }
+
+            utterance.onend = () => {
+              currentSentenceIndex++;
+              playSentenceQueue();
+            };
+
+            utterance.onerror = (err) => {
+              console.warn("[SpeechSynthesis Chunk Error]:", err);
+              currentSentenceIndex++;
+              playSentenceQueue();
+            };
+
+            window.speechSynthesis.speak(utterance);
+          };
+
+          playSentenceQueue();
           return;
         } catch (e) {
           console.warn("[SpeechSynthesis Error]:", e);
@@ -451,7 +468,7 @@ export default function SusyRealtimeCallModal({
         resumeListening();
       }, 3500);
     },
-    [clearSpeechHeartbeat, isMuted, playAccessibleChime, resetSpeechHeartbeat, resumeListening, stopSusySpeech]
+    [clearSpeechHeartbeat, isMuted, playAccessibleChime, resetSpeechHeartbeat, resumeListening, stopSusySpeech, useSystemScreenReader]
   );
 
   // 6. Protocolo SOS Lazarillo Híbrido
@@ -699,7 +716,7 @@ export default function SusyRealtimeCallModal({
           }
         };
 
-        recorder.start(80);
+        recorder.start(350);
         mediaRecorderRef.current = recorder;
       };
 
@@ -724,7 +741,7 @@ export default function SusyRealtimeCallModal({
             rec.interimResults = true;
             rec.lang = "es-AR";
             rec.onresult = (e: any) => {
-              if (isSusySpeakingRef.current || isProcessingRef.current) return;
+              if (isSusySpeakingRef.current || isProcessingRef.current || Date.now() < vadLockoutUntilRef.current) return;
               let cur = "";
               for (let i = e.resultIndex; i < e.results.length; ++i) {
                 cur += e.results[i][0].transcript;
@@ -771,13 +788,15 @@ export default function SusyRealtimeCallModal({
         const now = Date.now();
 
         // 🛡️ Calibración continua del piso de ruido ambiental (Adaptive Noise Floor)
-        if (!isSpeakingRef.current && !isSusySpeakingRef.current && !isProcessingRef.current) {
+        if (!isSpeakingRef.current && !isSusySpeakingRef.current && !isProcessingRef.current && now >= vadLockoutUntilRef.current) {
           noiseFloorRef.current = Math.min(32, Math.max(6, noiseFloorRef.current * 0.95 + avg * 0.05));
         }
 
-        // 🛡️ PROTECCIÓN ANTI-CORTE: Mientras Susy habla, evitar que su propia voz corte la llamada
-        if (isSusySpeakingRef.current) {
+        // 🛡️ PROTECCIÓN ANTI-CORTE Y DEBOUNCE VAD: Ignorar audio mientras Susy habla y durante el lockout de 1500ms
+        if (isSusySpeakingRef.current || now < vadLockoutUntilRef.current) {
           interruptionSoundStartRef.current = null;
+          voiceStartRef.current = null;
+          isSpeakingRef.current = false;
           animFrameRef.current = requestAnimationFrame(monitorAudioLoop);
           return;
         }
