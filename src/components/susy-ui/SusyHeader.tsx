@@ -15,6 +15,7 @@ import {
   Building2,
   Store,
   Newspaper,
+  MoreVertical,
 } from "lucide-react";
 import { SusyMode, SusyProfileId, resolveCanonicalProfileId } from "@/lib/prompts";
 import { exportNoraCleanWord, exportNoraCleanPdf, exportNoraCleanPptx } from "@/lib/exportUtils";
@@ -61,10 +62,10 @@ const MODE_CONFIGS: Record<
 };
 
 /**
- * SusyHeader: Cabecera dinámica de Susy Bot Municipal (Ituzaingó).
- * Muestra estado de red en vivo (Online / Off-Grid), selector de modo cognitivo
- * (Concierge Municipal / Lazarillo / TEA), telemetría del motor STT, accesos rápidos
- * a módulos municipales y botón de pánico SOS que dispara el protocolo híbrido (Cloud / SMS).
+ * SusyHeader: Cabecera Mobile-First 100% adaptativa de Susy Bot Municipal (Nexora One).
+ * - Los botones críticos ("Llamar" y "SOS") están SIEMPRE visibles en todas las resoluciones (min 48x48px).
+ * - Las herramientas secundarias (Oficinas, Guía Comercial, Prensa, Exportar Word/PDF/PPTX, Compartir QR)
+ *   se agrupan en un menú desplegable accesible desde móvil y escritorio sin desbordar la pantalla.
  */
 export function SusyHeader({
   currentMode,
@@ -82,7 +83,7 @@ export function SusyHeader({
   deviceLatitude = null,
   deviceLongitude = null,
 }: SusyHeaderProps) {
-  const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [showActionsMenu, setShowActionsMenu] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(true);
   const [isDispatchingSOS, setIsDispatchingSOS] = useState<boolean>(false);
 
@@ -111,7 +112,7 @@ export function SusyHeader({
   };
 
   const handleExport = (type: "word" | "pdf" | "pptx"): void => {
-    setShowExportMenu(false);
+    setShowActionsMenu(false);
     const content = formatConversationForExport();
     if (type === "word") {
       exportNoraCleanWord("Reporte Municipal - Susy Bot Ituzaingó", content);
@@ -143,7 +144,6 @@ export function SusyHeader({
         window.location.href = result.smsUri;
       }
     } catch {
-      // Si no hay contactos personalizados, abrir el modal de emergencia municipal (107 / 100 / 103 / 911)
       if (onTriggerSOSModal) {
         onTriggerSOSModal(undefined);
       }
@@ -154,45 +154,26 @@ export function SusyHeader({
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 w-full z-40 bg-slate-950/95 backdrop-blur-md shrink-0 border-b border-white/10 px-2 sm:px-4 flex items-center justify-between box-border"
+      className="fixed top-0 left-0 right-0 w-full z-40 bg-slate-950/95 backdrop-blur-md shrink-0 border-b border-white/10 px-2 sm:px-4 flex items-center justify-between gap-1.5 box-border"
       style={{
         paddingTop: "max(8px, env(safe-area-inset-top))",
         paddingBottom: "8px",
-        minHeight: "58px",
+        minHeight: "62px",
       }}
     >
-      {/* BLOQUE IZQUIERDO: HISTORIAL, IDENTIDAD MUNICIPAL & SELECTOR DE PERFIL COGNITIVO */}
-      <div className="flex items-center gap-1 sm:gap-2.5 shrink-0 min-w-0">
+      {/* BLOQUE IZQUIERDO: HISTORIAL & SELECTOR DE MODO COGNITIVO */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0 min-w-0">
         {onToggleHistory && (
           <button
             type="button"
             onClick={onToggleHistory}
-            className="min-w-[44px] min-h-[44px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center justify-center min-w-[48px] min-h-[48px] p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 transition-colors cursor-pointer active:scale-95 shrink-0"
             title="Abrir historial de sesiones ciudadanas"
             aria-label="Abrir historial de sesiones ciudadanas"
           >
-            <Menu size={18} />
+            <Menu size={20} />
           </button>
         )}
-
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          <img
-            src="/icons/icon-192x192.png"
-            alt="Susy Bot Ituzaingó"
-            className="w-8 h-8 rounded-full border border-indigo-500/50 object-cover shadow-sm shrink-0"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-          <div className="hidden lg:block">
-            <div className="text-xs font-extrabold text-white tracking-wide leading-none">
-              SUSY BOT • ITUZAINGÓ
-            </div>
-            <div className="text-[10px] text-emerald-400 font-medium mt-0.5">
-              Nexora One • IA Cívica Municipal
-            </div>
-          </div>
-        </div>
 
         {/* SELECTOR DE MODO COGNITIVO (EJECUTIVO / LAZARILLO / TEA) */}
         <div
@@ -211,7 +192,7 @@ export function SusyHeader({
                 onClick={() => onModeChange(m)}
                 aria-pressed={isSelected}
                 title={cfg.label}
-                className={`min-h-[36px] flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`min-w-[40px] min-h-[40px] flex items-center justify-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   isSelected
                     ? "bg-indigo-600/35 text-indigo-200 border border-indigo-500/40 shadow-xs"
                     : "text-slate-400 hover:text-slate-200"
@@ -225,157 +206,168 @@ export function SusyHeader({
         </div>
       </div>
 
-      {/* BLOQUE DERECHO: RED, TELEMETRÍA STT, MÓDULOS MUNICIPALES, SOS Y LLAMADA EN VIVO */}
+      {/* BLOQUE DERECHO: BOTONES CRÍTICOS SIEMPRE VISIBLES (LLAMAR + SOS) Y MENÚ AGRUPADO */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* ESTADO DE RED (ONLINE / OFF-GRID) */}
+        {/* INDICADOR DE ESTADO DE RED */}
         <div
-          className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${
+          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${
             isOnline
               ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
               : "bg-amber-500/15 border-amber-500/40 text-amber-300 animate-pulse"
           }`}
           title={
             isOnline
-              ? "Conectado a la Red Municipal y Digesto Cloud"
-              : "Modo Autónomo Off-Grid Activo (Resiliencia Local)"
+              ? `Conectado • Motor ${audioEngine === "native-edge" ? "Edge" : "Whisper"}`
+              : "Modo Autónomo Off-Grid Activo"
           }
         >
-          {isOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
-          <span className="hidden xl:inline">{isOnline ? "Online" : "Off-Grid"}</span>
-        </div>
-
-        {/* TELEMETRÍA DEL MOTOR DE VOZ STT */}
-        <div
-          className={`hidden 2xl:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium border ${
-            audioEngine === "native-edge"
-              ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
-              : "bg-indigo-500/10 border-indigo-500/30 text-indigo-300"
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              audioEngine === "native-edge" ? "bg-amber-400" : "bg-indigo-400"
-            }`}
-          />
-          <span>{audioEngine === "native-edge" ? "STT: Edge" : "STT: Whisper"}</span>
+          {isOnline ? <Wifi size={13} /> : <WifiOff size={13} />}
+          <span className="hidden lg:inline">{isOnline ? "Online" : "Off-Grid"}</span>
         </div>
 
         {isStreaming && (
-          <div className="hidden md:flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-medium animate-pulse">
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-medium animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span>Procesando</span>
+            <span className="hidden sm:inline">Procesando</span>
           </div>
         )}
 
-        {/* ACCESOS RÁPIDOS MUNICIPALES (OFICINAS / GUÍA COMERCIAL / PRENSA) */}
-        {onToggleOfficesGrid && (
-          <button
-            type="button"
-            onClick={onToggleOfficesGrid}
-            className="hidden lg:flex items-center justify-center min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 transition-colors cursor-pointer"
-            title="Secretarías y Oficinas Municipales de Ituzaingó"
-          >
-            <Building2 size={15} />
-          </button>
-        )}
-
-        {onOpenCommerceGuide && (
-          <button
-            type="button"
-            onClick={onOpenCommerceGuide}
-            className="hidden lg:flex items-center justify-center min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-amber-300 hover:text-amber-200 border border-amber-500/20 transition-colors cursor-pointer"
-            title="Guía Comercial Oficial de Ituzaingó"
-          >
-            <Store size={15} />
-          </button>
-        )}
-
-        {onOpenPressModal && (
-          <button
-            type="button"
-            onClick={onOpenPressModal}
-            className="hidden xl:flex items-center justify-center min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-sky-300 hover:text-sky-200 border border-sky-500/20 transition-colors cursor-pointer"
-            title="Boletín y Gacetillas de Prensa Municipal"
-          >
-            <Newspaper size={15} />
-          </button>
-        )}
-
-        {/* MENÚ DE EXPORTACIÓN DOCUMENTAL (WORD / PDF / PPTX) */}
-        <div className="relative hidden sm:block">
-          <button
-            type="button"
-            onClick={() => setShowExportMenu((v) => !v)}
-            className="min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 border border-white/10 transition-colors flex items-center justify-center cursor-pointer"
-            title="Exportar conversación (Word, PDF, PowerPoint)"
-            aria-label="Exportar conversación"
-          >
-            <FileDown size={15} />
-          </button>
-          {showExportMenu && (
-            <div className="absolute right-0 mt-1.5 w-36 bg-slate-900 border border-white/15 rounded-xl shadow-2xl overflow-hidden py-1 z-50">
-              <button
-                type="button"
-                onClick={() => handleExport("word")}
-                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-              >
-                <span>Word (.doc)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleExport("pdf")}
-                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-              >
-                <span>Documento PDF</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleExport("pptx")}
-                className="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
-              >
-                <span>PowerPoint (.pptx)</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* BOTÓN COMPARTIR / SINCRONIZAR TÓTEM QR */}
-        {onOpenShareModal && (
-          <button
-            type="button"
-            onClick={onOpenShareModal}
-            className="hidden sm:flex min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 transition-colors items-center justify-center cursor-pointer"
-            title="Compartir o vincular por Código QR"
-            aria-label="Compartir o vincular por Código QR"
-          >
-            <Share2 size={15} />
-          </button>
-        )}
-
-        {/* 🚨 BOTÓN DE PÁNICO SOS (PROTOCOLO HÍBRIDO CLOUD / SMS SATELITAL) */}
+        {/* 🚨 BOTÓN CRÍTICO 1: PÁNICO SOS (SIEMPRE VISIBLE EN MÓVIL Y PC, MIN 48x48px) */}
         <button
           type="button"
           onClick={handlePanicSOSClick}
           disabled={isDispatchingSOS}
-          className="min-w-[48px] min-h-[48px] flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-extrabold shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1.5 min-w-[48px] min-h-[48px] px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-extrabold shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all cursor-pointer shrink-0"
           title="Botón de Pánico SOS y Emergencias de Ituzaingó (107 / 100 / 103)"
           aria-label="Activar protocolo de emergencia SOS"
         >
-          <Siren size={16} className={isDispatchingSOS ? "animate-spin" : "animate-pulse"} />
+          <Siren size={17} className={isDispatchingSOS ? "animate-spin" : "animate-pulse"} />
           <span>SOS</span>
         </button>
 
-        {/* 📞 LLAMADA DE VOZ EN TIEMPO REAL — SIEMPRE VISIBLE EN MÓVIL Y ESCRITORIO (48x48px+) */}
+        {/* 📞 BOTÓN CRÍTICO 2: LLAMADA DE VOZ EN TIEMPO REAL (SIEMPRE VISIBLE EN MÓVIL Y PC, MIN 48x48px) */}
         <button
           type="button"
           onClick={onOpenCallModal}
-          className="flex items-center justify-center gap-1.5 min-w-[48px] min-h-[48px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1.5 min-w-[48px] min-h-[48px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all cursor-pointer shrink-0"
           title="Llamada de voz en vivo con Susy Bot"
           aria-label="Iniciar llamada de voz en vivo con Susy Bot"
         >
-          <PhoneCall size={16} />
+          <PhoneCall size={17} />
           <span>Llamar</span>
         </button>
+
+        {/* MENÚ AGRUPADO DE HERRAMIENTAS MUNICIPALES Y EXPORTACIÓN (MÓVIL Y ESCRITORIO) */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowActionsMenu((v) => !v)}
+            className="flex items-center justify-center min-w-[48px] min-h-[48px] p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-white/10 transition-colors cursor-pointer active:scale-95"
+            title="Más herramientas municipales, exportar y compartir"
+            aria-label="Abrir menú de herramientas municipales y exportación"
+          >
+            <MoreVertical size={18} />
+          </button>
+
+          {showActionsMenu && (
+            <div className="absolute right-0 mt-2 w-56 bg-slate-900 border border-white/15 rounded-2xl shadow-2xl overflow-hidden py-1.5 z-50">
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/10">
+                Módulos Municipales
+              </div>
+
+              {onToggleOfficesGrid && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActionsMenu(false);
+                    onToggleOfficesGrid();
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <Building2 size={15} className="text-indigo-400" />
+                  <span>Secretarías y Oficinas</span>
+                </button>
+              )}
+
+              {onOpenCommerceGuide && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActionsMenu(false);
+                    onOpenCommerceGuide();
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <Store size={15} className="text-amber-400" />
+                  <span>Guía Comercial Ituzaingó</span>
+                </button>
+              )}
+
+              {onOpenPressModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActionsMenu(false);
+                    onOpenPressModal();
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <Newspaper size={15} className="text-sky-400" />
+                  <span>Boletín de Prensa Oficial</span>
+                </button>
+              )}
+
+              {onOpenShareModal && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowActionsMenu(false);
+                    onOpenShareModal();
+                  }}
+                  className="w-full text-left px-3.5 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+                >
+                  <Share2 size={15} className="text-emerald-400" />
+                  <span>Compartir / Código QR</span>
+                </button>
+              )}
+
+              <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-y border-white/10 mt-1">
+                Exportar Conversación
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleExport("word")}
+                className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+              >
+                <FileDown size={14} className="text-sky-400" />
+                <span>Descargar Word (.doc)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExport("pdf")}
+                className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+              >
+                <FileDown size={14} className="text-rose-400" />
+                <span>Imprimir / Guardar PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExport("pptx")}
+                className="w-full text-left px-3.5 py-2 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2.5 cursor-pointer"
+              >
+                <FileDown size={14} className="text-amber-400" />
+                <span>Presentación PowerPoint (.pptx)</span>
+              </button>
+
+              <div className="px-3.5 py-2 bg-slate-950/90 border-t border-white/10 text-[10px] text-slate-400">
+                <div className="font-bold text-slate-200">Nexora One</div>
+                <div>Tel: 3786414533</div>
+                <div className="truncate">mjnexora.visual@gmail.com</div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

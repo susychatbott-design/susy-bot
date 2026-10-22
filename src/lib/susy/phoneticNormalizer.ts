@@ -21,8 +21,6 @@ export function normalizePhoneticTextForSpeech(rawText: string): string {
   // 1. Reemplazos Fonéticos de Marca y Acrónimos Clave
   text = text
     .replace(/\bNexora\s*One\b/gi, "Néxora Uan")
-    .replace(/\bMyJNexoraVisual\b/gi, "Néxora Uan")
-    .replace(/\bMyJNexora\b/gi, "Néxora Uan")
     .replace(/\bNexoraVisual\b/gi, "Néxora Uan")
     .replace(/\bNexora\b/gi, "Néxora")
     .replace(/\bSusybot\b/gi, "Susy")

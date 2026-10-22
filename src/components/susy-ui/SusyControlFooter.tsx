@@ -33,9 +33,10 @@ export interface SusyControlFooterProps {
 }
 
 /**
- * SusyControlFooter: Barra inferior de control multimodal accesible (DUA).
- * Todos los botones interactivos respetan un hit-box mínimo de 48x48px (WCAG 2.1 AAA / Diseño Universal)
- * e integra controles para Cámara Titán, adjuntos, micrófono STT dual, llamada en vivo y firma Nexora One.
+ * SusyControlFooter: Barra inferior Mobile-First de control multimodal accesible (DUA).
+ * - Todos los botones de acción tienen un hit-box mínimo de 48x48px con padding táctil `p-3`.
+ * - Integra controles para Cámara Titán, adjuntar imagen, micrófono STT dual, llamada en vivo y envío.
+ * - Muestra la firma oficial de Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com).
  */
 export function SusyControlFooter({
   inputText,
@@ -85,9 +86,9 @@ export function SusyControlFooter({
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 w-full z-50 border-t border-white/10 bg-slate-950/95 backdrop-blur-md p-2 sm:p-3 sm:px-6 box-border"
+      className="fixed bottom-0 left-0 right-0 w-full z-50 border-t border-white/10 bg-slate-950/95 backdrop-blur-md p-2.5 sm:p-3 sm:px-6 box-border"
       style={{
-        paddingBottom: "max(8px, env(safe-area-inset-bottom))",
+        paddingBottom: "max(10px, env(safe-area-inset-bottom))",
       }}
     >
       {/* PREVIEW DE IMAGEN / DOCUMENTO ADJUNTO */}
@@ -113,13 +114,13 @@ export function SusyControlFooter({
         </div>
       )}
 
-      {/* BARRA MULTIMODAL DE HIT-BOX ACCESIBLE (MIN 48x48px) */}
-      <div className="w-full max-w-5xl mx-auto flex items-center gap-1 sm:gap-2 bg-slate-900/95 border border-white/15 rounded-2xl px-1.5 sm:px-2 py-1.5 shadow-inner">
-        {/* 1. BOTÓN CÁMARA TITÁN (48x48px) */}
+      {/* BARRA MULTIMODAL DE HIT-BOX ACCESIBLE (MIN 48x48px CON PADDING p-3) */}
+      <div className="w-full max-w-5xl mx-auto flex items-center gap-1.5 sm:gap-2 bg-slate-900/95 border border-white/15 rounded-2xl p-1.5 sm:p-2 shadow-inner">
+        {/* 1. BOTÓN CÁMARA TITÁN (48x48px, p-3) */}
         <button
           type="button"
           onClick={onToggleCamera}
-          className={`flex min-w-[48px] min-h-[48px] rounded-xl items-center justify-center transition-all shrink-0 cursor-pointer ${
+          className={`flex min-w-[48px] min-h-[48px] p-3 rounded-xl items-center justify-center transition-all shrink-0 cursor-pointer ${
             isCameraActive
               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
               : "text-slate-300 hover:text-white hover:bg-slate-800"
@@ -135,11 +136,11 @@ export function SusyControlFooter({
           <Camera size={20} />
         </button>
 
-        {/* 2. BOTÓN ADJUNTAR IMAGEN / BOLETA (48x48px) */}
+        {/* 2. BOTÓN ADJUNTAR IMAGEN / BOLETA (48x48px, p-3) */}
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex min-w-[48px] min-h-[48px] rounded-xl items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+          className="flex min-w-[48px] min-h-[48px] p-3 rounded-xl items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
           title="Adjuntar foto de reclamo urbano, carnet o boleta municipal"
           aria-label="Adjuntar fotografía o documento"
         >
@@ -155,11 +156,11 @@ export function SusyControlFooter({
           aria-hidden="true"
         />
 
-        {/* 3. BOTÓN MICRÓFONO STT DUAL / BARGE-IN MANUAL (48x48px) */}
+        {/* 3. BOTÓN MICRÓFONO STT DUAL / BARGE-IN (48x48px, p-3) */}
         <button
           type="button"
           onClick={onToggleRecording}
-          className={`flex min-w-[48px] min-h-[48px] rounded-xl items-center justify-center transition-all shrink-0 cursor-pointer ${
+          className={`flex min-w-[48px] min-h-[48px] p-3 rounded-xl items-center justify-center transition-all shrink-0 cursor-pointer ${
             isRecording
               ? "bg-rose-500/25 text-rose-400 border border-rose-500/40 animate-pulse"
               : isTranscribing
@@ -179,12 +180,12 @@ export function SusyControlFooter({
           )}
         </button>
 
-        {/* 4. BOTÓN DE LLAMADA DE VOZ EN TIEMPO REAL — VISIBLE EN TODAS LAS RESOLUCIONES (48x48px) */}
+        {/* 4. BOTÓN DE LLAMADA EN VIVO ACCESIBLE EN MÓVIL Y PC (48x48px, p-3) */}
         {onOpenCallModal && (
           <button
             type="button"
             onClick={onOpenCallModal}
-            className="flex min-w-[48px] min-h-[48px] rounded-xl items-center justify-center bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 transition-all shrink-0 cursor-pointer active:scale-95"
+            className="flex min-w-[48px] min-h-[48px] p-3 rounded-xl items-center justify-center bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 transition-all shrink-0 cursor-pointer active:scale-95"
             title="Iniciar llamada de voz en tiempo real con Susy Bot"
             aria-label="Iniciar llamada de voz en tiempo real con Susy Bot"
           >
@@ -192,12 +193,12 @@ export function SusyControlFooter({
           </button>
         )}
 
-        {/* 5. BOTÓN OPCIONAL VAD MANOS LIBRES (48x48px) */}
+        {/* 5. BOTÓN VAD MANOS LIBRES (48x48px, p-3) */}
         {onToggleVAD && (
           <button
             type="button"
             onClick={onToggleVAD}
-            className={`hidden md:flex min-w-[48px] min-h-[48px] rounded-xl items-center justify-center transition-all shrink-0 cursor-pointer ${
+            className={`flex min-w-[48px] min-h-[48px] p-3 rounded-xl items-center justify-center transition-all shrink-0 cursor-pointer ${
               isVADListening
                 ? isUserSpeakingVAD
                   ? "bg-emerald-500/30 text-emerald-300 border border-emerald-400 animate-pulse"
@@ -206,8 +207,8 @@ export function SusyControlFooter({
             }`}
             title={
               isVADListening
-                ? "Desactivar escucha continua manos libres (VAD)"
-                : "Activar escucha continua manos libres (VAD)"
+                ? "Desactivar escucha continua manos libres (True Barge-in VAD)"
+                : "Activar escucha continua manos libres (True Barge-in VAD)"
             }
             aria-label="Alternar detección automática de voz VAD"
             aria-pressed={isVADListening}
@@ -230,16 +231,16 @@ export function SusyControlFooter({
               ? "Transcribiendo audio..."
               : placeholder
           }
-          className="flex-1 min-w-0 min-h-[48px] bg-transparent border-none text-white text-sm sm:text-base outline-none px-1.5 sm:px-2 placeholder:text-slate-400"
+          className="flex-1 min-w-0 min-h-[48px] bg-transparent border-none text-white text-sm sm:text-base outline-none px-2 placeholder:text-slate-400"
           aria-label="Mensaje para Susy Bot"
         />
 
-        {/* 7. BOTÓN ENVIAR (48x48px) */}
+        {/* 7. BOTÓN ENVIAR (48x48px, p-3) */}
         <button
           type="button"
           onClick={onSendMessage}
           disabled={!canSend}
-          className={`flex min-w-[48px] min-h-[48px] rounded-xl items-center justify-center transition-all shrink-0 ${
+          className={`flex min-w-[48px] min-h-[48px] p-3 rounded-xl items-center justify-center transition-all shrink-0 ${
             canSend
               ? "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shadow-md shadow-indigo-950/50 active:scale-95"
               : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
@@ -256,17 +257,17 @@ export function SusyControlFooter({
       </div>
 
       {/* FIRMA INSTITUCIONAL Y CONTACTO TÉCNICO NEXORA ONE */}
-      <div className="w-full max-w-5xl mx-auto mt-1 px-2 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+      <div className="w-full max-w-5xl mx-auto mt-1.5 px-2 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
         <span>
           Desarrollado por <strong className="text-slate-200">Nexora One</strong> • Municipalidad de Ituzaingó
         </span>
-        <span className="text-slate-400">
+        <span>
           Contacto Técnico:{" "}
-          <a href="tel:3786414533" className="text-indigo-400 hover:underline">
+          <a href="tel:3786414533" className="text-indigo-400 hover:underline font-medium">
             3786414533
           </a>{" "}
           •{" "}
-          <a href="mailto:mjnexora.visual@gmail.com" className="text-indigo-400 hover:underline">
+          <a href="mailto:mjnexora.visual@gmail.com" className="text-indigo-400 hover:underline font-medium">
             mjnexora.visual@gmail.com
           </a>
         </span>

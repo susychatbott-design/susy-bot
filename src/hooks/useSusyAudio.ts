@@ -195,10 +195,11 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
   }, []);
 
   /**
-   * HOTFIX BARGE-IN: Detiene inmediatamente (0ms) cualquier reproducción de audio en curso:
-   * 1. Sintetizador nativo (window.speechSynthesis.pause() + cancel())
-   * 2. Nodos Web Audio API (AudioBufferSourceNode / AudioContext de TTS neural)
-   * 3. Elementos <audio> HTML activos en ref o en el DOM
+   * KILL SWITCH ABSOLUTO (TRUE BARGE-IN):
+   * 1. window.speechSynthesis.cancel() ejecutado 2 veces separadas por 50ms (mitiga bug de Chrome/Android).
+   * 2. Recorre todos los HTMLAudioElement en ref y en el DOM (document.querySelectorAll('audio')),
+   *    ejecutando .pause(), .currentTime = 0 y .src = "".
+   * 3. Si existe un AudioContext activo, ejecuta .suspend() y .close().
    */
   const stopPlayback = useCallback((): void => {
     if (typeof window !== "undefined") {
@@ -206,6 +207,13 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
         try {
           window.speechSynthesis.pause();
           window.speechSynthesis.cancel();
+          setTimeout(() => {
+            try {
+              window.speechSynthesis.cancel();
+            } catch {
+              // Ignorar
+            }
+          }, 50);
         } catch {
           // Ignorar errores de cancelación
         }
@@ -222,9 +230,18 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
         activeBufferSourceRef.current = null;
       }
 
-      // Suspender/cerrar AudioContext de reproducción TTS si existiera
-      if (activeAudioContextRef.current && activeAudioContextRef.current.state === "running") {
-        activeAudioContextRef.current.suspend().catch(() => {});
+      // Suspender y cerrar AudioContext de reproducción TTS si existiera
+      if (activeAudioContextRef.current) {
+        try {
+          const ctx = activeAudioContextRef.current;
+          activeAudioContextRef.current = null;
+          if (ctx.state === "running") {
+            ctx.suspend().catch(() => {});
+          }
+          ctx.close().catch(() => {});
+        } catch {
+          // Ignorar
+        }
       }
 
       // Detener instancia <audio> en ref
@@ -232,21 +249,21 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
         try {
           activeHtmlAudioRef.current.pause();
           activeHtmlAudioRef.current.currentTime = 0;
+          activeHtmlAudioRef.current.src = "";
         } catch {
           // Ignorar
         }
         activeHtmlAudioRef.current = null;
       }
 
-      // Barrido defensivo de cualquier etiqueta <audio> reproduciéndose en el documento
+      // Barrido de todos los HTMLAudioElement en el DOM
       if (typeof document !== "undefined") {
         const audioElements = document.querySelectorAll("audio");
         audioElements.forEach((el) => {
           try {
-            if (!el.paused) {
-              el.pause();
-              el.currentTime = 0;
-            }
+            el.pause();
+            el.currentTime = 0;
+            el.src = "";
           } catch {
             // Ignorar
           }
@@ -391,7 +408,7 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: false,
+          autoGainControl: true,
         },
       });
 

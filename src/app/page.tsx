@@ -129,31 +129,79 @@ export default function SusyBotPage() {
 
   const vision = useSusyVision();
 
+  // Filtro anti-eco léxico: descarta transcripciones que sean fragmentos de la propia voz de Susy
+  const isSelfEchoFromAssistant = useCallback(
+    (candidateText: string): boolean => {
+      const cleanCandidate = candidateText
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, "")
+        .trim();
+      if (!cleanCandidate || cleanCandidate.length < 4) return false;
+
+      for (let i = chat.messages.length - 1; i >= 0; i--) {
+        if (chat.messages[i].role === "assistant") {
+          const cleanAssistant = chat.messages[i].content
+            .toLowerCase()
+            .replace(/[^\p{L}\p{N}\s]/gu, "")
+            .trim();
+          if (cleanAssistant && cleanAssistant.includes(cleanCandidate) && cleanCandidate.split(/\s+/).length >= 3) {
+            return true;
+          }
+          break;
+        }
+      }
+      return false;
+    },
+    [chat.messages]
+  );
+
   const audio = useSusyAudio({
     defaultMode: chat.activeMode,
     onTranscriptionComplete: (transcribedText: string) => {
       if (!transcribedText.trim()) return;
+      if (isSelfEchoFromAssistant(transcribedText)) {
+        return;
+      }
       handleSendUserQuery(transcribedText);
     },
   });
 
   const [vadEnabled, setVadEnabled] = useState<boolean>(false);
   const vad = useSusyVAD({
-    // 🔒 MUTEX ANTI-FEEDBACK: Solo escuchar si el vecino activó VAD y Susy NO está hablando
-    enabled: vadEnabled,
+    // TRUE BARGE-IN: El VAD permanece escuchando con AEC mientras Susy habla para permitir interrupción por voz
+    enabled: vadEnabled || audio.isSpeaking || audio.isPlaying,
     isSystemSpeaking: audio.isSpeaking || audio.isPlaying,
     onSpeechStart: () => {
-      // Si Susy está hablando por el altavoz, ignorar el disparo automático para evitar que se escuche a sí misma
-      if (audio.isSpeaking || audio.isPlaying) return;
+      // Kill Switch inmediato cuando el usuario comienza a hablar
+      audio.stopPlayback();
       if (chat.isStreaming || chat.isLoading) {
         chat.stopStreaming();
       }
     },
     onSpeechEnd: async (wavBlob: Blob) => {
-      if (audio.isSpeaking || audio.isPlaying) return;
       await audio.transcribeAudioBlob(wavBlob);
     },
   });
+
+  // 🚨 TRUE BARGE-IN REACTIVO: Si vad.userSpeaking === true, invocar stopPlayback() y stopStreaming() de inmediato
+  useEffect(() => {
+    if (!vad.userSpeaking) return;
+
+    if (audio.isSpeaking || audio.isPlaying) {
+      audio.stopPlayback();
+    }
+    if (chat.isStreaming || chat.isLoading) {
+      chat.stopStreaming();
+    }
+  }, [
+    vad.userSpeaking,
+    audio.isSpeaking,
+    audio.isPlaying,
+    audio.stopPlayback,
+    chat.isStreaming,
+    chat.isLoading,
+    chat.stopStreaming,
+  ]);
 
   // Activación física (3 sacudidas o presión de 3 segundos en pantalla) para Modo Lazarillo
   const activateLazarilloMode = useCallback(async () => {
@@ -396,8 +444,8 @@ export default function SusyBotPage() {
 
       {/* ÁREA CENTRAL DINÁMICA (CONMUTACIÓN ENTRE PANELES MUNICIPALES, CONVERSACIÓN Y ACCESIBILIDAD) */}
       <main
-        className={`flex-1 overflow-y-auto pt-16 px-3 sm:px-6 ${
-          shouldShowTEABoard ? "pb-52" : "pb-28"
+        className={`flex-1 overflow-y-auto pt-16 px-3 sm:px-6 scroll-pb-44 ${
+          shouldShowTEABoard ? "pb-64" : "pb-40 sm:pb-36"
         }`}
       >
         <div className="max-w-4xl mx-auto py-4 space-y-4">
