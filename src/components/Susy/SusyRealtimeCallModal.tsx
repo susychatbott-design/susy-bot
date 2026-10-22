@@ -319,9 +319,8 @@ export default function SusyRealtimeCallModal({
     }, timeout);
   }, [clearSpeechHeartbeat, resumeListening]);
 
-  // 3. Kill Switch / Barge-in: Detener audio de Susy y limpiar cola Fallback sin crashear el motor móvil
+  // 3. Kill Switch / Barge-in: Detener audio de Susy y limpiar cola Fallback con parche Anti-Crash (Fase 7.6)
   const stopSusySpeech = useCallback((allowNativeCancel = true) => {
-    const wasSpeaking = isSusySpeakingRef.current || isFallbackSpeakingRef.current;
     fallbackEpochRef.current += 1;
     clearSpeechHeartbeat();
 
@@ -332,29 +331,22 @@ export default function SusyRealtimeCallModal({
       u.onerror = null;
     });
 
+    // 🛡️ FASE 7.6: Parche de resiliencia estándar de Web Speech API:
+    // Verificar si está hablando o pausado, ejecutar `resume()` justo antes de `cancel()` para destrabar Safari/Chrome
+    if (allowNativeCancel && typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+          window.speechSynthesis.cancel();
+        }
+      } catch {}
+    }
+
     fallbackSentenceQueueRef.current = [];
     fallbackTextBufferRef.current = "";
     activeUtterancesRef.current = [];
     isFallbackSpeakingRef.current = false;
     isSusySpeakingRef.current = false;
-
-    // 🛡️ FASE 7.6: En Chrome móvil, `.cancel()` crashea el sintetizador nativo dejándolo mudo por el resto de la sesión.
-    // Solo invocar `.cancel()` en escritorio cuando realmente estaba hablando y se solicita corte explícito.
-    if (
-      allowNativeCancel &&
-      wasSpeaking &&
-      typeof window !== "undefined" &&
-      "speechSynthesis" in window
-    ) {
-      const isMobileBrowser =
-        typeof navigator !== "undefined" &&
-        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      if (!isMobileBrowser && window.speechSynthesis.speaking) {
-        try {
-          window.speechSynthesis.cancel();
-        } catch {}
-      }
-    }
 
     susyLive.interruptLivePlayback();
 
