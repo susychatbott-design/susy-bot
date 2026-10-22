@@ -763,6 +763,24 @@ export default function SusyRealtimeCallModal({
     setIsInitializing(true);
     setMicError(null);
 
+    // 🔓 Desbloqueo síncrono inmediato de Web Speech API en el gesto táctil (crítico para iOS Safari / Android Chrome)
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const unlockUtterance = new SpeechSynthesisUtterance(" ");
+        unlockUtterance.lang = "es-AR";
+        unlockUtterance.volume = 0.01;
+        unlockUtterance.rate = 2.0;
+        activeUtterancesRef.current.push(unlockUtterance);
+        unlockUtterance.onend = () => {
+          activeUtterancesRef.current = activeUtterancesRef.current.filter((u) => u !== unlockUtterance);
+        };
+        window.speechSynthesis.speak(unlockUtterance);
+      } catch (e) {
+        console.warn("[SpeechSynthesis Gesture Unlock Warning]:", e);
+      }
+    }
+
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = audioContextRef.current || new AudioCtx({ latencyHint: "interactive" });
@@ -866,7 +884,7 @@ export default function SusyRealtimeCallModal({
       };
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const SILENCE_TIMEOUT_MS = 2000;
+      const SILENCE_TIMEOUT_MS = 1350;
       const MAX_SPEECH_DURATION_MS = 45000;
 
       setIsEngineReady(true);
@@ -876,8 +894,17 @@ export default function SusyRealtimeCallModal({
       emitSinglePulse("CONFIRM_VOZ");
       setAccessibleAnnouncement("Conectado con Susy. Lista para escucharte.");
 
-      // Inicializar SpeechRecognition nativo en paralelo si el navegador lo soporta
-      if (typeof window !== "undefined") {
+      // Saludo audible inmediato al conectar para confirmar canal de voz activo en celular y escritorio
+      setTimeout(() => {
+        if (micStreamRef.current && !isProcessingRef.current) {
+          playRealSusyAudio(null, "Hola vecino, ya te escucho. Decime en qué te puedo ayudar hoy.");
+        }
+      }, 250);
+
+      // Inicializar SpeechRecognition nativo en paralelo solo en escritorio (en Android/iOS compite por el hardware del micrófono con MediaRecorder)
+      const isMobileDevice =
+        typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (typeof window !== "undefined" && !isMobileDevice) {
         const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
         if (SpeechRec) {
           try {
@@ -945,12 +972,14 @@ export default function SusyRealtimeCallModal({
 
         analyser.getByteFrequencyData(dataArray);
 
+        // Medir energía exclusivamente dentro de la banda vocal humana filtrada (80Hz - 3400Hz -> bins 1..24)
+        const voiceBandEnd = Math.min(dataArray.length, 24);
         let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
+        for (let i = 1; i < voiceBandEnd; i++) {
           sum += dataArray[i];
         }
-        const avg = sum / dataArray.length;
-        setAudioLevel(Math.min(100, Math.round(avg * 2.3)));
+        const avg = sum / Math.max(1, voiceBandEnd - 1);
+        setAudioLevel(Math.min(100, Math.round(avg * 1.4)));
 
         const now = Date.now();
 
