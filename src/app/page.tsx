@@ -139,38 +139,21 @@ export default function SusyBotPage() {
 
   const [vadEnabled, setVadEnabled] = useState<boolean>(false);
   const vad = useSusyVAD({
-    enabled: vadEnabled || audio.isSpeaking || autoSpeakResponses,
+    // 🔒 MUTEX ANTI-FEEDBACK: Solo escuchar si el vecino activó VAD y Susy NO está hablando
+    enabled: vadEnabled,
+    isSystemSpeaking: audio.isSpeaking || audio.isPlaying,
     onSpeechStart: () => {
-      // Interrupción inmediata (0ms) en el callback directo del detector VAD
-      audio.stopPlayback();
+      // Si Susy está hablando por el altavoz, ignorar el disparo automático para evitar que se escuche a sí misma
+      if (audio.isSpeaking || audio.isPlaying) return;
       if (chat.isStreaming || chat.isLoading) {
         chat.stopStreaming();
       }
     },
     onSpeechEnd: async (wavBlob: Blob) => {
+      if (audio.isSpeaking || audio.isPlaying) return;
       await audio.transcribeAudioBlob(wavBlob);
     },
   });
-
-  // 🚨 HOTFIX BARGE-IN REACTIVO: Escucha vad.userSpeaking y corta instantáneamente TTS + Streaming LLM
-  useEffect(() => {
-    if (!vad.userSpeaking) return;
-
-    if (audio.isSpeaking || audio.isPlaying) {
-      audio.stopPlayback();
-    }
-    if (chat.isStreaming || chat.isLoading) {
-      chat.stopStreaming();
-    }
-  }, [
-    vad.userSpeaking,
-    audio.isSpeaking,
-    audio.isPlaying,
-    audio.stopPlayback,
-    chat.isStreaming,
-    chat.isLoading,
-    chat.stopStreaming,
-  ]);
 
   // Activación física (3 sacudidas o presión de 3 segundos en pantalla) para Modo Lazarillo
   const activateLazarilloMode = useCallback(async () => {
@@ -254,9 +237,14 @@ export default function SusyBotPage() {
     if (audio.isRecording) {
       await audio.stopRecordingAndTranscribe();
     } else {
+      // Barge-in manual: si el vecino toca el micrófono mientras Susy habla o genera, cortar todo y escuchar
+      audio.stopPlayback();
+      if (chat.isStreaming || chat.isLoading) {
+        chat.stopStreaming();
+      }
       await audio.startRecording();
     }
-  }, [audio]);
+  }, [audio, chat]);
 
   const handleSelectImage = useCallback(
     (base64: string | null, fileName?: string, mimeType?: string): void => {
@@ -535,7 +523,7 @@ export default function SusyBotPage() {
                 <div className="space-y-1">
                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold">
                     <Sparkles size={12} />
-                    <span>CONCIERGE MUNICIPAL • ITUZAINGÓ, CORRIENTES</span>
+                    <span>CONCIERGE MUNICIPAL • NEXORA ONE</span>
                   </div>
                   <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
                     ¡Hola! Soy Susy Bot, tu asistente municipal
@@ -743,6 +731,7 @@ export default function SusyBotPage() {
         isVADListening={vad.isListening}
         isUserSpeakingVAD={vad.userSpeaking}
         onToggleVAD={() => setVadEnabled((prev) => !prev)}
+        onOpenCallModal={() => setShowRealtimeCallModal(true)}
         isCameraActive={vision.isCameraActive}
         onToggleCamera={() => {
           handleToggleCamera().catch(() => {});

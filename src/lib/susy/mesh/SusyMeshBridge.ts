@@ -5,7 +5,7 @@
  * 
  * Permite que Susy Bot transmita y reciba paquetes por radiofrecuencia (LoRa/Meshtastic)
  * mediante Web Bluetooth API con 0% de internet o redes celulares.
- * Propiedad Intelectual: MyJNexoraVisual
+ * Propiedad Intelectual: Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
  * ==============================================================================
  */
 

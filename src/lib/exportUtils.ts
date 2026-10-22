@@ -318,10 +318,10 @@ export function exportNoraCleanWord(title: string, markdownContent: string) {
       </div>
       <div>${cleanBodyHtml}</div>
       <div class="doc-disclaimer" style="margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 8px; font-size: 7.5pt; color: #64748b; text-align: justify; line-height: 1.4;">
-        <strong>Nota de exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor agéntico soberano Susybot (MyJNexoraVisual). Su contenido tiene fines exclusivamente académicos, pedagógicos o de planificación organizativa interna. No constituye un dictamen profesional vinculante ni una certificación legal o médica oficial.
+        <strong>Nota de exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor agéntico soberano Susybot (Nexora One • Tel: 3786414533 • mjnexora.visual@gmail.com). Su contenido tiene fines exclusivamente académicos, pedagógicos o de planificación organizativa interna. No constituye un dictamen profesional vinculante ni una certificación legal o médica oficial.
       </div>
       <div class="doc-footer">
-        Documento generado por Susybot AI • Desarrollada por MyJNexoraVisual (Ituzaingó, Corrientes) • Copia Formal Verificada
+        Documento generado por Susybot AI • Desarrollada por Nexora One (Ituzaingó, Corrientes • Tel: 3786414533 • mjnexora.visual@gmail.com) • Copia Formal Verificada
       </div>
     </body>
     </html>
@@ -418,10 +418,10 @@ export function exportNoraCleanPdf(title: string, markdownContent: string) {
         </div>
         <div>${cleanBodyHtml}</div>
         <div class="doc-disclaimer">
-          <strong>Nota de exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor agéntico soberano Susybot (MyJNexoraVisual). Su contenido tiene fines exclusivamente académicos, pedagógicos o de planificación organizativa interna. No constituye un dictamen profesional vinculante ni una certificación legal o médica oficial.
+          <strong>Nota de exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor agéntico soberano Susybot (Nexora One • Tel: 3786414533 • mjnexora.visual@gmail.com). Su contenido tiene fines exclusivamente académicos, pedagógicos o de planificación organizativa interna. No constituye un dictamen profesional vinculante ni una certificación legal o médica oficial.
         </div>
         <div class="doc-footer">
-          Documento generado por Susybot AI (MyJNexoraVisual) • Ituzaingó, Corrientes • Copia Formal para Evaluación / Impresión
+          Documento generado por Susybot AI (Nexora One • Tel: 3786414533) • Ituzaingó, Corrientes • Copia Formal para Evaluación / Impresión
         </div>
         <script>
           window.onload = function() { window.print(); }
@@ -446,8 +446,8 @@ export async function exportNoraCleanPptx(title: string, markdownContent: string
   const pptxgen = pptxModule.default || pptxModule;
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_16x9";
-  pptx.author = "Susybot AI - MyJNexoraVisual";
-  pptx.company = "MyJNexoraVisual";
+  pptx.author = "Susybot AI - Nexora One";
+  pptx.company = "Nexora One";
 
   // Paleta corporativa institucional
   const COLOR_BG = "0F172A";       // Slate 900
@@ -510,7 +510,7 @@ export async function exportNoraCleanPptx(title: string, markdownContent: string
   });
 
   // Metadatos inferiores
-  coverSlide.addText(`MyJNexoraVisual • Ituzaingó, Corrientes | ${new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })}`, {
+  coverSlide.addText(`Nexora One • Ituzaingó, Corrientes (Tel: 3786414533) | ${new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })}`, {
     x: 0.8,
     y: 6.0,
     w: 11.5,
@@ -643,7 +643,7 @@ export async function exportNoraCleanPptx(title: string, markdownContent: string
       });
 
       // Pie de página institucional
-      slide.addText(`Susybot AI • MyJNexoraVisual | Diapositiva ${slideCounter}`, {
+      slide.addText(`Susybot AI • Nexora One | Diapositiva ${slideCounter}`, {
         x: 0.8,
         y: 6.75,
         w: 11.5,

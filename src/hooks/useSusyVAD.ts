@@ -6,10 +6,11 @@ export interface SusyVADOptions {
   onSpeechStart?: () => void;
   onSpeechEnd?: (audioBlob: Blob) => void;
   onVADMisfire?: () => void;
-  positiveSpeechThreshold?: number; // Umbral de confianza de voz (default: 0.8)
+  positiveSpeechThreshold?: number; // Umbral de confianza de voz (default: 0.85)
   negativeSpeechThreshold?: number; // Umbral de silencio (default: 0.4)
   redemptionMs?: number;            // Milisegundos de tolerancia antes de cerrar la frase (default: 600)
   enabled?: boolean;
+  isSystemSpeaking?: boolean;       // 🔒 MUTEX ANTI-FEEDBACK LOOP: Si Susy está hablando, pausar/ignorar el VAD automático
 }
 
 export interface SusyVADState {
@@ -41,51 +42,26 @@ interface VadWebModule {
 }
 
 /**
- * Ejecuta la cancelación inmediata (0ms) de todos los reproductores de voz del navegador
- */
-function triggerImmediateHardwareBargeIn(): void {
-  if (typeof window === "undefined") return;
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.pause();
-      window.speechSynthesis.cancel();
-    } catch {
-      // Ignorar
-    }
-  }
-  if (typeof document !== "undefined") {
-    const audioElements = document.querySelectorAll("audio");
-    audioElements.forEach((el) => {
-      try {
-        if (!el.paused) {
-          el.pause();
-          el.currentTime = 0;
-        }
-      } catch {
-        // Ignorar
-      }
-    });
-  }
-}
-
-/**
- * useSusyVAD: Hook de Voice Activity Detection híbrido (WebAssembly @ricky0123/vad-web + Fallback Web Audio API Espectral).
+ * useSusyVAD: Hook de Voice Activity Detection con Mutex de Exclusión Mutua Anti-Feedback.
  *
- * Capacidades:
- * - Detección en tiempo real de inicio y fin de locución en el cliente (Edge).
- * - Soporte garantizado para "Barge-in": interrupción inmediata (0ms) del altavoz cuando el vecino empieza a hablar.
- * - Refs estables para callbacks (evita que re-renders de React destruyan el listener activo mientras Susy habla).
- * - Fallback nativo con Web Audio API (AnalyserNode en banda vocal + MediaRecorder) si el módulo WASM no está cargado.
+ * Reglas de Ingeniería Acústica Móvil:
+ * 1. MUTEX ESTRICTO (`isSystemSpeaking`): Si `audio.isSpeaking` o `audio.isPlaying` es `true` (o si
+ *    `window.speechSynthesis.speaking` está activo), el detector automático VAD entra en pausa
+ *    (`pauseVAD`) e ignora cualquier evento de `onSpeechStart` / `onSpeechEnd` más una ventana de
+ *    amortiguamiento de reverberación de 550ms al finalizar la locución de Susy.
+ * 2. Restricciones de Hardware Forzadas: `{ echoCancellation: true, noiseSuppression: true, autoGainControl: false }`.
+ *    `autoGainControl: false` evita que el micrófono del celular amplifique el eco residual del altavoz.
  */
 export function useSusyVAD(options: SusyVADOptions = {}) {
   const {
     onSpeechStart,
     onSpeechEnd,
     onVADMisfire,
-    positiveSpeechThreshold = 0.8,
+    positiveSpeechThreshold = 0.85,
     negativeSpeechThreshold = 0.4,
     redemptionMs = 600,
     enabled = false,
+    isSystemSpeaking = false,
   } = options;
 
   const [state, setState] = useState<SusyVADState>({
@@ -106,11 +82,38 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
     onVADMisfireRef.current = onVADMisfire;
   }, [onSpeechStart, onSpeechEnd, onVADMisfire]);
 
+  // 🔒 Candado Mutex contra Feedback Loop (Susy escuchándose a sí misma)
+  const isSystemSpeakingRef = useRef<boolean>(isSystemSpeaking);
+  const lastSystemSpeechEndedTsRef = useRef<number>(0);
+  const ECHO_GUARD_COOLDOWN_MS = 550;
+
+  useEffect(() => {
+    if (isSystemSpeakingRef.current && !isSystemSpeaking) {
+      lastSystemSpeechEndedTsRef.current = performance.now();
+    }
+    isSystemSpeakingRef.current = isSystemSpeaking;
+  }, [isSystemSpeaking]);
+
+  // Verifica si el altavoz del sistema está emitiendo voz o dentro de la ventana de reverberación
+  const isLockedBySystemOutput = useCallback((): boolean => {
+    if (isSystemSpeakingRef.current) return true;
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        return true;
+      }
+    }
+    const elapsedSinceEnd = performance.now() - lastSystemSpeechEndedTsRef.current;
+    if (lastSystemSpeechEndedTsRef.current > 0 && elapsedSinceEnd < ECHO_GUARD_COOLDOWN_MS) {
+      return true;
+    }
+    return false;
+  }, []);
+
   const myvadRef = useRef<MicVADInstance | null>(null);
   const isInitializingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
 
-  // Recursos para el Fallback Nativo Web Audio API (Barge-In 100% garantizado sin dependencias externas)
+  // Recursos para el Fallback Nativo Web Audio API
   const nativeStreamRef = useRef<MediaStream | null>(null);
   const nativeAudioCtxRef = useRef<AudioContext | null>(null);
   const nativeRafIdRef = useRef<number | null>(null);
@@ -179,7 +182,7 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
     silenceStartTsRef.current = null;
   }, []);
 
-  // Detector VAD Nativo mediante Web Audio API (AnalyserNode) para garantizar Barge-in aún sin WASM
+  // Detector VAD Nativo con Mutex Anti-Feedback y autoGainControl: false
   const startNativeWebAudioVAD = useCallback(async (): Promise<void> => {
     stopNativeFallbackVAD();
 
@@ -187,7 +190,7 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true,
+        autoGainControl: false,
       },
     });
 
@@ -207,9 +210,8 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
     source.connect(analyser);
 
     const timeData = new Float32Array(analyser.fftSize);
-    // Umbral de energía RMS calibrado para voz humana con cancelación de eco activa
-    const rmsSpeechThreshold = 0.028;
-    const rmsSilenceThreshold = 0.015;
+    const rmsSpeechThreshold = 0.045;
+    const rmsSilenceThreshold = 0.02;
 
     setState({
       isListening: true,
@@ -220,6 +222,17 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
 
     const monitorLoop = (): void => {
       if (!isMountedRef.current || !nativeAudioCtxRef.current) return;
+
+      // 🔒 MUTEX ANTI-FEEDBACK: Si Susy está hablando o en ventana de reverberación, ignorar entrada
+      if (isLockedBySystemOutput()) {
+        if (isSpeakingNativeRef.current) {
+          isSpeakingNativeRef.current = false;
+          silenceStartTsRef.current = null;
+          setState((prev) => (prev.userSpeaking ? { ...prev, userSpeaking: false } : prev));
+        }
+        nativeRafIdRef.current = requestAnimationFrame(monitorLoop);
+        return;
+      }
 
       analyser.getFloatTimeDomainData(timeData);
       let sumSquares = 0;
@@ -235,14 +248,11 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
           speechStartTsRef.current = now;
           silenceStartTsRef.current = null;
 
-          // 🚨 BARGE-IN INMEDIATO (0ms): Cortar reproducción de Susy en cuanto el usuario habla
-          triggerImmediateHardwareBargeIn();
           setState((prev) => ({ ...prev, userSpeaking: true }));
           if (onSpeechStartRef.current) {
             onSpeechStartRef.current();
           }
 
-          // Iniciar grabación del segmento de voz del usuario
           try {
             nativeChunksRef.current = [];
             const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -253,9 +263,13 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
               if (ev.data.size > 0) nativeChunksRef.current.push(ev.data);
             };
             recorder.onstop = () => {
+              // Si durante la grabación se activó el TTS del sistema, descartar el chunk para evitar eco
+              if (isLockedBySystemOutput()) {
+                return;
+              }
               const duration = performance.now() - speechStartTsRef.current;
               const blob = new Blob(nativeChunksRef.current, { type: mimeType });
-              if (duration >= 280 && blob.size > 1000) {
+              if (duration >= 350 && blob.size > 1500) {
                 if (onSpeechEndRef.current) onSpeechEndRef.current(blob);
               } else {
                 if (onVADMisfireRef.current) onVADMisfireRef.current();
@@ -264,7 +278,7 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
             nativeRecorderRef.current = recorder;
             recorder.start(100);
           } catch {
-            // Ignorar si MediaRecorder no pudo iniciar
+            // Ignorar
           }
         }
       } else {
@@ -293,11 +307,11 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
     };
 
     nativeRafIdRef.current = requestAnimationFrame(monitorLoop);
-  }, [redemptionMs, stopNativeFallbackVAD]);
+  }, [redemptionMs, stopNativeFallbackVAD, isLockedBySystemOutput]);
 
-  // Iniciar el listener de VAD en el navegador con guardas de concurrencia y ciclo de vida
+  // Iniciar el listener de VAD en el navegador con guardas de concurrencia y Mutex Anti-Feedback
   const startVAD = useCallback(async (): Promise<void> => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || isLockedBySystemOutput()) return;
 
     if (myvadRef.current) {
       try {
@@ -324,14 +338,17 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
         negativeSpeechThreshold,
         redemptionMs,
         onSpeechStart: () => {
-          if (!isMountedRef.current) return;
-          // 🚨 Barge-in instantáneo (0ms): silenciar altavoz cuando el vecino habla
-          triggerImmediateHardwareBargeIn();
+          // 🔒 MUTEX: Ignorar si Susy está hablando por el altavoz
+          if (!isMountedRef.current || isLockedBySystemOutput()) return;
           setState((prev) => ({ ...prev, userSpeaking: true }));
           if (onSpeechStartRef.current) onSpeechStartRef.current();
         },
         onSpeechEnd: (audio: Float32Array) => {
-          if (!isMountedRef.current) return;
+          // 🔒 MUTEX: Descartar audio capturado mientras Susy hablaba
+          if (!isMountedRef.current || isLockedBySystemOutput()) {
+            setState((prev) => ({ ...prev, userSpeaking: false }));
+            return;
+          }
           setState((prev) => ({ ...prev, userSpeaking: false }));
           const wavBlob = float32ToWavBlob(audio, 16000);
           if (onSpeechEndRef.current) onSpeechEndRef.current(wavBlob);
@@ -358,7 +375,6 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
         error: null,
       });
     } catch {
-      // Fallback automático a Web Audio API Nativo para garantizar que Barge-In funcione siempre
       try {
         await startNativeWebAudioVAD();
       } catch (fallbackErr: unknown) {
@@ -381,6 +397,7 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
     redemptionMs,
     float32ToWavBlob,
     startNativeWebAudioVAD,
+    isLockedBySystemOutput,
   ]);
 
   const pauseVAD = useCallback((): void => {
@@ -405,19 +422,34 @@ export function useSusyVAD(options: SusyVADOptions = {}) {
     });
   }, [stopNativeFallbackVAD]);
 
+  // 🔒 Ciclo de vida controlado por `enabled` y el Mutex `isSystemSpeaking`
   useEffect(() => {
     isMountedRef.current = true;
-    if (enabled) {
-      startVAD().catch(() => {});
-    } else {
+
+    // Si Susy está hablando (isSystemSpeaking === true), pausar inmediatamente el VAD para cortar el Feedback Loop
+    if (!enabled || isSystemSpeaking) {
       pauseVAD();
+    } else {
+      const resumeTimer = setTimeout(() => {
+        if (isMountedRef.current && enabled && !isSystemSpeakingRef.current) {
+          startVAD().catch(() => {});
+        }
+      }, ECHO_GUARD_COOLDOWN_MS);
+      return () => clearTimeout(resumeTimer);
     }
 
     return () => {
       isMountedRef.current = false;
+    };
+  }, [enabled, isSystemSpeaking, startVAD, pauseVAD]);
+
+  // Limpieza definitiva al desmontar el componente
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
       destroyVAD();
     };
-  }, [enabled, startVAD, pauseVAD, destroyVAD]);
+  }, [destroyVAD]);
 
   return {
     ...state,

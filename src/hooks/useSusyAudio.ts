@@ -371,10 +371,11 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
     }
   }, [onSpeechStart, onSpeechEnd]);
 
-  // Iniciar captura de audio dual (Web Speech Edge + MediaRecorder Whisper)
+  // Iniciar captura de audio dual (Web Speech Edge + MediaRecorder Whisper) — Barge-in manual
   const startRecording = useCallback(async (): Promise<void> => {
     try {
-      stopSpeaking();
+      // Barge-in manual: cortar inmediatamente cualquier reproducción de Susy antes de abrir el mic
+      stopPlayback();
       nativeTranscriptBufferRef.current = "";
 
       if (!nativeRecognitionRef.current) {
@@ -390,7 +391,7 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
+          autoGainControl: false,
         },
       });
 

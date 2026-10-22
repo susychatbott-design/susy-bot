@@ -3,7 +3,7 @@
  * 🏛️ SUSY BOT - BASE DE DATOS Y AGENDA PÚBLICA EN VIVO (ITUZAINGÓ, CORRIENTES)
  * Ubicación: src/lib/susy/municipal/municipalAgenda.ts
  * 
- * Desarrollado íntegra y exclusivamente por MyJNexoraVisual para la Municipalidad de Ituzaingó.
+ * Desarrollado íntegra y exclusivamente por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com) para la Municipalidad de Ituzaingó.
  * Contiene la cartelera oficial, obras de teatro en el Centro Cultural, actividades de fin
  * de semana, eventos turísticos y datos públicos del municipio para consulta ciudadana en tiempo real.
  * ==============================================================================

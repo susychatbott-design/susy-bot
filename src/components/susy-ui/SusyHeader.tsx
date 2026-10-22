@@ -162,12 +162,12 @@ export function SusyHeader({
       }}
     >
       {/* BLOQUE IZQUIERDO: HISTORIAL, IDENTIDAD MUNICIPAL & SELECTOR DE PERFIL COGNITIVO */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 min-w-0">
+      <div className="flex items-center gap-1 sm:gap-2.5 shrink-0 min-w-0">
         {onToggleHistory && (
           <button
             type="button"
             onClick={onToggleHistory}
-            className="min-w-[40px] min-h-[40px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
+            className="min-w-[44px] min-h-[44px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer active:scale-95 shrink-0"
             title="Abrir historial de sesiones ciudadanas"
             aria-label="Abrir historial de sesiones ciudadanas"
           >
@@ -175,7 +175,7 @@ export function SusyHeader({
           </button>
         )}
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
           <img
             src="/icons/icon-192x192.png"
             alt="Susy Bot Ituzaingó"
@@ -189,14 +189,14 @@ export function SusyHeader({
               SUSY BOT • ITUZAINGÓ
             </div>
             <div className="text-[10px] text-emerald-400 font-medium mt-0.5">
-              IA Cívica & Concierge Municipal
+              Nexora One • IA Cívica Municipal
             </div>
           </div>
         </div>
 
         {/* SELECTOR DE MODO COGNITIVO (EJECUTIVO / LAZARILLO / TEA) */}
         <div
-          className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10 gap-1 shrink-0"
+          className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10 gap-0.5 sm:gap-1 shrink-0"
           role="group"
           aria-label="Selección de perfil de asistencia ciudadana"
         >
@@ -211,7 +211,7 @@ export function SusyHeader({
                 onClick={() => onModeChange(m)}
                 aria-pressed={isSelected}
                 title={cfg.label}
-                className={`min-h-[36px] flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`min-h-[36px] flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   isSelected
                     ? "bg-indigo-600/35 text-indigo-200 border border-indigo-500/40 shadow-xs"
                     : "text-slate-400 hover:text-slate-200"
@@ -302,7 +302,7 @@ export function SusyHeader({
         )}
 
         {/* MENÚ DE EXPORTACIÓN DOCUMENTAL (WORD / PDF / PPTX) */}
-        <div className="relative">
+        <div className="relative hidden sm:block">
           <button
             type="button"
             onClick={() => setShowExportMenu((v) => !v)}
@@ -344,7 +344,7 @@ export function SusyHeader({
           <button
             type="button"
             onClick={onOpenShareModal}
-            className="min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 transition-colors flex items-center justify-center cursor-pointer"
+            className="hidden sm:flex min-w-[38px] min-h-[38px] p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-white border border-white/10 transition-colors items-center justify-center cursor-pointer"
             title="Compartir o vincular por Código QR"
             aria-label="Compartir o vincular por Código QR"
           >
@@ -357,24 +357,24 @@ export function SusyHeader({
           type="button"
           onClick={handlePanicSOSClick}
           disabled={isDispatchingSOS}
-          className="min-h-[38px] flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-extrabold shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all cursor-pointer shrink-0"
+          className="min-w-[48px] min-h-[48px] flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-extrabold shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all cursor-pointer shrink-0"
           title="Botón de Pánico SOS y Emergencias de Ituzaingó (107 / 100 / 103)"
           aria-label="Activar protocolo de emergencia SOS"
         >
-          <Siren size={15} className={isDispatchingSOS ? "animate-spin" : "animate-pulse"} />
+          <Siren size={16} className={isDispatchingSOS ? "animate-spin" : "animate-pulse"} />
           <span>SOS</span>
         </button>
 
-        {/* LLAMADA DE VOZ EN TIEMPO REAL */}
+        {/* 📞 LLAMADA DE VOZ EN TIEMPO REAL — SIEMPRE VISIBLE EN MÓVIL Y ESCRITORIO (48x48px+) */}
         <button
           type="button"
           onClick={onOpenCallModal}
-          className="min-h-[38px] flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-semibold shadow-md shadow-emerald-950/40 transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1.5 min-w-[48px] min-h-[48px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all cursor-pointer shrink-0"
           title="Llamada de voz en vivo con Susy Bot"
-          aria-label="Iniciar llamada de voz en vivo"
+          aria-label="Iniciar llamada de voz en vivo con Susy Bot"
         >
-          <PhoneCall size={14} />
-          <span className="hidden sm:inline">En Vivo</span>
+          <PhoneCall size={16} />
+          <span>Llamar</span>
         </button>
       </div>
     </header>

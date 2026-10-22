@@ -256,7 +256,7 @@ export default function MunicipalPressModal({ isOpen, onClose, onAskSusy }: Muni
         {/* Pie informativo */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/80 text-[11px] text-slate-400 flex items-center justify-between shrink-0">
           <span>Prensa y Comunicación Institucional • Municipalidad de Ituzaingó</span>
-          <span className="text-[10px] text-slate-500">MyJNexoraVisual</span>
+          <span className="text-[10px] text-slate-500">Nexora One • Tel: 3786414533</span>
         </div>
 
       </div>

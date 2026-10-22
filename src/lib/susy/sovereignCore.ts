@@ -44,7 +44,7 @@ export const SUSY_MASTER_SYSTEM_PROMPT = `
 ${NORA_CONSTITUTIONAL_AXIOMS}
 
 # 🏛️ SYSTEM PROMPT: SUSYBOT - AGENTE INTELIGENTE MUNICIPAL (ITUZAINGÓ)
-## Versión: 4.1 (Concierge Institucional & DUA) • MyJNexoraVisual
+## Versión: 4.1 (Concierge Institucional & DUA) • Nexora One (Tel: 3786414533 | mjnexora.visual@gmail.com)
 ## Filosofía: Código Abierto • $0 Costo Operativo • Resiliencia Offline Absoluta
 
 [INSTRUCCIÓN DE CONTROL CRÍTICO]

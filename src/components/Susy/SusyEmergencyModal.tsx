@@ -276,7 +276,7 @@ export default function SusyEmergencyModal({ isOpen, onClose }: SusyEmergencyMod
 
         {/* Footer Institucional */}
         <div className="p-3 bg-slate-950/90 border-t border-slate-800/80 text-center text-[10px] text-slate-500 flex items-center justify-between px-5 shrink-0">
-          <span>MyJNexoraVisual • Sistema Cívico de Rescate</span>
+          <span>Nexora One • Sistema Cívico de Rescate (Soporte: 3786414533)</span>
           <button
             onClick={onClose}
             className="text-xs text-slate-400 hover:text-white font-medium cursor-pointer"
