@@ -240,10 +240,19 @@ export function SusyHeader({
           <span>SOS</span>
         </button>
 
-        {/* 📞 BOTÓN CRÍTICO 2: LLAMADA DE VOZ EN TIEMPO REAL (SIEMPRE VISIBLE EN MÓVIL Y PC) */}
+        {/* 📞 BOTÓN CRÍTICO 2: LLAMADA DE VOZ EN TIEMPO REAL (SIEMPRE VISIBLE EN MÓVIL Y PC + Audio Primer Fase 7.6) */}
         <button
           type="button"
-          onClick={onOpenCallModal}
+          onClick={() => {
+            if (typeof window !== "undefined" && "speechSynthesis" in window) {
+              try {
+                const primer = new SpeechSynthesisUtterance("");
+                primer.volume = 0;
+                window.speechSynthesis.speak(primer);
+              } catch {}
+            }
+            onOpenCallModal();
+          }}
           className="flex items-center justify-center gap-1 min-w-[44px] min-h-[42px] sm:min-w-[48px] sm:min-h-[48px] px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all cursor-pointer shrink-0"
           title="Llamada de voz en vivo con Susy Bot"
           aria-label="Iniciar llamada de voz en vivo con Susy Bot"

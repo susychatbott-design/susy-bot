@@ -338,9 +338,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
       utterance.onstart = () => {
         if (fallbackBargeInEpochRef.current !== currentEpoch) {
-          try {
-            window.speechSynthesis.cancel();
-          } catch {}
           return;
         }
         isFallbackSpeakingRef.current = true;
@@ -613,18 +610,28 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     clearWsResponseTimeout();
     clearFallbackWatchdog();
 
-    // Desvincular callbacks antes de cancelar para que `onend`/`onerror` no disparen la siguiente oración en bucle
+    const wasFallbackSpeaking =
+      isFallbackSpeakingRef.current || activeUtterancesRef.current.length > 0;
+
+    // Desvincular callbacks antes de limpiar la cola para que `onend`/`onerror` no disparen la siguiente oración en bucle
     activeUtterancesRef.current.forEach((u) => {
       u.onstart = null;
       u.onend = null;
       u.onerror = null;
     });
 
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        // Ignorar
+    // 🛡️ FASE 7.6: En Chrome móvil, `.cancel()` crashea el motor dejándolo mudo; vaciar la cola detiene la locución de forma segura.
+    // En escritorio, solo ejecutar `.cancel()` si efectivamente estaba hablando.
+    if (wasFallbackSpeaking && typeof window !== "undefined" && "speechSynthesis" in window) {
+      const isMobileBrowser =
+        typeof navigator !== "undefined" &&
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (!isMobileBrowser && window.speechSynthesis.speaking) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Ignorar
+        }
       }
     }
 
@@ -1125,21 +1132,31 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   // 4. CAPTURA DE MICRÓFONO CON AEC Y DETECTOR DE SILENCIOS (VAD EN VIVO + BARGE-IN)
   // =========================================================================
   const onSpeechStart = useCallback((): void => {
+    const wasFallbackSpeaking =
+      isFallbackSpeakingRef.current || activeUtterancesRef.current.length > 0;
+
     // Incrementar epoch de Barge-in para bloquear cualquier callback asíncrono residual del Fallback
     fallbackBargeInEpochRef.current += 1;
 
-    // 1. Limpieza Total en el Kill Switch del Fallback (ejecución síncrona inmediata)
+    // 1. Limpieza Total en el Kill Switch del Fallback
     activeUtterancesRef.current.forEach((u) => {
       u.onstart = null;
       u.onend = null;
       u.onerror = null;
     });
 
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {
-        // Ignorar
+    // 🛡️ FASE 7.6: Evitar `.cancel()` en Chrome móvil (crashea el motor dejándolo mudo para el resto de la sesión)
+    // y jamás llamar a `.cancel()` cuando Susy ni siquiera estaba hablando.
+    if (wasFallbackSpeaking && typeof window !== "undefined" && "speechSynthesis" in window) {
+      const isMobileBrowser =
+        typeof navigator !== "undefined" &&
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (!isMobileBrowser && window.speechSynthesis.speaking) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          // Ignorar
+        }
       }
     }
 

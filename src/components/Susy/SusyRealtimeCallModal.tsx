@@ -319,29 +319,42 @@ export default function SusyRealtimeCallModal({
     }, timeout);
   }, [clearSpeechHeartbeat, resumeListening]);
 
-  // 3. Kill Switch / Barge-in: Detener audio de Susy y limpiar cola Fallback de forma síncrona
-  const stopSusySpeech = useCallback(() => {
+  // 3. Kill Switch / Barge-in: Detener audio de Susy y limpiar cola Fallback sin crashear el motor móvil
+  const stopSusySpeech = useCallback((allowNativeCancel = true) => {
+    const wasSpeaking = isSusySpeakingRef.current || isFallbackSpeakingRef.current;
     fallbackEpochRef.current += 1;
     clearSpeechHeartbeat();
 
-    // Desvincular eventos de utterances activos antes de cancelar para evitar bucle en onend/onerror
+    // Desvincular eventos de utterances activos para evitar avance en bucle de la cola de oraciones
     activeUtterancesRef.current.forEach((u) => {
       u.onstart = null;
       u.onend = null;
       u.onerror = null;
     });
 
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {}
-    }
-
     fallbackSentenceQueueRef.current = [];
     fallbackTextBufferRef.current = "";
     activeUtterancesRef.current = [];
     isFallbackSpeakingRef.current = false;
     isSusySpeakingRef.current = false;
+
+    // 🛡️ FASE 7.6: En Chrome móvil, `.cancel()` crashea el sintetizador nativo dejándolo mudo por el resto de la sesión.
+    // Solo invocar `.cancel()` en escritorio cuando realmente estaba hablando y se solicita corte explícito.
+    if (
+      allowNativeCancel &&
+      wasSpeaking &&
+      typeof window !== "undefined" &&
+      "speechSynthesis" in window
+    ) {
+      const isMobileBrowser =
+        typeof navigator !== "undefined" &&
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (!isMobileBrowser && window.speechSynthesis.speaking) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {}
+      }
+    }
 
     susyLive.interruptLivePlayback();
 
@@ -397,7 +410,8 @@ export default function SusyRealtimeCallModal({
         return;
       }
 
-      stopSusySpeech();
+      // No invocar .cancel() antes de hablar para no crashear el motor TTS de Chrome móvil (Fase 7.6)
+      stopSusySpeech(false);
       isSusySpeakingRef.current = true;
       liveTranscriptRef.current = "";
 
@@ -604,7 +618,7 @@ export default function SusyRealtimeCallModal({
         return;
       }
 
-      stopSusySpeech();
+      stopSusySpeech(false);
       isProcessingRef.current = true;
       setCallState("thinking");
       setAccessibleAnnouncement("Susy está procesando tu consulta...");
@@ -804,19 +818,16 @@ export default function SusyRealtimeCallModal({
     setIsInitializing(true);
     setMicError(null);
 
-    // 🔓 Desbloqueo síncrono inmediato de Web Speech API en el gesto táctil (crítico para iOS Safari / Android Chrome)
+    // 🔓 FASE 7.6: Audio Primer (Desbloqueo Silencioso síncrono sin llamar a .cancel() que crashea Chrome móvil)
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        window.speechSynthesis.cancel();
-        const unlockUtterance = new SpeechSynthesisUtterance(" ");
-        unlockUtterance.lang = "es-AR";
-        unlockUtterance.volume = 0.01;
-        unlockUtterance.rate = 2.0;
-        activeUtterancesRef.current.push(unlockUtterance);
-        unlockUtterance.onend = () => {
-          activeUtterancesRef.current = activeUtterancesRef.current.filter((u) => u !== unlockUtterance);
+        const primer = new SpeechSynthesisUtterance("");
+        primer.volume = 0;
+        activeUtterancesRef.current.push(primer);
+        primer.onend = () => {
+          activeUtterancesRef.current = activeUtterancesRef.current.filter((u) => u !== primer);
         };
-        window.speechSynthesis.speak(unlockUtterance);
+        window.speechSynthesis.speak(primer);
       } catch (e) {
         console.warn("[SpeechSynthesis Gesture Unlock Warning]:", e);
       }
@@ -1396,7 +1407,16 @@ export default function SusyRealtimeCallModal({
               )}
             </div>
             <button
-              onClick={startUnifiedAudioEngine}
+              onClick={() => {
+                if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                  try {
+                    const primer = new SpeechSynthesisUtterance("");
+                    primer.volume = 0;
+                    window.speechSynthesis.speak(primer);
+                  } catch {}
+                }
+                startUnifiedAudioEngine();
+              }}
               role="button"
               aria-label="Iniciar llamada de voz con Susy"
               disabled={isInitializing}

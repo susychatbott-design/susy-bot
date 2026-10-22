@@ -152,11 +152,20 @@ export function SusyControlFooter({
           aria-hidden="true"
         />
 
-        {/* 3. BOTÓN DE LLAMADA EN VIVO ACCESIBLE EN MÓVIL Y PC */}
+        {/* 3. BOTÓN DE LLAMADA EN VIVO ACCESIBLE EN MÓVIL Y PC (Con Audio Primer Síncrono Fase 7.6) */}
         {onOpenCallModal && (
           <button
             type="button"
-            onClick={onOpenCallModal}
+            onClick={() => {
+              if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                try {
+                  const primer = new SpeechSynthesisUtterance("");
+                  primer.volume = 0;
+                  window.speechSynthesis.speak(primer);
+                } catch {}
+              }
+              onOpenCallModal();
+            }}
             className="flex min-w-[42px] min-h-[44px] sm:min-w-[48px] sm:min-h-[48px] p-2.5 sm:p-3 rounded-xl items-center justify-center bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/50 transition-all shrink-0 cursor-pointer active:scale-95"
             title="Iniciar llamada de voz en tiempo real con Susy Bot"
             aria-label="Iniciar llamada de voz en tiempo real con Susy Bot"
