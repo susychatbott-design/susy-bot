@@ -575,27 +575,25 @@ Decime qué trámite querés hacer y te explico exactamente qué llevar.`;
   // 18. ATENCIÓN CIUDADANA GENERAL Y CONVERSACIONAL (HUMANA, NUNCA BROCHURE RÍGIDO)
   // --------------------------------------------------------------------------
   else {
-    // Si es un saludo inicial
-    if (
-      cleanQuery === "hola" ||
-      cleanQuery === "buenas" ||
-      cleanQuery === "buen dia" ||
-      cleanQuery === "buen día" ||
-      cleanQuery === "buenas tardes" ||
-      cleanQuery === "buenas noches" ||
-      cleanQuery.startsWith("hola ")
-    ) {
+    // Si es el primer turno (sin historial previo) y es estrictamente un saludo breve
+    const isShortGreetingOnly =
+      history.length === 0 &&
+      cleanQuery.split(/\s+/).length <= 3 &&
+      (cleanQuery === "hola" ||
+        cleanQuery === "buenas" ||
+        cleanQuery === "buen dia" ||
+        cleanQuery === "buen día" ||
+        cleanQuery === "buenas tardes" ||
+        cleanQuery === "buenas noches" ||
+        cleanQuery === "hola susy");
+
+    if (isShortGreetingOnly) {
       responseText = `¡Hola! Qué gusto saludarte. Soy Susy, tu asistente municipal de Ituzaingó. Estoy acá para resolver tus trámites, brindarte información sobre eventos culturales, obras, turnos, farmacias de turno o cualquier secretaría de la ciudad. Contame con tranquilidad, ¿en qué te puedo colaborar hoy?`;
+    } else if (lastContextText) {
+      responseText = `Seguimos en tema sobre tu consulta anterior. Decime qué detalle específico necesitás ampliar sobre "${userQuery.slice(0, 80)}" (costos, horarios, ubicación o requisitos) y te lo respondo en el acto.`;
     } else {
-      // Respuesta dinámica, humana y empática para cualquier otra consulta
-      responseText = `¡Hola! Te atiende Susy de la Municipalidad de Ituzaingó. Tomé nota de tu consulta sobre "${userQuery.slice(0, 70)}".
-
-Estoy para resolver tus gestiones sin intermediarios:
-• Si estás buscando **eventos o actividades culturales**, todos los fines de semana tenemos feria y chamamé en el Paseo de los Pescadores y talleres en el Centro Cultural.
-• Si necesitás realizar un **trámite (carnet, tasas, reclamo de luminaria o bache)**, te indico los requisitos o te genero un turno de inmediato.
-• Si buscás **guardias médicas, farmacias de turno o comercios adheridos**, te doy la ubicación exacta y teléfonos.
-
-Contame un poquito más en detalle qué necesitás y te lo resuelvo al instante.`;
+      // Respuesta directa, humana y sin repetir el saludo de presentación
+      responseText = `Con mucho gusto te ayudo con "${userQuery.slice(0, 80)}". En la Municipalidad de Ituzaingó atendemos de lunes a viernes de 7:00 a 13:00 hs en el Palacio Municipal (Centenario 1519). Decime si buscás requisitos, aranceles, horarios o registrar un reclamo y te doy el dato exacto.`;
     }
   }
 

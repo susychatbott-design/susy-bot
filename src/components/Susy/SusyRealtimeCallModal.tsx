@@ -510,7 +510,8 @@ export default function SusyRealtimeCallModal({
       const clientText = liveTranscriptRef.current.trim();
       liveTranscriptRef.current = ""; // Limpieza atómica inmediata
 
-      if (audioBlob.size < 80 && !clientText) {
+      const cleanClientAlpha = clientText.replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+      if (audioBlob.size < 1200 && cleanClientAlpha.length < 3) {
         setCallState("listening");
         return;
       }
@@ -520,12 +521,12 @@ export default function SusyRealtimeCallModal({
       setCallState("thinking");
       setAccessibleAnnouncement("Susy está procesando tu consulta...");
       playAccessibleChime("end");
-      setUserTranscript(clientText ? `"${clientText}"` : "Escuchando tu consulta...");
+      setUserTranscript(cleanClientAlpha.length >= 3 ? `"${clientText}"` : "Escuchando tu consulta...");
 
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64 = ((reader.result as string) || "").split(",")[1];
-        if (!base64 && !clientText) {
+        if (!base64 && cleanClientAlpha.length < 3) {
           isProcessingRef.current = false;
           resumeListening();
           return;
@@ -538,12 +539,12 @@ export default function SusyRealtimeCallModal({
           let text = "";
           let phoneticText = "";
           let resAudio: string | null = null;
-          let transcribedUserText = clientText;
+          let transcribedUserText = cleanClientAlpha.length >= 3 ? clientText : "";
 
           try {
             const interruptedContext = lastInterruptedResponseRef.current;
             const proxyAbort = new AbortController();
-            const proxyTimeout = setTimeout(() => proxyAbort.abort(), 6500);
+            const proxyTimeout = setTimeout(() => proxyAbort.abort(), 7500);
 
             const onParentAbort = () => proxyAbort.abort();
             controller.signal.addEventListener("abort", onParentAbort, { once: true });
@@ -553,10 +554,11 @@ export default function SusyRealtimeCallModal({
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  message: clientText,
+                  message: transcribedUserText,
                   audioBase64: base64,
                   mimeType,
                   history: historyRef.current.slice(-16),
+                  messages: historyRef.current.slice(-16),
                   mode: activeModeRef.current,
                   lastInterruptedResponse: interruptedContext,
                 }),
@@ -565,10 +567,20 @@ export default function SusyRealtimeCallModal({
 
               if (res.ok) {
                 const data = await res.json();
+                const candidateTranscript = (data.transcribedUserText || transcribedUserText || "").trim();
+                const cleanCandidate = candidateTranscript.replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+
+                // 🛡️ Bloqueador de transcripciones vacías o menores a 3 caracteres tras Barge-in
+                if (cleanCandidate.length < 3 || candidateTranscript === "[Sonido detectado]") {
+                  isProcessingRef.current = false;
+                  resumeListening();
+                  return;
+                }
+
                 text = data.text || "";
                 phoneticText = data.phoneticText || "";
                 resAudio = data.audioBase64 || null;
-                transcribedUserText = data.transcribedUserText || clientText;
+                transcribedUserText = candidateTranscript;
               } else {
                 throw new Error("HTTP_FAILED");
               }
@@ -581,21 +593,29 @@ export default function SusyRealtimeCallModal({
               throw new DOMException("Aborted", "AbortError");
             }
 
-            const fallbackQuery =
-              transcribedUserText ||
-              clientText ||
-              "Hola Susy, te consulto por trámites de la Municipalidad de Ituzaingó";
+            const fallbackQuery = (transcribedUserText || clientText || "").trim();
+            const cleanFallback = fallbackQuery.replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+
+            // Si la interrupción fue ruido o tiene menos de 3 caracteres, ignorar y volver a escuchar sin saludar de nuevo
+            if (cleanFallback.length < 3) {
+              isProcessingRef.current = false;
+              resumeListening();
+              return;
+            }
 
             if (typeof navigator === "undefined" || navigator.onLine) {
               try {
                 const chatTimeoutCtrl = new AbortController();
-                const chatTimer = setTimeout(() => chatTimeoutCtrl.abort(), 5500);
+                const chatTimer = setTimeout(() => chatTimeoutCtrl.abort(), 6500);
+                const priorHistory = historyRef.current.slice(-16);
                 const chatRes = await fetch("/api/chat", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     message: fallbackQuery,
                     userText: fallbackQuery,
+                    history: priorHistory,
+                    messages: [...priorHistory, { role: "user", content: fallbackQuery }],
                     mode: activeModeRef.current,
                     interactionMode: "voice",
                   }),
@@ -631,10 +651,6 @@ export default function SusyRealtimeCallModal({
             }
 
             if (!text) {
-              console.warn(
-                "[Voice Modal] Conmutando a Inferencia Local Offline con timeout seguro...",
-                fetchErr?.message
-              );
               const localRes = await Promise.race([
                 executeLocalInference(
                   fallbackQuery,
@@ -645,7 +661,7 @@ export default function SusyRealtimeCallModal({
                   setTimeout(
                     () =>
                       resolve({
-                        text: "Te escucho vecino. Contame en qué trámite, reclamo o consulta municipal de Ituzaingó te puedo ayudar.",
+                        text: "Te escucho vecino. Decime qué detalle necesitás sobre ese trámite o consulta municipal.",
                       }),
                     2800
                   )

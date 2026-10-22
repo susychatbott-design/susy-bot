@@ -490,7 +490,7 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
             max_tokens: isVisionRequest ? 1500 : maxTokens,
             temperature
           }),
-          signal: AbortSignal.timeout(2800)
+          signal: AbortSignal.timeout(6500)
         });
 
         if (groqRes.ok && groqRes.body) {
@@ -649,7 +649,7 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
             temperature,
             max_tokens: Math.max(750, maxTokens)
           }),
-          signal: AbortSignal.timeout(isVoiceMode ? 2500 : 3000)
+          signal: AbortSignal.timeout(isVoiceMode ? 6500 : 7500)
         });
 
         if (res.ok) {

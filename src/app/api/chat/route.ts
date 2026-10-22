@@ -516,7 +516,8 @@ export async function POST(req: Request) {
       sessionId,
       session_id = sessionId, 
       user_id = "anonymous_user", 
-      history: clientHistory,
+      history: rawClientHistory,
+      messages: clientMessages,
       contextData, 
       message_id,
       file,
@@ -524,6 +525,15 @@ export async function POST(req: Request) {
       interactionMode = contextData?.interactionMode || "visual",
       stream = true 
     } = body;
+
+    const clientHistory =
+      Array.isArray(rawClientHistory) && rawClientHistory.length > 0
+        ? rawClientHistory
+        : Array.isArray(clientMessages) && clientMessages.length > 1
+        ? clientMessages.slice(0, -1)
+        : Array.isArray(clientMessages)
+        ? clientMessages
+        : [];
 
     const shield = await applyReputationalShield(message, session_id || sessionId);
     if (shield.isAttack) {

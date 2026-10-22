@@ -159,7 +159,10 @@ export default function SusyBotPage() {
   const audio = useSusyAudio({
     defaultMode: chat.activeMode,
     onTranscriptionComplete: (transcribedText: string) => {
-      if (!transcribedText.trim()) return;
+      const cleanAlpha = transcribedText
+        .replace(/[^\p{L}\p{N}\s]/gu, "")
+        .trim();
+      if (!cleanAlpha || cleanAlpha.length < 3) return;
       if (isSelfEchoFromAssistant(transcribedText)) {
         return;
       }
@@ -172,10 +175,16 @@ export default function SusyBotPage() {
     wsUrl: "ws://localhost:3010/tts-stream",
     wsTimeoutMs: 3000,
     crossfadeOverlapMs: 18,
+    messages: chat.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+    sessionId: chat.sessionId,
+    mode: chat.activeMode,
   });
 
   const vad = useSusyVAD({
-    // TRUE BARGE-IN: El VAD permanece escuchando con AEC mientras Susy habla (se pausa si Modo Live ⚡ está activo)
+    // TRUE BARGE-IN: Solo escucha para interrumpir cuando Susy está reproduciendo audio o si se activa explícitamente
     enabled: !susyLive.isLiveActive && (vadEnabled || audio.isSpeaking || audio.isPlaying),
     isSystemSpeaking: audio.isSpeaking || audio.isPlaying,
     onSpeechStart: () => {
@@ -186,6 +195,7 @@ export default function SusyBotPage() {
       }
     },
     onSpeechEnd: async (wavBlob: Blob) => {
+      if (!vadEnabled) return;
       await audio.transcribeAudioBlob(wavBlob);
     },
   });
@@ -451,8 +461,8 @@ export default function SusyBotPage() {
 
       {/* ÁREA CENTRAL DINÁMICA (CONMUTACIÓN ENTRE PANELES MUNICIPALES, CONVERSACIÓN Y ACCESIBILIDAD) */}
       <main
-        className={`flex-1 overflow-y-auto pt-16 px-3 sm:px-6 scroll-pb-48 ${
-          shouldShowTEABoard ? "pb-72 sm:pb-64" : "pb-48 sm:pb-36"
+        className={`flex-1 overflow-y-auto pt-20 sm:pt-20 px-3 sm:px-6 scroll-pb-44 ${
+          shouldShowTEABoard ? "pb-68 sm:pb-64" : "pb-36 sm:pb-36"
         }`}
       >
         <div className="max-w-4xl mx-auto py-4 space-y-4">

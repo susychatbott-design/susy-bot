@@ -3,13 +3,21 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { sanitizeForTTS } from "@/utils/audioUtils";
 
+export interface SusyLiveHistoryEntry {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 export interface UseSusyLiveOptions {
   wsUrl?: string;
   wsTimeoutMs?: number; // Timeout máximo de espera del WebSocket antes de conmutar a TTS SO (default: 3000ms)
   crossfadeOverlapMs?: number; // Solapamiento entre chunks (default: 18ms) para prosodia continua sin clics
+  messages?: SusyLiveHistoryEntry[]; // Historial completo del chat principal (chat.messages) para memoria continua
+  sessionId?: string | null;
+  mode?: string;
   onTranscriptReady?: (transcript: string) => void;
   onAssistantChunk?: (textChunk: string, fullResponseSoFar: string) => void;
-  onAssistantComplete?: (fullResponse: string) => void;
+  onAssistantComplete?: (fullResponse: string, userTranscript: string) => void;
 }
 
 export interface SusyLiveState {
@@ -33,22 +41,63 @@ interface WsControlPayload {
   reason?: string;
 }
 
+const NOISE_OR_HALLUCINATION_PATTERNS = [
+  "gracias por ver",
+  "subtítulos por",
+  "subtitulos por",
+  "amara.org",
+  "suscríbete",
+  "suscribete",
+  "transcripción por",
+  "transcripcion por",
+  "música de fondo",
+  "[música]",
+  "(música)",
+  "[risas]",
+  "[aplausos]",
+  "silencio",
+];
+
+function isUselessOrNoiseTranscript(raw: string): boolean {
+  if (!raw) return true;
+  const cleanAlphaNum = raw
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .trim();
+
+  // Bloqueador estricto: ignorar strings vacíos, nulos o de menos de 3 caracteres reales
+  if (!cleanAlphaNum || cleanAlphaNum.length < 3) {
+    return true;
+  }
+
+  // Ignorar interjecciones de ruido o carraspeos aislados tras Barge-in
+  if (/^(eh|ah|oh|uh|mm|mmm|hm|hmm|ajá|aja|tos|ruido|sonido)$/i.test(cleanAlphaNum)) {
+    return true;
+  }
+
+  // Ignorar alucinaciones clásicas de Whisper ante silencios
+  if (
+    cleanAlphaNum.length < 35 &&
+    NOISE_OR_HALLUCINATION_PATTERNS.some((pat) => cleanAlphaNum.includes(pat))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * ============================================================================
  * ⚡ useSusyLive: HOOK AISLADO DE PIPELINE DE VOZ ULTRARRÁPIDA (< 500ms)
  * Ubicación: src/hooks/useSusyLive.ts
  * Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
  *
- * Hotfix Fase 7.1 Incluido:
- * - Timeout estricto de 3000ms en WebSocket (`ws://localhost:3010/tts-stream`) con
- *   fallback automático a `window.speechSynthesis` y liberación inmediata del estado
- *   de "pensando" (`isProcessingLLM: false`).
- * - Soporte híbrido para streams SSE (`data: {...}`) y streams de texto plano de Groq,
- *   envuelto en un bloque `try / catch / finally` a prueba de fallos silenciosos.
- * - True Barge-in en Modo Live: al detectar `onSpeechStart`:
- *   1. Envía `{ "type": "interrupt" }` por WebSocket para matar el proceso TTS local.
- *   2. Vacía y detiene la cola de buffers (`scheduledSourcesRef.current.forEach(s => s.stop())`).
- *   3. Aborta el stream actual del LLM (`llmAbortRef.current?.abort()`).
+ * Hotfix Fase 7.2 Incluido:
+ * - Memoria Conversacional Completa: Inyecta el historial completo (`chat.messages` +
+ *   turnos acumulados en vivo) tanto en `messages` como en `history` al consultar Groq.
+ * - Bloqueador Estricto de Transcripciones Vacías/Cortas (< 3 caracteres) para que una
+ *   interrupción (Barge-in) por ruido o suspiro jamás dispare una petición vacía al LLM.
+ * - Timeout de 3000ms en WebSocket con fallback automático a TTS del sistema operativo.
  * ============================================================================
  */
 export function useSusyLive(options: UseSusyLiveOptions = {}) {
@@ -56,6 +105,9 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     wsUrl = "ws://localhost:3010/tts-stream",
     wsTimeoutMs = 3000,
     crossfadeOverlapMs = 18,
+    messages = [],
+    sessionId = null,
+    mode = "executive",
     onTranscriptReady,
     onAssistantChunk,
     onAssistantComplete,
@@ -73,6 +125,28 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     lastResponse: "",
     error: null,
   });
+
+  // Referencias de Memoria Conversacional Sincronizada con chat.messages
+  const conversationHistoryRef = useRef<SusyLiveHistoryEntry[]>(messages);
+  const sessionIdRef = useRef<string | null>(sessionId);
+  const modeRef = useRef<string>(mode);
+
+  useEffect(() => {
+    if (Array.isArray(messages) && messages.length > 0) {
+      conversationHistoryRef.current = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   // Referencias WebSocket, Timeouts de 3000ms y LLM Streaming
   const wsRef = useRef<WebSocket | null>(null);
@@ -106,8 +180,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
   /**
    * Reproductor Fallback del Sistema Operativo (`window.speechSynthesis`)
-   * Se activa automáticamente si `ws://localhost:3010/tts-stream` no responde en 3000ms
-   * o si el microservicio local no está corriendo.
    */
   const speakWithOsFallback = useCallback((rawText: string): void => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
@@ -190,11 +262,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     return playbackCtxRef.current;
   }, []);
 
-  /**
-   * Convierte un paquete binario PCM 16-bit Little-Endian (con cabecera de 8 bytes:
-   * chunkId UInt32LE + sampleRate UInt32LE) en un `AudioBuffer` con rampa de fade-in y
-   * fade-out suave, y lo agenda solapando `crossfadeOverlapMs` con el chunk anterior.
-   */
   const scheduleIncomingAudioBuffer = useCallback(
     async (rawPacket: ArrayBuffer): Promise<void> => {
       clearWsResponseTimeout();
@@ -213,14 +280,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const audioBuffer = audioCtx.createBuffer(1, sampleCount, sampleRate);
       const channelData = audioBuffer.getChannelData(0);
 
-      // Conversión de Int16LE a Float32 [-1.0, 1.0]
       let byteOffset = 8;
       for (let i = 0; i < sampleCount; i++, byteOffset += 2) {
         const int16 = view.getInt16(byteOffset, true);
         channelData[i] = int16 < 0 ? int16 / 32768.0 : int16 / 32767.0;
       }
 
-      // Aplicar envolvente de Crossfade (Fade-in y Fade-out cosenoidal de ~18ms) para unión sin clics
       const overlapSec = crossfadeOverlapMs / 1000;
       const fadeSamples = Math.min(
         Math.floor(sampleRate * overlapSec),
@@ -233,7 +298,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         channelData[sampleCount - 1 - i] *= gain;
       }
 
-      // Crear y programar AudioBufferSourceNode con solapamiento temporal
       const sourceNode = audioCtx.createBufferSource();
       sourceNode.buffer = audioBuffer;
       sourceNode.connect(audioCtx.destination);
@@ -288,7 +352,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     clearWsResponseTimeout();
     pendingFallbackTextsRef.current.clear();
 
-    // 1. Enviar { "type": "interrupt" } por WebSocket para matar el proceso TTS local
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify({ type: "interrupt" }));
@@ -297,7 +360,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       }
     }
 
-    // 2. Vaciar la cola de buffers de audio programados en Web Audio API
     scheduledSourcesRef.current.forEach((source) => {
       try {
         source.onended = null;
@@ -321,7 +383,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       }
     }
 
-    // 3. Abortar el stream actual del LLM en Groq
     if (llmAbortRef.current) {
       try {
         llmAbortRef.current.abort();
@@ -349,7 +410,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
-      // Timeout de conexión de 3000ms: si no abre en 3s, abortar WS y activar fallback TTS del sistema
       const connTimeout = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
           wsFallbackModeRef.current = true;
@@ -395,7 +455,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
               }
             }
           } catch {
-            // Ignorar tramas de control malformadas
+            // Ignorar
           }
         }
       };
@@ -421,12 +481,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     }
   }, [wsUrl, wsTimeoutMs, clearWsResponseTimeout, scheduleIncomingAudioBuffer, speakWithOsFallback]);
 
-  /**
-   * Envía un fragmento de texto al WebSocket TTS con un watchdog de 3000ms.
-   * Si el WebSocket no responde en 3000ms, aborta el streaming por WS y conmuta
-   * automáticamente al TTS del sistema operativo (`window.speechSynthesis`),
-   * liberando el estado de "pensando".
-   */
   const sendTextChunkToTtsServer = useCallback(
     (textChunk: string): void => {
       const clean = sanitizeForTTS(textChunk);
@@ -451,7 +505,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             })
           );
 
-          // Watchdog de 3000ms: si el servidor WS no responde a tiempo, abortar WS y usar TTS del SO
           if (wsResponseTimerRef.current === null) {
             wsResponseTimerRef.current = setTimeout(() => {
               wsResponseTimerRef.current = null;
@@ -491,7 +544,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   );
 
   // =========================================================================
-  // 3. FLUJO GROQ WHISPER -> GROQ LLAMA 3.3 STREAMING -> CHUNKER TTS
+  // 3. FLUJO GROQ WHISPER -> GROQ LLAMA 3.3 STREAMING (CON MEMORIA Y FILTRO >= 3 CHARS)
   // =========================================================================
   const processAudioUtterance = useCallback(
     async (audioBlob: Blob): Promise<void> => {
@@ -501,7 +554,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const controller = new AbortController();
       llmAbortRef.current = controller;
 
-      // Watchdog global para evitar que cualquier bloqueo de red deje congelado el estado "pensando"
       const llmWatchdog = setTimeout(() => {
         try {
           controller.abort();
@@ -528,12 +580,15 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         });
 
         if (!sttRes.ok) {
-          throw new Error(`Error STT (${sttRes.status})`);
+          setState((prev) => ({ ...prev, isProcessingLLM: false }));
+          return;
         }
 
         const sttData = (await sttRes.json()) as { text?: string };
         const transcript = (sttData.text || "").trim();
-        if (!transcript || transcript.length < 2) {
+
+        // 🛡️ BLOQUEADOR ESTRICTO: No enviar strings vacíos, nulos o < 3 caracteres al LLM
+        if (isUselessOrNoiseTranscript(transcript)) {
           setState((prev) => ({ ...prev, isProcessingLLM: false }));
           return;
         }
@@ -541,15 +596,40 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         setState((prev) => ({ ...prev, lastTranscript: transcript }));
         if (onTranscriptReady) onTranscriptReady(transcript);
 
-        // Paso B: Consultar LLM con stream: true y despachar micro-cláusulas al servidor WebSocket TTS
+        // Construir el historial completo de la conversación (chat.messages + turnos previos)
+        const priorHistory = conversationHistoryRef.current
+          .filter((m) => m.content && m.content.trim().length > 0)
+          .slice(-20)
+          .map((m) => ({
+            role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
+            content: m.content.trim(),
+          }));
+
+        const fullMessagesPayload = [
+          ...priorHistory,
+          { role: "user" as const, content: transcript },
+        ];
+
+        // Actualizar inmediatamente la memoria en vivo con el turno del usuario
+        conversationHistoryRef.current = fullMessagesPayload;
+
+        // Paso B: Consultar LLM con stream: true e historial completo (`messages` y `history`)
         const llmRes = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: transcript,
             userText: transcript,
-            mode: "executive",
+            messages: fullMessagesPayload,
+            history: priorHistory,
+            session_id: sessionIdRef.current || undefined,
+            sessionId: sessionIdRef.current || undefined,
+            mode: modeRef.current || "executive",
             interactionMode: "voice",
+            contextData: {
+              mode: modeRef.current || "executive",
+              interactionMode: "voice",
+            },
           }),
           signal: controller.signal,
         });
@@ -602,7 +682,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           flushSentenceBuffer(false);
         };
 
-        // Recepción robusta de chunks de Groq con try/catch interno para evitar congelamiento silencioso
         try {
           while (true) {
             const { done, value } = await reader.read();
@@ -611,7 +690,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             const rawChunk = decoder.decode(value, { stream: true });
             if (!rawChunk) continue;
 
-            // Soportar tanto formato SSE ("data: {...}") como texto plano directo de /api/chat
             if (rawChunk.includes("data:") || sseLineBuffer.length > 0) {
               sseLineBuffer += rawChunk;
               const lines = sseLineBuffer.split("\n");
@@ -619,7 +697,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
               for (const rawLine of lines) {
                 const trimmed = rawLine.trim();
-                if (!trimmed) continue;
+                if (!trimmed || trimmed.startsWith(":")) continue;
 
                 if (trimmed.startsWith("data:")) {
                   const dataStr = trimmed.slice(5).trim();
@@ -655,13 +733,21 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         }
 
         flushSentenceBuffer(true);
+
+        if (fullAssistantText.trim().length > 0) {
+          conversationHistoryRef.current = [
+            ...conversationHistoryRef.current,
+            { role: "assistant", content: fullAssistantText.trim() },
+          ];
+        }
+
         setState((prev) => ({
           ...prev,
           isProcessingLLM: false,
           lastResponse: fullAssistantText,
         }));
-        if (onAssistantComplete && fullAssistantText) {
-          onAssistantComplete(fullAssistantText);
+        if (onAssistantComplete && fullAssistantText.trim().length > 0) {
+          onAssistantComplete(fullAssistantText.trim(), transcript);
         }
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
@@ -803,7 +889,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       let silenceStartTs: number | null = null;
       let speechStartTs = 0;
       let consecutiveVoiceFrames = 0;
-      const redemptionSilenceMs = 520;
+      const redemptionSilenceMs = 550;
 
       setState((prev) => ({
         ...prev,
@@ -828,18 +914,17 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           (typeof window !== "undefined" &&
             "speechSynthesis" in window &&
             window.speechSynthesis.speaking);
-        const threshold = isSystemSpeakingNow ? 0.048 : 0.03;
+        const threshold = isSystemSpeakingNow ? 0.052 : 0.032;
 
         if (!isSpeakingRef.current) {
           if (rms >= threshold) {
             consecutiveVoiceFrames += 1;
-            if (consecutiveVoiceFrames >= 3) {
+            if (consecutiveVoiceFrames >= 4) {
               consecutiveVoiceFrames = 0;
               isSpeakingRef.current = true;
               speechStartTs = now;
               silenceStartTs = null;
 
-              // Disparar protocolo estricto de Barge-in en Modo Live
               onSpeechStart();
 
               recordedChunksRef.current = [];
@@ -853,7 +938,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
               recorder.onstop = () => {
                 const duration = performance.now() - speechStartTs;
                 const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-                if (duration >= 280 && blob.size > 1000) {
+                // Ignorar ruidos cortos (< 420ms o < 1500 bytes) tras una interrupción Barge-in
+                if (duration >= 420 && blob.size > 1500) {
                   processAudioUtterance(blob).catch(() => {});
                 }
               };

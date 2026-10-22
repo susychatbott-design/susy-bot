@@ -154,12 +154,7 @@ export function SusyHeader({
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 w-full z-40 bg-slate-950/95 backdrop-blur-md shrink-0 border-b border-white/10 px-2 sm:px-4 flex items-center justify-between gap-1.5 box-border"
-      style={{
-        paddingTop: "max(8px, env(safe-area-inset-top))",
-        paddingBottom: "8px",
-        minHeight: "62px",
-      }}
+      className="fixed top-0 left-0 right-0 w-full max-w-full z-40 bg-slate-950/95 backdrop-blur-md shrink-0 border-b border-white/10 px-2 sm:px-4 pb-2 pt-[max(16px,env(safe-area-inset-top))] flex items-center justify-between gap-1 sm:gap-2 box-border"
     >
       {/* BLOQUE IZQUIERDO: HISTORIAL & SELECTOR DE MODO COGNITIVO */}
       <div className="flex items-center gap-1 sm:gap-2 shrink-0 min-w-0">
@@ -167,17 +162,17 @@ export function SusyHeader({
           <button
             type="button"
             onClick={onToggleHistory}
-            className="flex items-center justify-center min-w-[48px] min-h-[48px] p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 transition-colors cursor-pointer active:scale-95 shrink-0"
+            className="flex items-center justify-center min-w-[42px] min-h-[42px] sm:min-w-[48px] sm:min-h-[48px] p-2 sm:p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 hover:text-white border border-white/10 transition-colors cursor-pointer active:scale-95 shrink-0"
             title="Abrir historial de sesiones ciudadanas"
             aria-label="Abrir historial de sesiones ciudadanas"
           >
-            <Menu size={20} />
+            <Menu size={19} />
           </button>
         )}
 
         {/* SELECTOR DE MODO COGNITIVO (EJECUTIVO / LAZARILLO / TEA) */}
         <div
-          className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10 gap-0.5 sm:gap-1 shrink-0"
+          className="flex items-center bg-slate-900/90 p-0.5 sm:p-1 rounded-xl border border-white/10 gap-0.5 sm:gap-1 shrink-0"
           role="group"
           aria-label="Selección de perfil de asistencia ciudadana"
         >
@@ -192,7 +187,7 @@ export function SusyHeader({
                 onClick={() => onModeChange(m)}
                 aria-pressed={isSelected}
                 title={cfg.label}
-                className={`min-w-[40px] min-h-[40px] flex items-center justify-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                className={`min-w-[34px] min-h-[36px] sm:min-w-[40px] sm:min-h-[40px] flex items-center justify-center gap-1 px-1.5 sm:px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   isSelected
                     ? "bg-indigo-600/35 text-indigo-200 border border-indigo-500/40 shadow-xs"
                     : "text-slate-400 hover:text-slate-200"
@@ -207,10 +202,10 @@ export function SusyHeader({
       </div>
 
       {/* BLOQUE DERECHO: BOTONES CRÍTICOS SIEMPRE VISIBLES (LLAMAR + SOS) Y MENÚ AGRUPADO */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* INDICADOR DE ESTADO DE RED */}
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        {/* INDICADOR DE ESTADO DE RED (EN ESCRITORIO Y TABLET) */}
         <div
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${
+          className={`hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold border ${
             isOnline
               ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
               : "bg-amber-500/15 border-amber-500/40 text-amber-300 animate-pulse"
@@ -226,43 +221,43 @@ export function SusyHeader({
         </div>
 
         {isStreaming && (
-          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-medium animate-pulse">
+          <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-medium animate-pulse">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span className="hidden sm:inline">Procesando</span>
           </div>
         )}
 
-        {/* 🚨 BOTÓN CRÍTICO 1: PÁNICO SOS (SIEMPRE VISIBLE EN MÓVIL Y PC, MIN 48x48px) */}
+        {/* 🚨 BOTÓN CRÍTICO 1: PÁNICO SOS (SIEMPRE VISIBLE EN MÓVIL Y PC) */}
         <button
           type="button"
           onClick={handlePanicSOSClick}
           disabled={isDispatchingSOS}
-          className="flex items-center justify-center gap-1.5 min-w-[48px] min-h-[48px] px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-extrabold shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1 min-w-[44px] min-h-[42px] sm:min-w-[48px] sm:min-h-[48px] px-2.5 sm:px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-extrabold shadow-lg shadow-rose-950/50 border border-rose-400/40 transition-all cursor-pointer shrink-0"
           title="Botón de Pánico SOS y Emergencias de Ituzaingó (107 / 100 / 103)"
           aria-label="Activar protocolo de emergencia SOS"
         >
-          <Siren size={17} className={isDispatchingSOS ? "animate-spin" : "animate-pulse"} />
+          <Siren size={16} className={isDispatchingSOS ? "animate-spin" : "animate-pulse"} />
           <span>SOS</span>
         </button>
 
-        {/* 📞 BOTÓN CRÍTICO 2: LLAMADA DE VOZ EN TIEMPO REAL (SIEMPRE VISIBLE EN MÓVIL Y PC, MIN 48x48px) */}
+        {/* 📞 BOTÓN CRÍTICO 2: LLAMADA DE VOZ EN TIEMPO REAL (SIEMPRE VISIBLE EN MÓVIL Y PC) */}
         <button
           type="button"
           onClick={onOpenCallModal}
-          className="flex items-center justify-center gap-1.5 min-w-[48px] min-h-[48px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1 min-w-[44px] min-h-[42px] sm:min-w-[48px] sm:min-h-[48px] px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/30 transition-all cursor-pointer shrink-0"
           title="Llamada de voz en vivo con Susy Bot"
           aria-label="Iniciar llamada de voz en vivo con Susy Bot"
         >
-          <PhoneCall size={17} />
+          <PhoneCall size={16} />
           <span>Llamar</span>
         </button>
 
         {/* MENÚ AGRUPADO DE HERRAMIENTAS MUNICIPALES Y EXPORTACIÓN (MÓVIL Y ESCRITORIO) */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             type="button"
             onClick={() => setShowActionsMenu((v) => !v)}
-            className="flex items-center justify-center min-w-[48px] min-h-[48px] p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-white/10 transition-colors cursor-pointer active:scale-95"
+            className="flex items-center justify-center min-w-[40px] min-h-[42px] sm:min-w-[48px] sm:min-h-[48px] p-2 sm:p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-white/10 transition-colors cursor-pointer active:scale-95"
             title="Más herramientas municipales, exportar y compartir"
             aria-label="Abrir menú de herramientas municipales y exportación"
           >
