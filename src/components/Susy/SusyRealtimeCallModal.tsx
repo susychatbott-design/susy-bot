@@ -235,6 +235,11 @@ export default function SusyRealtimeCallModal({
   const speechKeepAliveRef = useRef<any>(null);
   const sentenceWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeUtterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
+  const fallbackSentenceQueueRef = useRef<string[]>([]);
+  const fallbackTextBufferRef = useRef<string>("");
+  const isFallbackSpeakingRef = useRef<boolean>(false);
+  const fallbackEpochRef = useRef<number>(0);
+  const llmAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -314,18 +319,32 @@ export default function SusyRealtimeCallModal({
     }, timeout);
   }, [clearSpeechHeartbeat, resumeListening]);
 
-  // 3. Detener audio de Susy de forma limpia y confiable
+  // 3. Kill Switch / Barge-in: Detener audio de Susy y limpiar cola Fallback de forma síncrona
   const stopSusySpeech = useCallback(() => {
+    fallbackEpochRef.current += 1;
     clearSpeechHeartbeat();
-    activeUtterancesRef.current = [];
-    isSusySpeakingRef.current = false;
+
+    // Desvincular eventos de utterances activos antes de cancelar para evitar bucle en onend/onerror
+    activeUtterancesRef.current.forEach((u) => {
+      u.onstart = null;
+      u.onend = null;
+      u.onerror = null;
+    });
+
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-          window.speechSynthesis.cancel();
-        }
+        window.speechSynthesis.cancel();
       } catch {}
     }
+
+    fallbackSentenceQueueRef.current = [];
+    fallbackTextBufferRef.current = "";
+    activeUtterancesRef.current = [];
+    isFallbackSpeakingRef.current = false;
+    isSusySpeakingRef.current = false;
+
+    susyLive.interruptLivePlayback();
+
     if (currentAudioSourceRef.current) {
       try {
         currentAudioSourceRef.current.stop();
@@ -337,12 +356,14 @@ export default function SusyRealtimeCallModal({
       clearTimeout(cooldownTimerRef.current);
       cooldownTimerRef.current = null;
     }
+    llmAbortRef.current?.abort();
+    llmAbortRef.current = null;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     clearHapticAlerts();
-  }, [clearHapticAlerts, clearSpeechHeartbeat]);
+  }, [clearHapticAlerts, clearSpeechHeartbeat, susyLive.interruptLivePlayback]);
 
   // Cierre limpio de llamada y liberación total de hardware
   const handleCleanExit = useCallback(() => {
@@ -408,13 +429,19 @@ export default function SusyRealtimeCallModal({
       // Reproducción continua mediante agrupación por oraciones completas (. ? ! \n) y retención en useRef<SpeechSynthesisUtterance[]>
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
+          fallbackTextBufferRef.current = spokenText;
           const rawSentences =
-            spokenText
+            fallbackTextBufferRef.current
               .match(/[^.?!\n]+[.?!\n]*/g)
               ?.map((s) => s.trim())
               .filter((s) => s.length > 0) || [];
 
-          const sentences = rawSentences.length > 0 ? rawSentences : [spokenText];
+          fallbackTextBufferRef.current = "";
+          fallbackSentenceQueueRef.current =
+            rawSentences.length > 0 ? [...rawSentences] : [spokenText];
+          isFallbackSpeakingRef.current = true;
+          vadLockoutUntilRef.current = Date.now() + 420;
+
           const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 7) * 1000) + 6000);
 
           const voices = window.speechSynthesis.getVoices();
@@ -435,19 +462,27 @@ export default function SusyRealtimeCallModal({
 
           resetSpeechHeartbeat(estimatedDurationMs);
 
-          let currentSentenceIndex = 0;
+          const currentEpoch = fallbackEpochRef.current;
 
           const playSentenceQueue = () => {
-            if (!isSusySpeakingRef.current) return;
+            if (
+              fallbackEpochRef.current !== currentEpoch ||
+              !isSusySpeakingRef.current ||
+              !isFallbackSpeakingRef.current
+            ) {
+              return;
+            }
 
             if (sentenceWatchdogRef.current) {
               clearTimeout(sentenceWatchdogRef.current);
               sentenceWatchdogRef.current = null;
             }
 
-            if (currentSentenceIndex >= sentences.length) {
+            const sentence = fallbackSentenceQueueRef.current.shift();
+            if (!sentence) {
               clearSpeechHeartbeat();
               activeUtterancesRef.current = [];
+              isFallbackSpeakingRef.current = false;
               isSusySpeakingRef.current = false;
               vadLockoutUntilRef.current = Date.now() + 500;
               if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
@@ -457,7 +492,6 @@ export default function SusyRealtimeCallModal({
               return;
             }
 
-            const sentence = sentences[currentSentenceIndex];
             const utterance = new SpeechSynthesisUtterance(sentence);
             // 🛡️ Prevención de Garbage Collection en Chrome: guardar en array useRef<SpeechSynthesisUtterance[]>
             activeUtterancesRef.current.push(utterance);
@@ -482,7 +516,13 @@ export default function SusyRealtimeCallModal({
               activeUtterancesRef.current = activeUtterancesRef.current.filter(
                 (u) => u !== utterance
               );
-              currentSentenceIndex++;
+              if (
+                fallbackEpochRef.current !== currentEpoch ||
+                !isSusySpeakingRef.current ||
+                !isFallbackSpeakingRef.current
+              ) {
+                return;
+              }
               playSentenceQueue();
             };
 
@@ -583,6 +623,7 @@ export default function SusyRealtimeCallModal({
         try {
           const controller = new AbortController();
           abortControllerRef.current = controller;
+          llmAbortRef.current = controller;
 
           let text = "";
           let phoneticText = "";
@@ -996,11 +1037,34 @@ export default function SusyRealtimeCallModal({
           return;
         }
 
-        // 🛡️ SINCRONIZACIÓN DE ESTADOS VAD: Mientras el Fallback está leyendo la oración,
-        // mantener el VAD en espera para que no se active a sí mismo escuchando la voz de emergencia.
+        // 🛡️ BARGE-IN EN MODO FALLBACK (FASE 7.5):
+        // Si Susy está hablando y el usuario interrumpe con voz humana sostenida por encima del umbral de Barge-in,
+        // ejecutar el Kill Switch inmediato (`window.speechSynthesis.cancel()`, vaciar colas y abortar LLM) y grabar la nueva consulta.
         if (isSusySpeakingRef.current) {
-          interruptionSoundStartRef.current = null;
-          voiceStartRef.current = null;
+          if (interactionModeRef.current === "hands_free") {
+            const bargeInThreshold = Math.max(26, noiseFloorRef.current + 15);
+            if (avg > bargeInThreshold) {
+              if (interruptionSoundStartRef.current === null) {
+                interruptionSoundStartRef.current = now;
+              } else if (now - interruptionSoundStartRef.current >= 260) {
+                interruptionSoundStartRef.current = null;
+                lastInterruptedResponseRef.current = {
+                  text: lastCompletedAssistantTextRef.current,
+                  timestamp: now,
+                };
+                stopSusySpeech();
+                susyLive.onSpeechStart();
+                isSpeakingRef.current = true;
+                voiceStartRef.current = null;
+                silenceStartRef.current = null;
+                speechStartTimeRef.current = now;
+                createAndStartRecorder();
+                setCallState("listening");
+              }
+            } else {
+              interruptionSoundStartRef.current = null;
+            }
+          }
           animFrameRef.current = requestAnimationFrame(monitorAudioLoop);
           return;
         }

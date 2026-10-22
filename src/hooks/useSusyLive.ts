@@ -170,12 +170,14 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   const speechEndTimestampRef = useRef<number>(0);
   const firstAudioRecordedRef = useRef<boolean>(false);
 
-  // 🛡️ FASE 7.4: Sentence Buffering y Prevención de Garbage Collection en Chrome
+  // 🛡️ FASE 7.4 & 7.5: Sentence Buffering, Prevención de GC en Chrome y Epoch de Barge-in
   const fallbackTextBufferRef = useRef<string>("");
   const fallbackSentenceQueueRef = useRef<string[]>([]);
   const activeUtterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
   const isFallbackSpeakingRef = useRef<boolean>(false);
   const fallbackWatchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fallbackBargeInEpochRef = useRef<number>(0);
+  const fallbackSpeechStartTsRef = useRef<number>(0);
 
   // Referencias del Reproductor Secuencial con Solapamiento (Web Audio API)
   const playbackCtxRef = useRef<AudioContext | null>(null);
@@ -314,6 +316,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         Math.max(4000, cleanSentence.length * 95)
       );
 
+      const currentEpoch = fallbackBargeInEpochRef.current;
       let settled = false;
       const finalizeUtteranceAndAdvance = (): void => {
         if (settled) return;
@@ -322,6 +325,10 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         activeUtterancesRef.current = activeUtterancesRef.current.filter(
           (u) => u !== utterance
         );
+        // Si hubo un Barge-in (cambio de epoch) o se desactivó el Fallback, NO avanzar a la siguiente oración
+        if (fallbackBargeInEpochRef.current !== currentEpoch || !isFallbackSpeakingRef.current) {
+          return;
+        }
         playNextSentenceFromFallbackQueue();
       };
 
@@ -330,7 +337,14 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       }, maxSentenceDurationMs);
 
       utterance.onstart = () => {
+        if (fallbackBargeInEpochRef.current !== currentEpoch) {
+          try {
+            window.speechSynthesis.cancel();
+          } catch {}
+          return;
+        }
         isFallbackSpeakingRef.current = true;
+        fallbackSpeechStartTsRef.current = performance.now();
         if (!firstAudioRecordedRef.current && speechEndTimestampRef.current > 0) {
           firstAudioRecordedRef.current = true;
           const ttfaMs = Math.round(performance.now() - speechEndTimestampRef.current);
@@ -587,18 +601,39 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   );
 
   /**
-   * Kill Switch del Pipeline Live (Barge-in 0ms):
-   * 1. Envía inmediatamente `{ "type": "interrupt" }` por el WebSocket para matar el TTS local.
-   * 2. Vacía la cola de buffers de audio (`scheduledSourcesRef.current.forEach(source => source.stop())`).
-   * 3. Aborta el stream actual del LLM (`llmAbortRef.current?.abort()`).
+   * Kill Switch del Pipeline Live (Barge-in 0ms - Fase 7.5):
+   * 1. Ejecuta `window.speechSynthesis.cancel()` de forma síncrona e invalida callbacks de utterances.
+   * 2. Vacía `fallbackSentenceQueueRef`, `fallbackTextBufferRef` y `activeUtterancesRef`.
+   * 3. Reinicia `isFallbackSpeakingRef.current = false` e `isSpeaking = false`.
+   * 4. Envía `{ "type": "interrupt" }` por WebSocket y detiene los buffers Web Audio.
+   * 5. Dispara invariablemente `llmAbortRef.current?.abort()` para cortar el stream de Groq.
    */
   const interruptLivePlayback = useCallback((): void => {
+    fallbackBargeInEpochRef.current += 1;
     clearWsResponseTimeout();
     clearFallbackWatchdog();
+
+    // Desvincular callbacks antes de cancelar para que `onend`/`onerror` no disparen la siguiente oración en bucle
+    activeUtterancesRef.current.forEach((u) => {
+      u.onstart = null;
+      u.onend = null;
+      u.onerror = null;
+    });
+
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // Ignorar
+      }
+    }
+
     pendingFallbackTextsRef.current.clear();
-    fallbackTextBufferRef.current = "";
     fallbackSentenceQueueRef.current = [];
+    fallbackTextBufferRef.current = "";
     activeUtterancesRef.current = [];
+    accumulatedGroqTextRef.current = "";
+    spokenFallbackTextRef.current = "";
     isFallbackSpeakingRef.current = false;
     isLlmStreamingRef.current = false;
 
@@ -625,24 +660,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       nextStartTimeRef.current = playbackCtxRef.current.currentTime;
     }
 
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-          window.speechSynthesis.cancel();
-        }
-      } catch {
-        // Ignorar
-      }
-    }
-
-    if (llmAbortRef.current) {
-      try {
-        llmAbortRef.current.abort();
-      } catch {
-        // Ignorar
-      }
-      llmAbortRef.current = null;
-    }
+    llmAbortRef.current?.abort();
+    llmAbortRef.current = null;
 
     setState((prev) => ({
       ...prev,
@@ -923,6 +942,10 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
         // Envolver únicamente por signos de puntuación fuerte (., ?, !, \n)
         const flushSentenceBuffer = (forceAll = false): void => {
+          if (controller.signal.aborted) {
+            sentenceBuffer = "";
+            return;
+          }
           const strongBoundaryRegex = /([^.?!\n]+[.?!\n]+)/;
           let match = strongBoundaryRegex.exec(sentenceBuffer);
 
@@ -931,22 +954,22 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             const cutIndex = match.index + match[1].length;
             sentenceBuffer = sentenceBuffer.slice(cutIndex).trimStart();
 
-            if (candidate.length > 0) {
+            if (candidate.length > 0 && !controller.signal.aborted) {
               sendTextChunkToTtsServer(candidate, false);
             }
             match = strongBoundaryRegex.exec(sentenceBuffer);
           }
 
-          if (forceAll && sentenceBuffer.trim().length > 0) {
+          if (forceAll && !controller.signal.aborted && sentenceBuffer.trim().length > 0) {
             sendTextChunkToTtsServer(sentenceBuffer.trim(), true);
             sentenceBuffer = "";
-          } else if (forceAll) {
+          } else if (forceAll && !controller.signal.aborted) {
             sendTextChunkToTtsServer("", true);
           }
         };
 
         const ingestTextDelta = (delta: string): void => {
-          if (!delta) return;
+          if (!delta || controller.signal.aborted) return;
           fullAssistantText += delta;
           accumulatedGroqTextRef.current = fullAssistantText;
           sentenceBuffer += delta;
@@ -963,8 +986,9 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
         try {
           while (true) {
+            if (controller.signal.aborted) break;
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done || controller.signal.aborted) break;
 
             const rawChunk = decoder.decode(value, { stream: true });
             if (!rawChunk) continue;
@@ -975,6 +999,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
               sseLineBuffer = lines.pop() || "";
 
               for (const rawLine of lines) {
+                if (controller.signal.aborted) break;
                 const trimmed = rawLine.trim();
                 if (!trimmed || trimmed.startsWith(":")) continue;
 
@@ -1001,9 +1026,20 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             }
           }
         } catch (streamErr: unknown) {
-          if (!(streamErr instanceof DOMException && streamErr.name === "AbortError")) {
-            console.warn("[useSusyLive] Interrupción en lectura de chunks Groq:", streamErr);
+          if (
+            controller.signal.aborted ||
+            (streamErr instanceof DOMException && streamErr.name === "AbortError")
+          ) {
+            isLlmStreamingRef.current = false;
+            return;
           }
+          console.warn("[useSusyLive] Interrupción en lectura de chunks Groq:", streamErr);
+        }
+
+        // Si hubo Barge-in (abort), cortar inmediatamente sin volcar buffers viejos al Fallback
+        if (controller.signal.aborted) {
+          isLlmStreamingRef.current = false;
+          return;
         }
 
         if (sseLineBuffer.trim().length > 0 && !sseLineBuffer.trim().startsWith("data:")) {
@@ -1089,7 +1125,41 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   // 4. CAPTURA DE MICRÓFONO CON AEC Y DETECTOR DE SILENCIOS (VAD EN VIVO + BARGE-IN)
   // =========================================================================
   const onSpeechStart = useCallback((): void => {
-    // 1. Enviar inmediatamente { "type": "interrupt" } por WebSocket para matar el proceso TTS local
+    // Incrementar epoch de Barge-in para bloquear cualquier callback asíncrono residual del Fallback
+    fallbackBargeInEpochRef.current += 1;
+
+    // 1. Limpieza Total en el Kill Switch del Fallback (ejecución síncrona inmediata)
+    activeUtterancesRef.current.forEach((u) => {
+      u.onstart = null;
+      u.onend = null;
+      u.onerror = null;
+    });
+
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {
+        // Ignorar
+      }
+    }
+
+    fallbackSentenceQueueRef.current = [];
+    fallbackTextBufferRef.current = "";
+    activeUtterancesRef.current = [];
+    accumulatedGroqTextRef.current = "";
+    spokenFallbackTextRef.current = "";
+    pendingFallbackTextsRef.current.clear();
+    isFallbackSpeakingRef.current = false;
+
+    // 2. Sincronización del AbortController para detener la generación de Groq de la pregunta vieja
+    llmAbortRef.current?.abort();
+    llmAbortRef.current = null;
+    isLlmStreamingRef.current = false;
+
+    clearWsResponseTimeout();
+    clearFallbackWatchdog();
+
+    // 3. Enviar inmediatamente { "type": "interrupt" } por WebSocket para matar el proceso TTS local
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify({ type: "interrupt" }));
@@ -1098,7 +1168,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       }
     }
 
-    // 2. Vaciar la cola de buffers de audio (scheduledSourcesRef.current.forEach(source => source.stop()))
+    // 4. Vaciar la cola de buffers de audio (scheduledSourcesRef.current.forEach(source => source.stop()))
     scheduledSourcesRef.current.forEach((source) => {
       try {
         source.onended = null;
@@ -1109,29 +1179,6 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       }
     });
     scheduledSourcesRef.current.clear();
-
-    // 3. Abortar el stream actual del LLM (llmAbortRef.current?.abort())
-    llmAbortRef.current?.abort();
-    llmAbortRef.current = null;
-    isLlmStreamingRef.current = false;
-
-    clearWsResponseTimeout();
-    clearFallbackWatchdog();
-    pendingFallbackTextsRef.current.clear();
-    fallbackTextBufferRef.current = "";
-    fallbackSentenceQueueRef.current = [];
-    activeUtterancesRef.current = [];
-    isFallbackSpeakingRef.current = false;
-
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try {
-        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-          window.speechSynthesis.cancel();
-        }
-      } catch {
-        // Ignorar
-      }
-    }
 
     setState((prev) => ({
       ...prev,
@@ -1231,14 +1278,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           vadAudioCtxRef.current.resume().catch(() => {});
         }
 
-        // 🛡️ SINCRONIZACIÓN DE ESTADOS VAD:
-        // Mientras el Fallback está leyendo la oración (`isFallbackSpeakingRef` o `activeUtterancesRef`),
-        // o mientras se procesa el stream LLM, pausar el disparo automático del VAD para que no se
-        // escuche a sí mismo ni cancele `window.speechSynthesis`.
+        const now = performance.now();
+
+        // Lockout acústico breve (380ms) al arrancar una oración Fallback para descartar el transitorio inicial del altavoz
         if (
-          isFallbackSpeakingRef.current ||
-          activeUtterancesRef.current.length > 0 ||
-          isLlmStreamingRef.current
+          isFallbackSpeakingRef.current &&
+          now - fallbackSpeechStartTsRef.current < 380
         ) {
           consecutiveVoiceFrames = 0;
           vadRafRef.current = requestAnimationFrame(loop);
@@ -1251,15 +1296,19 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           sumSq += timeData[i] * timeData[i];
         }
         const rms = Math.sqrt(sumSq / timeData.length);
-        const now = performance.now();
 
-        const isSystemSpeakingNow = scheduledSourcesRef.current.size > 0;
-        const threshold = isSystemSpeakingNow ? 0.052 : 0.032;
+        const isSystemSpeakingNow =
+          scheduledSourcesRef.current.size > 0 ||
+          isFallbackSpeakingRef.current ||
+          activeUtterancesRef.current.length > 0;
+        // Durante reproducción (WS o Fallback), exigir umbral más alto y más frames sostenidos para permitir Barge-in real sin auto-escucharse
+        const threshold = isSystemSpeakingNow ? 0.065 : 0.032;
+        const requiredFrames = isSystemSpeakingNow ? 6 : 4;
 
         if (!isSpeakingRef.current) {
           if (rms >= threshold) {
             consecutiveVoiceFrames += 1;
-            if (consecutiveVoiceFrames >= 4) {
+            if (consecutiveVoiceFrames >= requiredFrames) {
               consecutiveVoiceFrames = 0;
               isSpeakingRef.current = true;
               speechStartTs = now;
