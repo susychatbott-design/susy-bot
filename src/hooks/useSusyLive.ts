@@ -89,34 +89,22 @@ function isUselessOrNoiseTranscript(raw: string): boolean {
 }
 
 /**
- * Segmenta un texto en frases atómicas limpias para síntesis de emergencia (`window.speechSynthesis`).
- */
-function splitIntoFallbackSentences(rawText: string): string[] {
-  const clean = sanitizeForTTS(rawText);
-  if (!clean) return [];
-
-  const parts = clean
-    .split(/(?<=[.!?;:])\s+|\n+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-
-  return parts.length > 0 ? parts : [clean];
-}
-
-/**
  * ============================================================================
  * ⚡ useSusyLive: HOOK AISLADO DE PIPELINE DE VOZ ULTRARRÁPIDA (< 500ms)
  * Ubicación: src/hooks/useSusyLive.ts
  * Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
  *
- * Hotfix Fase 7.3 Incluido:
- * - Fallback Instantáneo en `ws.onerror` y `ws.onclose` (ej. `ECONNREFUSED` por
- *   servidor apagado) sin esperar al timeout de 3000ms.
- * - Síntesis de emergencia inmediata (`window.speechSynthesis`) iterando sobre
- *   la respuesta de texto acumulada de Groq con cola secuencial y watchdog por frase.
- * - Desbloqueo garantizado de VAD (Manos Libres): al terminar el ciclo (éxito o fallo),
- *   `isProcessingLLM`, `isSpeaking` e `isPlayingAudio` se establecen en `false`
- *   para reanudar la escucha automáticamente.
+ * Hotfix Fase 7.4 Incluido:
+ * - Sentence Buffering para Web Speech API: En modo Fallback acumula los chunks
+ *   de texto entrantes en un buffer temporal y solo extrae y sintetiza oraciones
+ *   completas cuando detecta puntuación fuerte (`.`, `?`, `!`, o `\n`) o al
+ *   cerrar el stream de Groq.
+ * - Prevención de Garbage Collection en Chrome: Guarda todas las instancias activas
+ *   de `SpeechSynthesisUtterance` en `useRef<SpeechSynthesisUtterance[]>([])`
+ *   durante su reproducción para evitar que V8 las destruya antes de emitir audio.
+ * - Sincronización de Estados VAD: Mantiene `isSpeaking = true` mientras el Fallback
+ *   está leyendo cada oración (pausando la auto-activación del VAD para que no se
+ *   escuche a sí mismo) y lo restablece a `false` al terminar.
  * ============================================================================
  */
 export function useSusyLive(options: UseSusyLiveOptions = {}) {
@@ -182,10 +170,11 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   const speechEndTimestampRef = useRef<number>(0);
   const firstAudioRecordedRef = useRef<boolean>(false);
 
-  // Referencias de Cola Secuencial para `window.speechSynthesis` (Fallback de Emergencia)
-  const fallbackQueueRef = useRef<string[]>([]);
+  // 🛡️ FASE 7.4: Sentence Buffering y Prevención de Garbage Collection en Chrome
+  const fallbackTextBufferRef = useRef<string>("");
+  const fallbackSentenceQueueRef = useRef<string[]>([]);
+  const activeUtterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
   const isFallbackSpeakingRef = useRef<boolean>(false);
-  const activeFallbackUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const fallbackWatchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Referencias del Reproductor Secuencial con Solapamiento (Web Audio API)
@@ -222,7 +211,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
    */
   const unlockVadAndResetAudioState = useCallback((): void => {
     isFallbackSpeakingRef.current = false;
-    activeFallbackUtteranceRef.current = null;
+    activeUtterancesRef.current = [];
     isSpeakingRef.current = false;
 
     if (vadAudioCtxRef.current && vadAudioCtxRef.current.state === "suspended") {
@@ -238,40 +227,62 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   }, []);
 
   /**
-   * Procesa secuencialmente la cola de frases del Fallback (`window.speechSynthesis`).
-   * Mantiene referencia viva al `SpeechSynthesisUtterance` para evitar recolección de basura (GC)
-   * en Chromium y cuenta con un watchdog por frase para que jamás quede bloqueado el VAD.
+   * Reproduce secuencialmente las oraciones completas extraídas por el Sentence Buffer.
+   * Guarda cada instancia de `SpeechSynthesisUtterance` en `activeUtterancesRef.current`
+   * (`useRef<SpeechSynthesisUtterance[]>`) para impedir que el Garbage Collector de Chrome
+   * la destruya antes o durante la emisión de voz.
    */
-  const drainFallbackSpeechQueue = useCallback((): void => {
+  const playNextSentenceFromFallbackQueue = useCallback((): void => {
     clearFallbackWatchdog();
 
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      fallbackQueueRef.current = [];
+      fallbackSentenceQueueRef.current = [];
+      activeUtterancesRef.current = [];
       unlockVadAndResetAudioState();
       return;
     }
 
-    const nextSentence = fallbackQueueRef.current.shift();
+    const nextSentence = fallbackSentenceQueueRef.current.shift();
     if (!nextSentence) {
-      if (!isLlmStreamingRef.current && scheduledSourcesRef.current.size === 0) {
+      // Si ya no quedan oraciones en cola ni utterances activos y el stream LLM terminó, liberar VAD
+      if (
+        activeUtterancesRef.current.length === 0 &&
+        !isLlmStreamingRef.current &&
+        scheduledSourcesRef.current.size === 0
+      ) {
         unlockVadAndResetAudioState();
-      } else {
+      } else if (activeUtterancesRef.current.length === 0) {
         isFallbackSpeakingRef.current = false;
       }
       return;
     }
 
+    const cleanSentence = sanitizeForTTS(nextSentence);
+    if (!cleanSentence) {
+      playNextSentenceFromFallbackQueue();
+      return;
+    }
+
     isFallbackSpeakingRef.current = true;
+    setState((prev) => ({
+      ...prev,
+      isProcessingLLM: false,
+      isSpeaking: true,
+      isPlayingAudio: true,
+    }));
 
     try {
       if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
       }
 
-      const utterance = new SpeechSynthesisUtterance(nextSentence);
-      activeFallbackUtteranceRef.current = utterance;
+      const utterance = new SpeechSynthesisUtterance(cleanSentence);
+      // 🛡️ Prevención de Garbage Collection en Chrome: retener en el array useRef<SpeechSynthesisUtterance[]>
+      activeUtterancesRef.current.push(utterance);
+
       utterance.lang = "es-AR";
-      utterance.rate = 1.05;
+      utterance.rate = 1.04;
+      utterance.pitch = 1.02;
 
       const voices = window.speechSynthesis.getVoices();
       const preferredVoice =
@@ -299,24 +310,27 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       }
 
       const maxSentenceDurationMs = Math.min(
-        16000,
-        Math.max(3500, nextSentence.length * 90)
+        18000,
+        Math.max(4000, cleanSentence.length * 95)
       );
 
       let settled = false;
-      const advanceNext = (): void => {
+      const finalizeUtteranceAndAdvance = (): void => {
         if (settled) return;
         settled = true;
         clearFallbackWatchdog();
-        activeFallbackUtteranceRef.current = null;
-        drainFallbackSpeechQueue();
+        activeUtterancesRef.current = activeUtterancesRef.current.filter(
+          (u) => u !== utterance
+        );
+        playNextSentenceFromFallbackQueue();
       };
 
       fallbackWatchdogTimerRef.current = setTimeout(() => {
-        advanceNext();
+        finalizeUtteranceAndAdvance();
       }, maxSentenceDurationMs);
 
       utterance.onstart = () => {
+        isFallbackSpeakingRef.current = true;
         if (!firstAudioRecordedRef.current && speechEndTimestampRef.current > 0) {
           firstAudioRecordedRef.current = true;
           const ttfaMs = Math.round(performance.now() - speechEndTimestampRef.current);
@@ -338,63 +352,88 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       };
 
       utterance.onend = () => {
-        advanceNext();
+        finalizeUtteranceAndAdvance();
       };
 
       utterance.onerror = () => {
-        advanceNext();
+        finalizeUtteranceAndAdvance();
       };
-
-      setState((prev) => ({
-        ...prev,
-        isProcessingLLM: false,
-        isSpeaking: true,
-        isPlayingAudio: true,
-      }));
 
       window.speechSynthesis.speak(utterance);
     } catch {
-      activeFallbackUtteranceRef.current = null;
-      drainFallbackSpeechQueue();
+      playNextSentenceFromFallbackQueue();
     }
   }, [clearFallbackWatchdog, unlockVadAndResetAudioState]);
 
   /**
-   * Reproductor Fallback del Sistema Operativo (`window.speechSynthesis`)
-   * Itera sobre las oraciones del texto recibido y las encola de forma segura.
+   * 🧩 SENTENCE BUFFERING PARA WEB SPEECH API (FASE 7.4):
+   * Acumula los `textChunks` entrantes en `fallbackTextBufferRef.current`.
+   * Solo cuando detecta un signo de puntuación fuerte (`.`, `?`, `!`, o `\n`)
+   * —o cuando `flushRemaining = true` al finalizar el stream de Groq— extrae
+   * la oración completa, la encola y dispara `playNextSentenceFromFallbackQueue()`.
    */
   const speakWithOsFallback = useCallback(
-    (rawText: string): void => {
+    (rawTextChunk: string, flushRemaining = false): void => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         unlockVadAndResetAudioState();
         return;
       }
 
-      const sentences = splitIntoFallbackSentences(rawText);
-      if (sentences.length === 0) {
-        if (!isLlmStreamingRef.current && !isFallbackSpeakingRef.current) {
-          unlockVadAndResetAudioState();
+      if (rawTextChunk) {
+        const needsSpace =
+          fallbackTextBufferRef.current.length > 0 &&
+          !/\s$/.test(fallbackTextBufferRef.current) &&
+          !/^\s/.test(rawTextChunk);
+        fallbackTextBufferRef.current += (needsSpace ? " " : "") + rawTextChunk;
+      }
+
+      // Extraer únicamente oraciones completas delimitadas por puntuación fuerte (., ?, !, \n)
+      const strongSentenceRegex = /([^.?!\n]+[.?!\n]+)/;
+      let match = strongSentenceRegex.exec(fallbackTextBufferRef.current);
+
+      while (match !== null) {
+        const fullSentence = match[1].trim();
+        const cutIdx = match.index + match[1].length;
+        fallbackTextBufferRef.current = fallbackTextBufferRef.current
+          .slice(cutIdx)
+          .trimStart();
+
+        if (fullSentence.length > 0) {
+          fallbackSentenceQueueRef.current.push(fullSentence);
         }
-        return;
+        match = strongSentenceRegex.exec(fallbackTextBufferRef.current);
       }
 
-      for (const sentence of sentences) {
-        fallbackQueueRef.current.push(sentence);
+      // Al terminar el stream de Groq (flushRemaining = true), vaciar cualquier remanente final
+      if (flushRemaining && fallbackTextBufferRef.current.trim().length > 0) {
+        const remainder = fallbackTextBufferRef.current.trim();
+        fallbackTextBufferRef.current = "";
+        if (remainder.length > 0) {
+          fallbackSentenceQueueRef.current.push(remainder);
+        }
       }
 
-      if (!isFallbackSpeakingRef.current) {
-        drainFallbackSpeechQueue();
+      if (fallbackSentenceQueueRef.current.length > 0 && !isFallbackSpeakingRef.current) {
+        playNextSentenceFromFallbackQueue();
+      } else if (
+        flushRemaining &&
+        fallbackSentenceQueueRef.current.length === 0 &&
+        activeUtterancesRef.current.length === 0 &&
+        !isFallbackSpeakingRef.current &&
+        !isLlmStreamingRef.current
+      ) {
+        unlockVadAndResetAudioState();
       }
     },
-    [drainFallbackSpeechQueue, unlockVadAndResetAudioState]
+    [playNextSentenceFromFallbackQueue, unlockVadAndResetAudioState]
   );
 
   /**
    * Activa de inmediato la síntesis de emergencia (`window.speechSynthesis`)
-   * iterando sobre los fragmentos pendientes o la respuesta acumulada de Groq.
+   * pasando el texto acumulado por el Sentence Buffer.
    */
   const activateImmediateEmergencyFallback = useCallback(
-    (explicitText?: string): void => {
+    (explicitText?: string, flushAll = false): void => {
       clearWsResponseTimeout();
       wsFallbackModeRef.current = true;
 
@@ -407,21 +446,31 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const pendingChunks = Array.from(pendingFallbackTextsRef.current.values());
       pendingFallbackTextsRef.current.clear();
 
-      let textToSpeak = "";
+      let textToFeed = "";
       if (explicitText && explicitText.trim().length > 0) {
-        textToSpeak = explicitText.trim();
+        textToFeed = explicitText.trim();
       } else if (pendingChunks.length > 0) {
-        textToSpeak = pendingChunks.join(" ").trim();
-      } else if (accumulatedGroqTextRef.current.trim().length > spokenFallbackTextRef.current.length) {
-        textToSpeak = accumulatedGroqTextRef.current
+        textToFeed = pendingChunks.join(" ").trim();
+      } else if (
+        accumulatedGroqTextRef.current.trim().length >
+        spokenFallbackTextRef.current.length
+      ) {
+        textToFeed = accumulatedGroqTextRef.current
           .slice(spokenFallbackTextRef.current.length)
           .trim();
       }
 
-      if (textToSpeak.length > 0) {
+      if (textToFeed.length > 0) {
         spokenFallbackTextRef.current = accumulatedGroqTextRef.current;
-        speakWithOsFallback(textToSpeak);
-      } else if (!isLlmStreamingRef.current && !isFallbackSpeakingRef.current) {
+        speakWithOsFallback(textToFeed, flushAll || !isLlmStreamingRef.current);
+      } else if (flushAll && fallbackTextBufferRef.current.trim().length > 0) {
+        speakWithOsFallback("", true);
+      } else if (
+        !isLlmStreamingRef.current &&
+        !isFallbackSpeakingRef.current &&
+        activeUtterancesRef.current.length === 0 &&
+        fallbackSentenceQueueRef.current.length === 0
+      ) {
         unlockVadAndResetAudioState();
       }
     },
@@ -547,9 +596,10 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     clearWsResponseTimeout();
     clearFallbackWatchdog();
     pendingFallbackTextsRef.current.clear();
-    fallbackQueueRef.current = [];
+    fallbackTextBufferRef.current = "";
+    fallbackSentenceQueueRef.current = [];
+    activeUtterancesRef.current = [];
     isFallbackSpeakingRef.current = false;
-    activeFallbackUtteranceRef.current = null;
     isLlmStreamingRef.current = false;
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -577,7 +627,9 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+        }
       } catch {
         // Ignorar
       }
@@ -662,7 +714,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
                 !isLlmStreamingRef.current &&
                 pendingFallbackTextsRef.current.size === 0 &&
                 scheduledSourcesRef.current.size === 0 &&
-                !isFallbackSpeakingRef.current
+                !isFallbackSpeakingRef.current &&
+                activeUtterancesRef.current.length === 0
               ) {
                 unlockVadAndResetAudioState();
               }
@@ -699,18 +752,19 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   ]);
 
   const sendTextChunkToTtsServer = useCallback(
-    (textChunk: string): void => {
-      const clean = sanitizeForTTS(textChunk);
-      if (!clean) return;
-
-      chunkCounterRef.current += 1;
-      const chunkId = chunkCounterRef.current;
+    (textChunk: string, forceFlush = false): void => {
+      if (!textChunk && !forceFlush) return;
 
       if (
         !wsFallbackModeRef.current &&
         wsRef.current &&
         wsRef.current.readyState === WebSocket.OPEN
       ) {
+        const clean = sanitizeForTTS(textChunk);
+        if (!clean) return;
+
+        chunkCounterRef.current += 1;
+        const chunkId = chunkCounterRef.current;
         pendingFallbackTextsRef.current.set(chunkId, clean);
 
         try {
@@ -735,27 +789,27 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
                 }
               }
 
-              activateImmediateEmergencyFallback();
+              activateImmediateEmergencyFallback(undefined, forceFlush);
             }, wsTimeoutMs);
           }
         } catch {
           pendingFallbackTextsRef.current.delete(chunkId);
-          activateImmediateEmergencyFallback(clean);
+          activateImmediateEmergencyFallback(textChunk, forceFlush);
         }
       } else {
         wsFallbackModeRef.current = true;
         setState((prev) =>
           prev.isUsingFallback ? prev : { ...prev, isWsConnected: false, isUsingFallback: true }
         );
-        spokenFallbackTextRef.current += " " + clean;
-        speakWithOsFallback(clean);
+        spokenFallbackTextRef.current += " " + textChunk;
+        speakWithOsFallback(textChunk, forceFlush);
       }
     },
     [wsTimeoutMs, activateImmediateEmergencyFallback, speakWithOsFallback]
   );
 
   // =========================================================================
-  // 3. FLUJO GROQ WHISPER -> GROQ LLAMA 3.3 STREAMING (CON MEMORIA Y FILTRO >= 3 CHARS)
+  // 3. FLUJO GROQ WHISPER -> GROQ LLAMA 3.3 STREAMING (CON SENTENCE BUFFERING)
   // =========================================================================
   const processAudioUtterance = useCallback(
     async (audioBlob: Blob): Promise<void> => {
@@ -763,6 +817,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       firstAudioRecordedRef.current = false;
       accumulatedGroqTextRef.current = "";
       spokenFallbackTextRef.current = "";
+      fallbackTextBufferRef.current = "";
       isLlmStreamingRef.current = true;
 
       const controller = new AbortController();
@@ -775,7 +830,11 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           // Ignorar
         }
         isLlmStreamingRef.current = false;
-        if (!isFallbackSpeakingRef.current && scheduledSourcesRef.current.size === 0) {
+        if (
+          !isFallbackSpeakingRef.current &&
+          activeUtterancesRef.current.length === 0 &&
+          scheduledSourcesRef.current.size === 0
+        ) {
           unlockVadAndResetAudioState();
         } else {
           setState((prev) => ({ ...prev, isProcessingLLM: false }));
@@ -862,26 +921,27 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         let sentenceBuffer = "";
         let fullAssistantText = "";
 
+        // Envolver únicamente por signos de puntuación fuerte (., ?, !, \n)
         const flushSentenceBuffer = (forceAll = false): void => {
-          const boundaryRegex = /([.!?;:\n]+)\s+/;
-          let match = boundaryRegex.exec(sentenceBuffer);
+          const strongBoundaryRegex = /([^.?!\n]+[.?!\n]+)/;
+          let match = strongBoundaryRegex.exec(sentenceBuffer);
 
           while (match !== null) {
+            const candidate = match[1].trim();
             const cutIndex = match.index + match[1].length;
-            const candidate = sentenceBuffer.slice(0, cutIndex).trim();
+            sentenceBuffer = sentenceBuffer.slice(cutIndex).trimStart();
 
-            if (candidate.length >= 14) {
-              sendTextChunkToTtsServer(candidate);
-              sentenceBuffer = sentenceBuffer.slice(cutIndex).trimStart();
-              match = boundaryRegex.exec(sentenceBuffer);
-            } else {
-              break;
+            if (candidate.length > 0) {
+              sendTextChunkToTtsServer(candidate, false);
             }
+            match = strongBoundaryRegex.exec(sentenceBuffer);
           }
 
           if (forceAll && sentenceBuffer.trim().length > 0) {
-            sendTextChunkToTtsServer(sentenceBuffer.trim());
+            sendTextChunkToTtsServer(sentenceBuffer.trim(), true);
             sentenceBuffer = "";
+          } else if (forceAll) {
+            sendTextChunkToTtsServer("", true);
           }
         };
 
@@ -964,11 +1024,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           if (
             wsFallbackModeRef.current &&
             !isFallbackSpeakingRef.current &&
-            fallbackQueueRef.current.length === 0 &&
+            activeUtterancesRef.current.length === 0 &&
+            fallbackSentenceQueueRef.current.length === 0 &&
             spokenFallbackTextRef.current.trim().length === 0
           ) {
             spokenFallbackTextRef.current = fullAssistantText;
-            speakWithOsFallback(fullAssistantText);
+            speakWithOsFallback(fullAssistantText, true);
           }
         } else {
           unlockVadAndResetAudioState();
@@ -999,10 +1060,10 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       } finally {
         clearTimeout(llmWatchdog);
         isLlmStreamingRef.current = false;
-        // Si no hay audio ni síntesis en curso ni chunks pendientes de WebSocket, liberar estados inmediatamente
         if (
           !isFallbackSpeakingRef.current &&
-          fallbackQueueRef.current.length === 0 &&
+          activeUtterancesRef.current.length === 0 &&
+          fallbackSentenceQueueRef.current.length === 0 &&
           scheduledSourcesRef.current.size === 0 &&
           pendingFallbackTextsRef.current.size === 0
         ) {
@@ -1057,13 +1118,16 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     clearWsResponseTimeout();
     clearFallbackWatchdog();
     pendingFallbackTextsRef.current.clear();
-    fallbackQueueRef.current = [];
+    fallbackTextBufferRef.current = "";
+    fallbackSentenceQueueRef.current = [];
+    activeUtterancesRef.current = [];
     isFallbackSpeakingRef.current = false;
-    activeFallbackUtteranceRef.current = null;
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
-        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+        }
       } catch {
         // Ignorar
       }
@@ -1167,6 +1231,20 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           vadAudioCtxRef.current.resume().catch(() => {});
         }
 
+        // 🛡️ SINCRONIZACIÓN DE ESTADOS VAD:
+        // Mientras el Fallback está leyendo la oración (`isFallbackSpeakingRef` o `activeUtterancesRef`),
+        // o mientras se procesa el stream LLM, pausar el disparo automático del VAD para que no se
+        // escuche a sí mismo ni cancele `window.speechSynthesis`.
+        if (
+          isFallbackSpeakingRef.current ||
+          activeUtterancesRef.current.length > 0 ||
+          isLlmStreamingRef.current
+        ) {
+          consecutiveVoiceFrames = 0;
+          vadRafRef.current = requestAnimationFrame(loop);
+          return;
+        }
+
         analyser.getFloatTimeDomainData(timeData);
         let sumSq = 0;
         for (let i = 0; i < timeData.length; i++) {
@@ -1175,8 +1253,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         const rms = Math.sqrt(sumSq / timeData.length);
         const now = performance.now();
 
-        const isSystemSpeakingNow =
-          scheduledSourcesRef.current.size > 0 || isFallbackSpeakingRef.current;
+        const isSystemSpeakingNow = scheduledSourcesRef.current.size > 0;
         const threshold = isSystemSpeakingNow ? 0.052 : 0.032;
 
         if (!isSpeakingRef.current) {

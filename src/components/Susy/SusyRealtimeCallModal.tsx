@@ -234,7 +234,7 @@ export default function SusyRealtimeCallModal({
   const speechHeartbeatRef = useRef<any>(null);
   const speechKeepAliveRef = useRef<any>(null);
   const sentenceWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const activeUtterancesRef = useRef<SpeechSynthesisUtterance[]>([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -260,7 +260,7 @@ export default function SusyRealtimeCallModal({
   // Reanudar escucha limpia tras delay de seguridad
   const resumeListening = useCallback(() => {
     clearSpeechHeartbeat();
-    activeUtteranceRef.current = null;
+    activeUtterancesRef.current = [];
     isSusySpeakingRef.current = false;
     isSpeakingRef.current = false;
     isProcessingRef.current = false;
@@ -306,36 +306,25 @@ export default function SusyRealtimeCallModal({
         if (typeof window !== "undefined" && "speechSynthesis" in window) {
           try { window.speechSynthesis.cancel(); } catch {}
         }
-        activeUtteranceRef.current = null;
+        activeUtterancesRef.current = [];
         isSusySpeakingRef.current = false;
         resumeListening();
         setAccessibleAnnouncement("Canal de audio restablecido. Susy te escucha.");
       }
     }, timeout);
-
-    // 🛡️ Chrome/Chromium SpeechSynthesis Keep-Alive Pulse (Solo en Desktop, NUNCA en Mobile para evitar congelamiento de segundo renglón)
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-      if (!isMobile) {
-        speechKeepAliveRef.current = setInterval(() => {
-          try {
-            if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
-              window.speechSynthesis.pause();
-              window.speechSynthesis.resume();
-            }
-          } catch {}
-        }, 5000);
-      }
-    }
-  }, [clearSpeechHeartbeat, playAccessibleChime, resumeListening]);
+  }, [clearSpeechHeartbeat, resumeListening]);
 
   // 3. Detener audio de Susy de forma limpia y confiable
   const stopSusySpeech = useCallback(() => {
     clearSpeechHeartbeat();
-    activeUtteranceRef.current = null;
+    activeUtterancesRef.current = [];
     isSusySpeakingRef.current = false;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      try { window.speechSynthesis.cancel(); } catch {}
+      try {
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+        }
+      } catch {}
     }
     if (currentAudioSourceRef.current) {
       try {
@@ -379,7 +368,7 @@ export default function SusyRealtimeCallModal({
     onClose();
   }, [onClose, stopSusySpeech]);
 
-  // 5. Reproducción de Audio Completa y Fonéticamente Humana (Con Heartbeat Watchdog)
+  // 5. Reproducción de Audio Completa y Fonéticamente Humana (Con Sentence Buffering y Prevención GC)
   const playRealSusyAudio = useCallback(
     async (_audioBase64: string | null, fullText: string, customPhoneticText?: string) => {
       if (isMuted || !fullText || !fullText.trim()) {
@@ -389,18 +378,20 @@ export default function SusyRealtimeCallModal({
 
       stopSusySpeech();
       isSusySpeakingRef.current = true;
-      vadLockoutUntilRef.current = Date.now() + 380; // 🛡️ Breve ventana inicial de 380ms; luego True Barge-in queda activo con AEC
       liveTranscriptRef.current = "";
-      if (micStreamRef.current) {
-        micStreamRef.current.getAudioTracks().forEach((t) => {
-          t.enabled = true;
-        });
+
+      // Pausar reconocimiento nativo mientras Susy habla para que no se auto-escuche ni bloquee el sintetizador SO
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
       }
+
       setCallState("speaking");
       setAssistantText(fullText);
       lastCompletedAssistantTextRef.current = fullText;
 
-      const spokenText = customPhoneticText || normalizePhoneticTextForSpeech(fullText);
+      const spokenText = normalizePhoneticTextForSpeech(fullText || customPhoneticText || "");
 
       // 🎧 MODO COEXISTENCIA DE AUDIO: Si usa TalkBack o VoiceOver, no reproducir SpeechSynthesis de la app
       if (useSystemScreenReader) {
@@ -414,25 +405,33 @@ export default function SusyRealtimeCallModal({
 
       setAccessibleAnnouncement("Susy está respondiendo.");
 
-      // Reproducción continua mediante cola de frases atómicas (erradica freeze móvil en segundo renglón)
+      // Reproducción continua mediante agrupación por oraciones completas (. ? ! \n) y retención en useRef<SpeechSynthesisUtterance[]>
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
-          window.speechSynthesis.cancel();
-
-          // 🛡️ Segmentación Atómica en Frases: Erradica el congelamiento del segundo renglón en móviles
-          const rawSentences = spokenText
-            .split(/(?<=[.!?])\s+|\n+/)
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
+          const rawSentences =
+            spokenText
+              .match(/[^.?!\n]+[.?!\n]*/g)
+              ?.map((s) => s.trim())
+              .filter((s) => s.length > 0) || [];
 
           const sentences = rawSentences.length > 0 ? rawSentences : [spokenText];
           const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 7) * 1000) + 6000);
 
           const voices = window.speechSynthesis.getVoices();
-          const spanishVoice = voices.find(v =>
-            (v.lang.startsWith("es-AR") || v.lang.startsWith("es-419") || v.lang.startsWith("es-US") || v.lang.startsWith("es")) &&
-            (v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("paulina") || v.name.toLowerCase().includes("elena") || v.name.toLowerCase().includes("sabina") || v.name.toLowerCase().includes("monica") || v.name.toLowerCase().includes("natural"))
-          ) || voices.find(v => v.lang.startsWith("es"));
+          const spanishVoice =
+            voices.find(
+              (v) =>
+                (v.lang.startsWith("es-AR") ||
+                  v.lang.startsWith("es-419") ||
+                  v.lang.startsWith("es-US") ||
+                  v.lang.startsWith("es")) &&
+                (v.name.toLowerCase().includes("female") ||
+                  v.name.toLowerCase().includes("paulina") ||
+                  v.name.toLowerCase().includes("elena") ||
+                  v.name.toLowerCase().includes("sabina") ||
+                  v.name.toLowerCase().includes("monica") ||
+                  v.name.toLowerCase().includes("natural"))
+            ) || voices.find((v) => v.lang.startsWith("es"));
 
           resetSpeechHeartbeat(estimatedDurationMs);
 
@@ -448,25 +447,28 @@ export default function SusyRealtimeCallModal({
 
             if (currentSentenceIndex >= sentences.length) {
               clearSpeechHeartbeat();
-              activeUtteranceRef.current = null;
+              activeUtterancesRef.current = [];
               isSusySpeakingRef.current = false;
-              vadLockoutUntilRef.current = Date.now() + 600; // 🛡️ Lockout post-locución para evitar eco final
+              vadLockoutUntilRef.current = Date.now() + 500;
               if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
               cooldownTimerRef.current = setTimeout(() => {
                 resumeListening();
-              }, 600);
+              }, 350);
               return;
             }
 
             const sentence = sentences[currentSentenceIndex];
             const utterance = new SpeechSynthesisUtterance(sentence);
-            activeUtteranceRef.current = utterance;
+            // 🛡️ Prevención de Garbage Collection en Chrome: guardar en array useRef<SpeechSynthesisUtterance[]>
+            activeUtterancesRef.current.push(utterance);
+
             utterance.lang = "es-AR";
             utterance.rate = 1.02;
-            utterance.pitch = 1.05;
+            utterance.pitch = 1.04;
 
             if (spanishVoice) {
               utterance.voice = spanishVoice;
+              utterance.lang = spanishVoice.lang || "es-AR";
             }
 
             let advanced = false;
@@ -477,11 +479,14 @@ export default function SusyRealtimeCallModal({
                 clearTimeout(sentenceWatchdogRef.current);
                 sentenceWatchdogRef.current = null;
               }
+              activeUtterancesRef.current = activeUtterancesRef.current.filter(
+                (u) => u !== utterance
+              );
               currentSentenceIndex++;
               playSentenceQueue();
             };
 
-            const maxSentenceMs = Math.min(12000, Math.max(3000, sentence.length * 85));
+            const maxSentenceMs = Math.min(14000, Math.max(3500, sentence.length * 90));
             sentenceWatchdogRef.current = setTimeout(() => {
               advanceToNextSentence();
             }, maxSentenceMs);
@@ -501,9 +506,7 @@ export default function SusyRealtimeCallModal({
             window.speechSynthesis.speak(utterance);
           };
 
-          setTimeout(() => {
-            playSentenceQueue();
-          }, 30);
+          playSentenceQueue();
           return;
         } catch (e) {
           console.warn("[SpeechSynthesis Error]:", e);
@@ -515,7 +518,7 @@ export default function SusyRealtimeCallModal({
         resumeListening();
       }, 3500);
     },
-    [clearSpeechHeartbeat, isMuted, playAccessibleChime, resetSpeechHeartbeat, resumeListening, stopSusySpeech, useSystemScreenReader]
+    [clearSpeechHeartbeat, isMuted, resetSpeechHeartbeat, resumeListening, stopSusySpeech, useSystemScreenReader]
   );
 
   // 6. Protocolo SOS Lazarillo Híbrido
@@ -892,18 +895,9 @@ export default function SusyRealtimeCallModal({
               const cleanCur = cur.trim();
               if (!cleanCur) return;
 
-              // Si Susy está hablando y el vecino pronuncia >= 2 palabras que no son eco de Susy -> True Barge-in
+              // 🛡️ SINCRONIZACIÓN DE ESTADOS VAD: Ignorar entradas automáticas mientras el Fallback lee la oración
               if (isSusySpeakingRef.current) {
-                const lowerCur = cleanCur.toLowerCase();
-                const lowerLast = (lastCompletedAssistantTextRef.current || "").toLowerCase();
-                const wordCount = cleanCur.split(/\s+/).length;
-                if (wordCount >= 2 && (!lowerLast || !lowerLast.includes(lowerCur))) {
-                  stopSusySpeech();
-                  isSpeakingRef.current = true;
-                  setCallState("listening");
-                } else {
-                  return;
-                }
+                return;
               }
 
               liveTranscriptRef.current = cleanCur;
@@ -973,25 +967,11 @@ export default function SusyRealtimeCallModal({
           return;
         }
 
-        // 🚨 TRUE BARGE-IN MIENTRAS SUSY HABLA (CON AEC ACTIVO)
+        // 🛡️ SINCRONIZACIÓN DE ESTADOS VAD: Mientras el Fallback está leyendo la oración,
+        // mantener el VAD en espera para que no se active a sí mismo escuchando la voz de emergencia.
         if (isSusySpeakingRef.current) {
-          const bargeInThreshold = Math.max(18, noiseFloorRef.current + 9);
-          if (avg > bargeInThreshold) {
-            if (interruptionSoundStartRef.current === null) {
-              interruptionSoundStartRef.current = now;
-            } else if (now - interruptionSoundStartRef.current >= 190) {
-              // El vecino interrumpió con voz humana sostenida -> cortar TTS y escuchar
-              interruptionSoundStartRef.current = null;
-              stopSusySpeech();
-              isSpeakingRef.current = true;
-              voiceStartRef.current = null;
-              speechStartTimeRef.current = now;
-              createAndStartRecorder();
-              setCallState("listening");
-            }
-          } else {
-            interruptionSoundStartRef.current = null;
-          }
+          interruptionSoundStartRef.current = null;
+          voiceStartRef.current = null;
           animFrameRef.current = requestAnimationFrame(monitorAudioLoop);
           return;
         }
