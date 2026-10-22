@@ -50,7 +50,7 @@ export default function RootLayout({
         />
       </head>
 
-      <body className="antialiased bg-[#080d1a] text-slate-100 min-h-screen">
+      <body className="antialiased bg-[#080d1a] text-slate-100 min-h-dvh h-dvh overflow-hidden">
         {children}
       </body>
     </html>

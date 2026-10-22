@@ -369,10 +369,12 @@ export default function SusyRealtimeCallModal({
 
       stopSusySpeech();
       isSusySpeakingRef.current = true;
-      vadLockoutUntilRef.current = Date.now() + 1500; // 🛡️ Lockout de 1500ms para silenciar VAD ante eco del parlante
+      vadLockoutUntilRef.current = Date.now() + 380; // 🛡️ Breve ventana inicial de 380ms; luego True Barge-in queda activo con AEC
       liveTranscriptRef.current = "";
       if (micStreamRef.current) {
-        micStreamRef.current.getAudioTracks().forEach(t => { t.enabled = false; });
+        micStreamRef.current.getAudioTracks().forEach((t) => {
+          t.enabled = true;
+        });
       }
       setCallState("speaking");
       setAssistantText(fullText);
@@ -540,39 +542,118 @@ export default function SusyRealtimeCallModal({
 
           try {
             const interruptedContext = lastInterruptedResponseRef.current;
-            const res = await fetch("/api/realtime-proxy", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message: clientText,
-                audioBase64: base64,
-                mimeType,
-                history: historyRef.current.slice(-16),
-                mode: activeModeRef.current,
-                lastInterruptedResponse: interruptedContext
-              }),
-              signal: controller.signal
-            });
+            const proxyAbort = new AbortController();
+            const proxyTimeout = setTimeout(() => proxyAbort.abort(), 6500);
 
-            if (res.ok) {
-              const data = await res.json();
-              text = data.text || "";
-              phoneticText = data.phoneticText || "";
-              resAudio = data.audioBase64 || null;
-              transcribedUserText = data.transcribedUserText || clientText;
-            } else {
-              throw new Error("HTTP_FAILED");
+            const onParentAbort = () => proxyAbort.abort();
+            controller.signal.addEventListener("abort", onParentAbort, { once: true });
+
+            try {
+              const res = await fetch("/api/realtime-proxy", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  message: clientText,
+                  audioBase64: base64,
+                  mimeType,
+                  history: historyRef.current.slice(-16),
+                  mode: activeModeRef.current,
+                  lastInterruptedResponse: interruptedContext,
+                }),
+                signal: proxyAbort.signal,
+              });
+
+              if (res.ok) {
+                const data = await res.json();
+                text = data.text || "";
+                phoneticText = data.phoneticText || "";
+                resAudio = data.audioBase64 || null;
+                transcribedUserText = data.transcribedUserText || clientText;
+              } else {
+                throw new Error("HTTP_FAILED");
+              }
+            } finally {
+              clearTimeout(proxyTimeout);
+              controller.signal.removeEventListener("abort", onParentAbort);
             }
           } catch (fetchErr: any) {
-            console.warn("[Voice Modal] Red no disponible o error HTTP. Conmutando a Inferencia Local Offline...", fetchErr?.message);
-            const userPrompt = clientText || "Hola Susy, te consulto por trámites de la Municipalidad de Ituzaingó";
-            const localRes = await executeLocalInference(
-              userPrompt,
-              historyRef.current,
-              activeModeRef.current
-            );
-            text = localRes.text;
-            transcribedUserText = userPrompt;
+            if (controller.signal.aborted) {
+              throw new DOMException("Aborted", "AbortError");
+            }
+
+            const fallbackQuery =
+              transcribedUserText ||
+              clientText ||
+              "Hola Susy, te consulto por trámites de la Municipalidad de Ituzaingó";
+
+            if (typeof navigator === "undefined" || navigator.onLine) {
+              try {
+                const chatTimeoutCtrl = new AbortController();
+                const chatTimer = setTimeout(() => chatTimeoutCtrl.abort(), 5500);
+                const chatRes = await fetch("/api/chat", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    message: fallbackQuery,
+                    userText: fallbackQuery,
+                    mode: activeModeRef.current,
+                    interactionMode: "voice",
+                  }),
+                  signal: chatTimeoutCtrl.signal,
+                });
+                clearTimeout(chatTimer);
+
+                if (chatRes.ok) {
+                  const rawBody = await chatRes.text();
+                  text = rawBody
+                    .split("\n")
+                    .map((line) => {
+                      const trimmed = line.trim();
+                      if (trimmed.startsWith("data:")) {
+                        const payload = trimmed.slice(5).trim();
+                        if (payload === "[DONE]") return "";
+                        try {
+                          const parsed = JSON.parse(payload);
+                          return parsed.text || parsed.content || "";
+                        } catch {
+                          return payload;
+                        }
+                      }
+                      return line;
+                    })
+                    .join("")
+                    .trim();
+                  transcribedUserText = fallbackQuery;
+                }
+              } catch (chatErr) {
+                console.warn("[Voice Modal] Fallback /api/chat warning:", chatErr);
+              }
+            }
+
+            if (!text) {
+              console.warn(
+                "[Voice Modal] Conmutando a Inferencia Local Offline con timeout seguro...",
+                fetchErr?.message
+              );
+              const localRes = await Promise.race([
+                executeLocalInference(
+                  fallbackQuery,
+                  historyRef.current,
+                  activeModeRef.current
+                ),
+                new Promise<{ text: string }>((resolve) =>
+                  setTimeout(
+                    () =>
+                      resolve({
+                        text: "Te escucho vecino. Contame en qué trámite, reclamo o consulta municipal de Ituzaingó te puedo ayudar.",
+                      }),
+                    2800
+                  )
+                ),
+              ]);
+              text = localRes.text;
+              transcribedUserText = fallbackQuery;
+            }
           }
 
           if (transcribedUserText && !transcribedUserText.includes("Escuchando") && !transcribedUserText.includes("[Sonido")) {
@@ -740,16 +821,47 @@ export default function SusyRealtimeCallModal({
             rec.continuous = true;
             rec.interimResults = true;
             rec.lang = "es-AR";
+            let speechRecCommitTimer: ReturnType<typeof setTimeout> | null = null;
             rec.onresult = (e: any) => {
-              if (isSusySpeakingRef.current || isProcessingRef.current || Date.now() < vadLockoutUntilRef.current) return;
+              if (isProcessingRef.current || Date.now() < vadLockoutUntilRef.current) return;
               let cur = "";
               for (let i = e.resultIndex; i < e.results.length; ++i) {
                 cur += e.results[i][0].transcript;
               }
-              if (cur.trim()) {
-                liveTranscriptRef.current = cur.trim();
-                setUserTranscript(`"${cur.trim()}"`);
+              const cleanCur = cur.trim();
+              if (!cleanCur) return;
+
+              // Si Susy está hablando y el vecino pronuncia >= 2 palabras que no son eco de Susy -> True Barge-in
+              if (isSusySpeakingRef.current) {
+                const lowerCur = cleanCur.toLowerCase();
+                const lowerLast = (lastCompletedAssistantTextRef.current || "").toLowerCase();
+                const wordCount = cleanCur.split(/\s+/).length;
+                if (wordCount >= 2 && (!lowerLast || !lowerLast.includes(lowerCur))) {
+                  stopSusySpeech();
+                  isSpeakingRef.current = true;
+                  setCallState("listening");
+                } else {
+                  return;
+                }
               }
+
+              liveTranscriptRef.current = cleanCur;
+              setUserTranscript(`"${cleanCur}"`);
+
+              // En PC: asegurar que tras 1100ms de pausa luego de STT se envíe el turno aunque el VAD frecuencial no dispare
+              if (speechRecCommitTimer) clearTimeout(speechRecCommitTimer);
+              speechRecCommitTimer = setTimeout(() => {
+                if (isProcessingRef.current || isSusySpeakingRef.current) return;
+                if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+                  isSpeakingRef.current = false;
+                  silenceStartRef.current = null;
+                  mediaRecorderRef.current.stop();
+                } else if (liveTranscriptRef.current.trim().length >= 2) {
+                  isSpeakingRef.current = false;
+                  silenceStartRef.current = null;
+                  sendVoiceAudioTurn(new Blob([], { type: mimeType }), mimeType);
+                }
+              }, 1150);
             };
 
             rec.onerror = (err: any) => {
@@ -792,11 +904,33 @@ export default function SusyRealtimeCallModal({
           noiseFloorRef.current = Math.min(32, Math.max(6, noiseFloorRef.current * 0.95 + avg * 0.05));
         }
 
-        // 🛡️ PROTECCIÓN ANTI-CORTE Y DEBOUNCE VAD: Ignorar audio mientras Susy habla y durante el lockout de 1500ms
-        if (isSusySpeakingRef.current || now < vadLockoutUntilRef.current) {
+        // 🛡️ LOCKOUT INICIAL DE 380ms POST-INICIO DE TTS
+        if (now < vadLockoutUntilRef.current) {
           interruptionSoundStartRef.current = null;
           voiceStartRef.current = null;
-          isSpeakingRef.current = false;
+          animFrameRef.current = requestAnimationFrame(monitorAudioLoop);
+          return;
+        }
+
+        // 🚨 TRUE BARGE-IN MIENTRAS SUSY HABLA (CON AEC ACTIVO)
+        if (isSusySpeakingRef.current) {
+          const bargeInThreshold = Math.max(18, noiseFloorRef.current + 9);
+          if (avg > bargeInThreshold) {
+            if (interruptionSoundStartRef.current === null) {
+              interruptionSoundStartRef.current = now;
+            } else if (now - interruptionSoundStartRef.current >= 190) {
+              // El vecino interrumpió con voz humana sostenida -> cortar TTS y escuchar
+              interruptionSoundStartRef.current = null;
+              stopSusySpeech();
+              isSpeakingRef.current = true;
+              voiceStartRef.current = null;
+              speechStartTimeRef.current = now;
+              createAndStartRecorder();
+              setCallState("listening");
+            }
+          } else {
+            interruptionSoundStartRef.current = null;
+          }
           animFrameRef.current = requestAnimationFrame(monitorAudioLoop);
           return;
         }
@@ -962,15 +1096,19 @@ export default function SusyRealtimeCallModal({
     }
 
     try {
+      const ctrl = new AbortController();
+      const timeoutId = setTimeout(() => ctrl.abort(), 6500);
       const res = await fetch("/api/realtime-proxy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: textToSend,
           history: historyRef.current.slice(-6),
-          mode: activeModeRef.current
-        })
+          mode: activeModeRef.current,
+        }),
+        signal: ctrl.signal,
       });
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
@@ -979,13 +1117,7 @@ export default function SusyRealtimeCallModal({
           historyRef.current.push({ role: "user", content: textToSend });
           historyRef.current.push({ role: "assistant", content: data.text });
           if (onMessageLogged) onMessageLogged(textToSend, data.text);
-
-          if (data.audioBase64) {
-            await playRealSusyAudio(data.audioBase64, data.text);
-          } else {
-            setAccessibleAnnouncement(data.text);
-            resumeListening();
-          }
+          await playRealSusyAudio(data.audioBase64 || null, data.text, data.phoneticText);
         } else {
           resumeListening();
         }
@@ -1056,7 +1188,11 @@ export default function SusyRealtimeCallModal({
       role="dialog"
       aria-modal="true"
       aria-label="Llamada de voz en vivo con Susy"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-2xl animate-fade-in select-none"
+      className="fixed inset-0 z-50 w-full h-dvh max-h-dvh flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-2xl animate-fade-in select-none overflow-hidden"
+      style={{
+        paddingBottom: "max(10px, env(safe-area-inset-bottom))",
+        paddingTop: "max(10px, env(safe-area-inset-top))",
+      }}
     >
       {/* Región Dinámica Asertiva para TalkBack (Android) y VoiceOver (iOS) */}
       <div 
@@ -1069,7 +1205,7 @@ export default function SusyRealtimeCallModal({
         {accessibleAnnouncement}
       </div>
 
-      <div className="relative w-full max-w-md overflow-hidden bg-gradient-to-b from-slate-900 via-[#070b14] to-slate-950 border border-cyan-500/30 rounded-3xl shadow-2xl p-5 sm:p-6 flex flex-col items-center justify-between min-h-[590px]">
+      <div className="relative w-full max-w-md max-h-[calc(100dvh-20px)] sm:max-h-[92dvh] overflow-y-auto bg-gradient-to-b from-slate-900 via-[#070b14] to-slate-950 border border-cyan-500/30 rounded-3xl shadow-2xl p-4 sm:p-6 flex flex-col items-center justify-between gap-2">
         
         {/* Cabecera del Modal */}
         <div className="w-full flex items-center justify-between pb-3 border-b border-slate-800/60">
@@ -1229,7 +1365,7 @@ export default function SusyRealtimeCallModal({
                       playAccessibleChime("start");
                     }
                   }}
-                  className={`w-36 h-36 rounded-full transition-all duration-100 flex items-center justify-center cursor-pointer ${
+                  className={`w-28 h-28 sm:w-36 sm:h-36 rounded-full transition-all duration-100 flex items-center justify-center cursor-pointer ${
                     callState === "speaking"
                       ? "bg-gradient-to-tr from-cyan-400 via-emerald-400 to-teal-300 animate-pulse shadow-2xl shadow-cyan-500/50 scale-105"
                       : callState === "thinking"

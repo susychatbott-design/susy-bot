@@ -31,6 +31,7 @@ import {
 import { useSusyVAD } from "@/hooks/useSusyVAD";
 import { useSusyDeviceCapabilities } from "@/hooks/useSusyDeviceCapabilities";
 import { useSusyGestures } from "@/hooks/useSusyGestures";
+import { useSusyLive } from "@/hooks/useSusyLive";
 
 // 2. Motor de Perfiles Cognitivos (Fase 2)
 import { SusyProfileId, resolveCanonicalProfileId } from "@/lib/prompts";
@@ -167,9 +168,15 @@ export default function SusyBotPage() {
   });
 
   const [vadEnabled, setVadEnabled] = useState<boolean>(false);
+  const susyLive = useSusyLive({
+    wsUrl: "ws://localhost:3010/tts-stream",
+    wsTimeoutMs: 3000,
+    crossfadeOverlapMs: 18,
+  });
+
   const vad = useSusyVAD({
-    // TRUE BARGE-IN: El VAD permanece escuchando con AEC mientras Susy habla para permitir interrupción por voz
-    enabled: vadEnabled || audio.isSpeaking || audio.isPlaying,
+    // TRUE BARGE-IN: El VAD permanece escuchando con AEC mientras Susy habla (se pausa si Modo Live ⚡ está activo)
+    enabled: !susyLive.isLiveActive && (vadEnabled || audio.isSpeaking || audio.isPlaying),
     isSystemSpeaking: audio.isSpeaking || audio.isPlaying,
     onSpeechStart: () => {
       // Kill Switch inmediato cuando el usuario comienza a hablar
@@ -409,7 +416,7 @@ export default function SusyBotPage() {
   // 3. ESTRUCTURA DE RENDERIZADO FLUIDA, ADAPTATIVA Y ACCESIBLE (DUA)
   // =========================================================================
   return (
-    <div className="min-h-screen h-dvh w-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none sm:select-text">
+    <div className="min-h-dvh h-dvh w-full bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none sm:select-text">
       {/* CABECERA SUPERIOR DINÁMICA (ONLINE/OFF-GRID, PERFILES COGNITIVOS, SOS HÍBRIDO) */}
       <SusyHeader
         currentMode={chat.activeMode}
@@ -444,11 +451,62 @@ export default function SusyBotPage() {
 
       {/* ÁREA CENTRAL DINÁMICA (CONMUTACIÓN ENTRE PANELES MUNICIPALES, CONVERSACIÓN Y ACCESIBILIDAD) */}
       <main
-        className={`flex-1 overflow-y-auto pt-16 px-3 sm:px-6 scroll-pb-44 ${
-          shouldShowTEABoard ? "pb-64" : "pb-40 sm:pb-36"
+        className={`flex-1 overflow-y-auto pt-16 px-3 sm:px-6 scroll-pb-48 ${
+          shouldShowTEABoard ? "pb-72 sm:pb-64" : "pb-48 sm:pb-36"
         }`}
       >
         <div className="max-w-4xl mx-auto py-4 space-y-4">
+          {/* INDICADOR INTERACTIVO DE MODO LIVE ⚡ (<500ms) CON BARGE-IN Y FALLBACK AUTOMÁTICO */}
+          {susyLive.isLiveActive && (
+            <div className="p-3.5 rounded-2xl bg-amber-950/50 border border-amber-400/50 text-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-lg animate-fadeIn">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs font-extrabold text-amber-300">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
+                  <span>
+                    MODO LIVE ⚡ ACTIVO •{" "}
+                    {susyLive.isUserSpeaking
+                      ? "🎙️ Escuchando tu voz (Barge-in)..."
+                      : susyLive.isProcessingLLM
+                      ? "⚡ Procesando respuesta..."
+                      : susyLive.isPlayingAudio
+                      ? "🗣️ Susy hablando (Hablá para interrumpir)"
+                      : "✨ Escucha continua con AEC activa"}
+                  </span>
+                  {susyLive.liveLatencyMs !== null && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-[10px] font-mono">
+                      TTFA: {susyLive.liveLatencyMs}ms
+                    </span>
+                  )}
+                </div>
+                {(susyLive.lastTranscript || susyLive.lastResponse) && (
+                  <p className="text-xs text-slate-200 line-clamp-2">
+                    {susyLive.lastResponse
+                      ? `Susy: "${susyLive.lastResponse}"`
+                      : `Vos: "${susyLive.lastTranscript}"`}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {(susyLive.isPlayingAudio || susyLive.isProcessingLLM) && (
+                  <button
+                    type="button"
+                    onClick={() => susyLive.onSpeechStart()}
+                    className="px-3 py-1.5 rounded-xl bg-amber-500/30 hover:bg-amber-500/45 border border-amber-400/50 text-amber-200 text-xs font-bold cursor-pointer"
+                  >
+                    Interrumpir
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => susyLive.stopLiveSession()}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-bold cursor-pointer"
+                >
+                  Salir de Live
+                </button>
+              </div>
+            </div>
+          )}
           {/* BARRA RÁPIDA DE MÓDULOS MUNICIPALES (DEFENSA CIVIL, SECRETARÍAS, COMERCIOS, PRENSA, GESTIÓN) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
             <button
@@ -780,6 +838,12 @@ export default function SusyBotPage() {
         isUserSpeakingVAD={vad.userSpeaking}
         onToggleVAD={() => setVadEnabled((prev) => !prev)}
         onOpenCallModal={() => setShowRealtimeCallModal(true)}
+        isLiveModeActive={susyLive.isLiveActive}
+        liveLatencyMs={susyLive.liveLatencyMs}
+        onToggleLiveMode={() => {
+          audio.stopPlayback();
+          susyLive.toggleLiveMode().catch(() => {});
+        }}
         isCameraActive={vision.isCameraActive}
         onToggleCamera={() => {
           handleToggleCamera().catch(() => {});
