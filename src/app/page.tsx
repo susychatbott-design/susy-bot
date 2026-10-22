@@ -487,6 +487,11 @@ export default function SusyBotPage() {
                       TTFA: {susyLive.liveLatencyMs}ms
                     </span>
                   )}
+                  {susyLive.isUsingFallback && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-900/70 border border-amber-400/50 text-[10px] font-medium text-amber-200">
+                      ⚠️ TTS Local Desconectado - Usando Voz de Respaldo
+                    </span>
+                  )}
                 </div>
                 {(susyLive.lastTranscript || susyLive.lastResponse) && (
                   <p className="text-xs text-slate-200 line-clamp-2">
@@ -889,6 +894,7 @@ export default function SusyBotPage() {
         isOpen={showRealtimeCallModal}
         onClose={() => setShowRealtimeCallModal(false)}
         activeMode={chat.activeMode}
+        isUsingFallback={susyLive.isUsingFallback}
         initialHistory={chat.messages.map((m) => ({
           role: m.role,
           content: m.content,

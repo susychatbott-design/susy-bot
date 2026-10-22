@@ -2,9 +2,10 @@
   "name": "susy-bot",
   "version": "1.0.0",
   "private": true,
-  "description": "Susy Bot - Asistente Ciudadana, TrÃ¡mites Municipales y EducaciÃ³n Inclusiva Soberana",
+  "description": "Susy Bot - Asistente Ciudadana, Trámites Municipales y Educación Inclusiva Soberana",
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:live": "concurrently \"node services/susy-live-tts/ttsServer.mjs\" \"next dev -p 3005\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -26,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.6",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
     "tailwindcss": "^4",

@@ -7,6 +7,7 @@ import { dispatchSOS } from "@/lib/susy/protocols/sosDispatcher";
 import { useSusyLazarilloHaptics } from "@/hooks/useSusyLazarilloHaptics";
 import { executeLocalInference } from "@/lib/susy/webgpu/localEngine";
 import { normalizePhoneticTextForSpeech } from "@/lib/susy/phoneticNormalizer";
+import { useSusyLive } from "@/hooks/useSusyLive";
 
 interface SusyRealtimeCallModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ interface SusyRealtimeCallModalProps {
   activeMode?: string;
   onMessageLogged?: (userText: string, assistantText: string) => void;
   initialHistory?: { role: string; content: string }[];
+  isUsingFallback?: boolean;
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
@@ -33,10 +35,17 @@ export default function SusyRealtimeCallModal({
   selectedVoiceUri,
   activeMode = "general",
   onMessageLogged,
-  initialHistory = []
+  initialHistory = [],
+  isUsingFallback = false
 }: SusyRealtimeCallModalProps) {
   const { isOnline, coords } = useSusyOfflineGPS();
   const { emitSinglePulse, startDangerAlertLoop, clearHapticAlerts } = useSusyLazarilloHaptics();
+  const susyLive = useSusyLive({
+    wsUrl: "ws://localhost:3010/tts-stream",
+    wsTimeoutMs: 3000,
+    mode: activeMode,
+  });
+  const isTtsFallbackActive = isUsingFallback || susyLive.isUsingFallback;
 
   const [isEngineReady, setIsEngineReady] = useState<boolean>(false);
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
@@ -224,7 +233,14 @@ export default function SusyRealtimeCallModal({
 
   const speechHeartbeatRef = useRef<any>(null);
   const speechKeepAliveRef = useRef<any>(null);
+  const sentenceWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      susyLive.connectWebSocket();
+    }
+  }, [isOpen, susyLive.connectWebSocket]);
 
   const clearSpeechHeartbeat = useCallback(() => {
     if (speechHeartbeatRef.current) {
@@ -234,6 +250,10 @@ export default function SusyRealtimeCallModal({
     if (speechKeepAliveRef.current) {
       clearInterval(speechKeepAliveRef.current);
       speechKeepAliveRef.current = null;
+    }
+    if (sentenceWatchdogRef.current) {
+      clearTimeout(sentenceWatchdogRef.current);
+      sentenceWatchdogRef.current = null;
     }
   }, []);
 
@@ -421,6 +441,11 @@ export default function SusyRealtimeCallModal({
           const playSentenceQueue = () => {
             if (!isSusySpeakingRef.current) return;
 
+            if (sentenceWatchdogRef.current) {
+              clearTimeout(sentenceWatchdogRef.current);
+              sentenceWatchdogRef.current = null;
+            }
+
             if (currentSentenceIndex >= sentences.length) {
               clearSpeechHeartbeat();
               activeUtteranceRef.current = null;
@@ -444,21 +469,41 @@ export default function SusyRealtimeCallModal({
               utterance.voice = spanishVoice;
             }
 
-            utterance.onend = () => {
+            let advanced = false;
+            const advanceToNextSentence = () => {
+              if (advanced) return;
+              advanced = true;
+              if (sentenceWatchdogRef.current) {
+                clearTimeout(sentenceWatchdogRef.current);
+                sentenceWatchdogRef.current = null;
+              }
               currentSentenceIndex++;
               playSentenceQueue();
+            };
+
+            const maxSentenceMs = Math.min(12000, Math.max(3000, sentence.length * 85));
+            sentenceWatchdogRef.current = setTimeout(() => {
+              advanceToNextSentence();
+            }, maxSentenceMs);
+
+            utterance.onend = () => {
+              advanceToNextSentence();
             };
 
             utterance.onerror = (err) => {
               console.warn("[SpeechSynthesis Chunk Error]:", err);
-              currentSentenceIndex++;
-              playSentenceQueue();
+              advanceToNextSentence();
             };
 
+            if (window.speechSynthesis.paused) {
+              window.speechSynthesis.resume();
+            }
             window.speechSynthesis.speak(utterance);
           };
 
-          playSentenceQueue();
+          setTimeout(() => {
+            playSentenceQueue();
+          }, 30);
           return;
         } catch (e) {
           console.warn("[SpeechSynthesis Error]:", e);
@@ -1247,6 +1292,18 @@ export default function SusyRealtimeCallModal({
             ✕
           </button>
         </div>
+
+        {/* Indicador Discreto de Fallback TTS Local */}
+        {isTtsFallbackActive && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="w-full px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[11px] font-medium flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            <AlertTriangle size={13} className="text-amber-400 shrink-0" />
+            <span>TTS Local Desconectado - Usando Voz de Respaldo</span>
+          </div>
+        )}
 
         {/* Pantalla Previa de Conexión Segura si no se ha hecho tap */}
         {!isEngineReady ? (

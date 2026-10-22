@@ -23,9 +23,11 @@ export interface UseSusyLiveOptions {
 export interface SusyLiveState {
   isLiveActive: boolean;
   isWsConnected: boolean;
+  isUsingFallback: boolean;
   isListening: boolean;
   isUserSpeaking: boolean;
   isProcessingLLM: boolean;
+  isSpeaking: boolean;
   isPlayingAudio: boolean;
   liveLatencyMs: number | null;
   lastTranscript: string;
@@ -87,17 +89,34 @@ function isUselessOrNoiseTranscript(raw: string): boolean {
 }
 
 /**
+ * Segmenta un texto en frases atómicas limpias para síntesis de emergencia (`window.speechSynthesis`).
+ */
+function splitIntoFallbackSentences(rawText: string): string[] {
+  const clean = sanitizeForTTS(rawText);
+  if (!clean) return [];
+
+  const parts = clean
+    .split(/(?<=[.!?;:])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  return parts.length > 0 ? parts : [clean];
+}
+
+/**
  * ============================================================================
  * ⚡ useSusyLive: HOOK AISLADO DE PIPELINE DE VOZ ULTRARRÁPIDA (< 500ms)
  * Ubicación: src/hooks/useSusyLive.ts
  * Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
  *
- * Hotfix Fase 7.2 Incluido:
- * - Memoria Conversacional Completa: Inyecta el historial completo (`chat.messages` +
- *   turnos acumulados en vivo) tanto en `messages` como en `history` al consultar Groq.
- * - Bloqueador Estricto de Transcripciones Vacías/Cortas (< 3 caracteres) para que una
- *   interrupción (Barge-in) por ruido o suspiro jamás dispare una petición vacía al LLM.
- * - Timeout de 3000ms en WebSocket con fallback automático a TTS del sistema operativo.
+ * Hotfix Fase 7.3 Incluido:
+ * - Fallback Instantáneo en `ws.onerror` y `ws.onclose` (ej. `ECONNREFUSED` por
+ *   servidor apagado) sin esperar al timeout de 3000ms.
+ * - Síntesis de emergencia inmediata (`window.speechSynthesis`) iterando sobre
+ *   la respuesta de texto acumulada de Groq con cola secuencial y watchdog por frase.
+ * - Desbloqueo garantizado de VAD (Manos Libres): al terminar el ciclo (éxito o fallo),
+ *   `isProcessingLLM`, `isSpeaking` e `isPlayingAudio` se establecen en `false`
+ *   para reanudar la escucha automáticamente.
  * ============================================================================
  */
 export function useSusyLive(options: UseSusyLiveOptions = {}) {
@@ -116,9 +135,11 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   const [state, setState] = useState<SusyLiveState>({
     isLiveActive: false,
     isWsConnected: false,
+    isUsingFallback: false,
     isListening: false,
     isUserSpeaking: false,
     isProcessingLLM: false,
+    isSpeaking: false,
     isPlayingAudio: false,
     liveLatencyMs: null,
     lastTranscript: "",
@@ -148,15 +169,24 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     modeRef.current = mode;
   }, [mode]);
 
-  // Referencias WebSocket, Timeouts de 3000ms y LLM Streaming
+  // Referencias WebSocket, Timeouts y LLM Streaming
   const wsRef = useRef<WebSocket | null>(null);
   const wsFallbackModeRef = useRef<boolean>(false);
   const wsResponseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingFallbackTextsRef = useRef<Map<number, string>>(new Map());
+  const accumulatedGroqTextRef = useRef<string>("");
+  const spokenFallbackTextRef = useRef<string>("");
+  const isLlmStreamingRef = useRef<boolean>(false);
   const llmAbortRef = useRef<AbortController | null>(null);
   const chunkCounterRef = useRef<number>(0);
   const speechEndTimestampRef = useRef<number>(0);
   const firstAudioRecordedRef = useRef<boolean>(false);
+
+  // Referencias de Cola Secuencial para `window.speechSynthesis` (Fallback de Emergencia)
+  const fallbackQueueRef = useRef<string[]>([]);
+  const isFallbackSpeakingRef = useRef<boolean>(false);
+  const activeFallbackUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const fallbackWatchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Referencias del Reproductor Secuencial con Solapamiento (Web Audio API)
   const playbackCtxRef = useRef<AudioContext | null>(null);
@@ -178,25 +208,70 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     }
   }, []);
 
+  const clearFallbackWatchdog = useCallback((): void => {
+    if (fallbackWatchdogTimerRef.current !== null) {
+      clearTimeout(fallbackWatchdogTimerRef.current);
+      fallbackWatchdogTimerRef.current = null;
+    }
+  }, []);
+
   /**
-   * Reproductor Fallback del Sistema Operativo (`window.speechSynthesis`)
+   * 🔓 DESBLOQUEO GARANTIZADO DE VAD (MANOS LIBRES):
+   * Asegura que al finalizar la reproducción (por WebSocket o Fallback), o ante cualquier error,
+   * `isProcessingLLM`, `isSpeaking` e `isPlayingAudio` queden en `false` y el AudioContext del VAD esté activo.
    */
-  const speakWithOsFallback = useCallback((rawText: string): void => {
+  const unlockVadAndResetAudioState = useCallback((): void => {
+    isFallbackSpeakingRef.current = false;
+    activeFallbackUtteranceRef.current = null;
+    isSpeakingRef.current = false;
+
+    if (vadAudioCtxRef.current && vadAudioCtxRef.current.state === "suspended") {
+      vadAudioCtxRef.current.resume().catch(() => {});
+    }
+
+    setState((prev) => ({
+      ...prev,
+      isProcessingLLM: false,
+      isSpeaking: false,
+      isPlayingAudio: false,
+    }));
+  }, []);
+
+  /**
+   * Procesa secuencialmente la cola de frases del Fallback (`window.speechSynthesis`).
+   * Mantiene referencia viva al `SpeechSynthesisUtterance` para evitar recolección de basura (GC)
+   * en Chromium y cuenta con un watchdog por frase para que jamás quede bloqueado el VAD.
+   */
+  const drainFallbackSpeechQueue = useCallback((): void => {
+    clearFallbackWatchdog();
+
     if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      setState((prev) => ({ ...prev, isProcessingLLM: false, isPlayingAudio: false }));
+      fallbackQueueRef.current = [];
+      unlockVadAndResetAudioState();
       return;
     }
 
-    const clean = sanitizeForTTS(rawText);
-    if (!clean) {
-      setState((prev) => ({ ...prev, isProcessingLLM: false }));
+    const nextSentence = fallbackQueueRef.current.shift();
+    if (!nextSentence) {
+      if (!isLlmStreamingRef.current && scheduledSourcesRef.current.size === 0) {
+        unlockVadAndResetAudioState();
+      } else {
+        isFallbackSpeakingRef.current = false;
+      }
       return;
     }
+
+    isFallbackSpeakingRef.current = true;
 
     try {
-      const utterance = new SpeechSynthesisUtterance(clean);
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(nextSentence);
+      activeFallbackUtteranceRef.current = utterance;
       utterance.lang = "es-AR";
-      utterance.rate = 1.06;
+      utterance.rate = 1.05;
 
       const voices = window.speechSynthesis.getVoices();
       const preferredVoice =
@@ -206,11 +281,40 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             (v.name.toLowerCase().includes("elena") ||
               v.name.toLowerCase().includes("natural") ||
               v.name.toLowerCase().includes("google"))
-        ) || voices.find((v) => v.lang.toLowerCase().startsWith("es"));
+        ) ||
+        voices.find(
+          (v) =>
+            (v.lang.toLowerCase().startsWith("es-419") ||
+              v.lang.toLowerCase().startsWith("es-us") ||
+              v.lang.toLowerCase().startsWith("es-mx")) &&
+            (v.name.toLowerCase().includes("natural") ||
+              v.name.toLowerCase().includes("sabina") ||
+              v.name.toLowerCase().includes("paulina"))
+        ) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith("es"));
 
       if (preferredVoice) {
         utterance.voice = preferredVoice;
+        utterance.lang = preferredVoice.lang || "es-AR";
       }
+
+      const maxSentenceDurationMs = Math.min(
+        16000,
+        Math.max(3500, nextSentence.length * 90)
+      );
+
+      let settled = false;
+      const advanceNext = (): void => {
+        if (settled) return;
+        settled = true;
+        clearFallbackWatchdog();
+        activeFallbackUtteranceRef.current = null;
+        drainFallbackSpeechQueue();
+      };
+
+      fallbackWatchdogTimerRef.current = setTimeout(() => {
+        advanceNext();
+      }, maxSentenceDurationMs);
 
       utterance.onstart = () => {
         if (!firstAudioRecordedRef.current && speechEndTimestampRef.current > 0) {
@@ -219,6 +323,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           setState((prev) => ({
             ...prev,
             isProcessingLLM: false,
+            isSpeaking: true,
             isPlayingAudio: true,
             liveLatencyMs: ttfaMs,
           }));
@@ -226,27 +331,102 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           setState((prev) => ({
             ...prev,
             isProcessingLLM: false,
+            isSpeaking: true,
             isPlayingAudio: true,
           }));
         }
       };
 
       utterance.onend = () => {
-        if (!window.speechSynthesis.speaking) {
-          setState((prev) => ({ ...prev, isPlayingAudio: false, isProcessingLLM: false }));
-        }
+        advanceNext();
       };
 
       utterance.onerror = () => {
-        setState((prev) => ({ ...prev, isPlayingAudio: false, isProcessingLLM: false }));
+        advanceNext();
       };
 
-      setState((prev) => ({ ...prev, isProcessingLLM: false, isPlayingAudio: true }));
+      setState((prev) => ({
+        ...prev,
+        isProcessingLLM: false,
+        isSpeaking: true,
+        isPlayingAudio: true,
+      }));
+
       window.speechSynthesis.speak(utterance);
     } catch {
-      setState((prev) => ({ ...prev, isPlayingAudio: false, isProcessingLLM: false }));
+      activeFallbackUtteranceRef.current = null;
+      drainFallbackSpeechQueue();
     }
-  }, []);
+  }, [clearFallbackWatchdog, unlockVadAndResetAudioState]);
+
+  /**
+   * Reproductor Fallback del Sistema Operativo (`window.speechSynthesis`)
+   * Itera sobre las oraciones del texto recibido y las encola de forma segura.
+   */
+  const speakWithOsFallback = useCallback(
+    (rawText: string): void => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+        unlockVadAndResetAudioState();
+        return;
+      }
+
+      const sentences = splitIntoFallbackSentences(rawText);
+      if (sentences.length === 0) {
+        if (!isLlmStreamingRef.current && !isFallbackSpeakingRef.current) {
+          unlockVadAndResetAudioState();
+        }
+        return;
+      }
+
+      for (const sentence of sentences) {
+        fallbackQueueRef.current.push(sentence);
+      }
+
+      if (!isFallbackSpeakingRef.current) {
+        drainFallbackSpeechQueue();
+      }
+    },
+    [drainFallbackSpeechQueue, unlockVadAndResetAudioState]
+  );
+
+  /**
+   * Activa de inmediato la síntesis de emergencia (`window.speechSynthesis`)
+   * iterando sobre los fragmentos pendientes o la respuesta acumulada de Groq.
+   */
+  const activateImmediateEmergencyFallback = useCallback(
+    (explicitText?: string): void => {
+      clearWsResponseTimeout();
+      wsFallbackModeRef.current = true;
+
+      setState((prev) => ({
+        ...prev,
+        isWsConnected: false,
+        isUsingFallback: true,
+      }));
+
+      const pendingChunks = Array.from(pendingFallbackTextsRef.current.values());
+      pendingFallbackTextsRef.current.clear();
+
+      let textToSpeak = "";
+      if (explicitText && explicitText.trim().length > 0) {
+        textToSpeak = explicitText.trim();
+      } else if (pendingChunks.length > 0) {
+        textToSpeak = pendingChunks.join(" ").trim();
+      } else if (accumulatedGroqTextRef.current.trim().length > spokenFallbackTextRef.current.length) {
+        textToSpeak = accumulatedGroqTextRef.current
+          .slice(spokenFallbackTextRef.current.length)
+          .trim();
+      }
+
+      if (textToSpeak.length > 0) {
+        spokenFallbackTextRef.current = accumulatedGroqTextRef.current;
+        speakWithOsFallback(textToSpeak);
+      } else if (!isLlmStreamingRef.current && !isFallbackSpeakingRef.current) {
+        unlockVadAndResetAudioState();
+      }
+    },
+    [clearWsResponseTimeout, speakWithOsFallback, unlockVadAndResetAudioState]
+  );
 
   // =========================================================================
   // 1. MOTOR DE REPRODUCCIÓN DE BUFFER SECUENCIAL CON CROSSFADE (WEB AUDIO API)
@@ -271,6 +451,10 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const view = new DataView(rawPacket);
       const chunkId = view.getUint32(0, true);
       const sampleRate = view.getUint32(4, true) || 22050;
+      const resolvedChunkText = pendingFallbackTextsRef.current.get(chunkId);
+      if (resolvedChunkText) {
+        spokenFallbackTextRef.current += " " + resolvedChunkText;
+      }
       pendingFallbackTextsRef.current.delete(chunkId);
 
       const pcmByteLength = rawPacket.byteLength - 8;
@@ -319,6 +503,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         setState((prev) => ({
           ...prev,
           isProcessingLLM: false,
+          isSpeaking: true,
           isPlayingAudio: true,
           liveLatencyMs: ttfaMs,
         }));
@@ -326,20 +511,30 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         setState((prev) => ({
           ...prev,
           isProcessingLLM: false,
+          isSpeaking: true,
           isPlayingAudio: true,
         }));
       }
 
       sourceNode.onended = () => {
         scheduledSourcesRef.current.delete(sourceNode);
-        if (scheduledSourcesRef.current.size === 0) {
-          setState((prev) => ({ ...prev, isPlayingAudio: false }));
+        if (
+          scheduledSourcesRef.current.size === 0 &&
+          !isLlmStreamingRef.current &&
+          pendingFallbackTextsRef.current.size === 0
+        ) {
+          unlockVadAndResetAudioState();
         }
       };
 
       sourceNode.start(startTime);
     },
-    [clearWsResponseTimeout, crossfadeOverlapMs, ensurePlaybackAudioContext]
+    [
+      clearWsResponseTimeout,
+      crossfadeOverlapMs,
+      ensurePlaybackAudioContext,
+      unlockVadAndResetAudioState,
+    ]
   );
 
   /**
@@ -350,7 +545,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
    */
   const interruptLivePlayback = useCallback((): void => {
     clearWsResponseTimeout();
+    clearFallbackWatchdog();
     pendingFallbackTextsRef.current.clear();
+    fallbackQueueRef.current = [];
+    isFallbackSpeakingRef.current = false;
+    activeFallbackUtteranceRef.current = null;
+    isLlmStreamingRef.current = false;
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
@@ -394,17 +594,24 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
     setState((prev) => ({
       ...prev,
-      isPlayingAudio: false,
       isProcessingLLM: false,
+      isSpeaking: false,
+      isPlayingAudio: false,
     }));
-  }, [clearWsResponseTimeout]);
+  }, [clearFallbackWatchdog, clearWsResponseTimeout]);
 
   // =========================================================================
-  // 2. CONEXIÓN AL SERVIDOR WEBSOCKET TTS CON TIMEOUT DE 3000ms Y FALLBACK
+  // 2. CONEXIÓN AL SERVIDOR WEBSOCKET TTS CON FALLBACK INSTANTÁNEO EN ONERROR/ONCLOSE
   // =========================================================================
   const connectWebSocket = useCallback((): void => {
     if (typeof window === "undefined") return;
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
+    if (
+      wsRef.current &&
+      (wsRef.current.readyState === WebSocket.OPEN ||
+        wsRef.current.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -418,24 +625,24 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           } catch {
             // Ignorar
           }
-          setState((prev) => ({
-            ...prev,
-            isWsConnected: false,
-            isProcessingLLM: false,
-          }));
+          activateImmediateEmergencyFallback();
         }
       }, wsTimeoutMs);
 
       ws.onopen = () => {
         clearTimeout(connTimeout);
         wsFallbackModeRef.current = false;
-        setState((prev) => ({ ...prev, isWsConnected: true, error: null }));
+        setState((prev) => ({
+          ...prev,
+          isWsConnected: true,
+          isUsingFallback: false,
+          error: null,
+        }));
       };
 
       ws.onmessage = (event: MessageEvent) => {
-        clearWsResponseTimeout();
-
         if (event.data instanceof ArrayBuffer) {
+          clearWsResponseTimeout();
           scheduleIncomingAudioBuffer(event.data).catch(() => {});
           return;
         }
@@ -444,14 +651,20 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           try {
             const msg = JSON.parse(event.data) as WsControlPayload;
             if (msg.type === "fallback_required") {
+              clearWsResponseTimeout();
               wsFallbackModeRef.current = true;
               if (msg.chunkId !== undefined) {
                 pendingFallbackTextsRef.current.delete(msg.chunkId);
               }
-              if (msg.text) {
-                speakWithOsFallback(msg.text);
-              } else {
-                setState((prev) => ({ ...prev, isProcessingLLM: false }));
+              activateImmediateEmergencyFallback(msg.text);
+            } else if (msg.type === "chunk_done") {
+              if (
+                !isLlmStreamingRef.current &&
+                pendingFallbackTextsRef.current.size === 0 &&
+                scheduledSourcesRef.current.size === 0 &&
+                !isFallbackSpeakingRef.current
+              ) {
+                unlockVadAndResetAudioState();
               }
             }
           } catch {
@@ -460,26 +673,30 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         }
       };
 
+      // 🚨 FALLBACK INSTANTÁNEO (0ms): Si `ECONNREFUSED` o error de red ocurre, no esperar 3000ms
       ws.onerror = () => {
         clearTimeout(connTimeout);
-        wsFallbackModeRef.current = true;
-        setState((prev) => ({
-          ...prev,
-          isWsConnected: false,
-        }));
+        activateImmediateEmergencyFallback();
       };
 
       ws.onclose = () => {
         clearTimeout(connTimeout);
-        setState((prev) => ({ ...prev, isWsConnected: false }));
+        wsRef.current = null;
+        activateImmediateEmergencyFallback();
       };
 
       wsRef.current = ws;
     } catch {
-      wsFallbackModeRef.current = true;
-      setState((prev) => ({ ...prev, isWsConnected: false }));
+      activateImmediateEmergencyFallback();
     }
-  }, [wsUrl, wsTimeoutMs, clearWsResponseTimeout, scheduleIncomingAudioBuffer, speakWithOsFallback]);
+  }, [
+    wsUrl,
+    wsTimeoutMs,
+    activateImmediateEmergencyFallback,
+    clearWsResponseTimeout,
+    scheduleIncomingAudioBuffer,
+    unlockVadAndResetAudioState,
+  ]);
 
   const sendTextChunkToTtsServer = useCallback(
     (textChunk: string): void => {
@@ -518,29 +735,23 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
                 }
               }
 
-              const pendingChunks = Array.from(pendingFallbackTextsRef.current.values());
-              pendingFallbackTextsRef.current.clear();
-
-              setState((prev) => ({
-                ...prev,
-                isProcessingLLM: false,
-              }));
-
-              if (pendingChunks.length > 0) {
-                speakWithOsFallback(pendingChunks.join(" "));
-              }
+              activateImmediateEmergencyFallback();
             }, wsTimeoutMs);
           }
         } catch {
-          wsFallbackModeRef.current = true;
           pendingFallbackTextsRef.current.delete(chunkId);
-          speakWithOsFallback(clean);
+          activateImmediateEmergencyFallback(clean);
         }
       } else {
+        wsFallbackModeRef.current = true;
+        setState((prev) =>
+          prev.isUsingFallback ? prev : { ...prev, isWsConnected: false, isUsingFallback: true }
+        );
+        spokenFallbackTextRef.current += " " + clean;
         speakWithOsFallback(clean);
       }
     },
-    [wsTimeoutMs, speakWithOsFallback]
+    [wsTimeoutMs, activateImmediateEmergencyFallback, speakWithOsFallback]
   );
 
   // =========================================================================
@@ -550,6 +761,9 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     async (audioBlob: Blob): Promise<void> => {
       speechEndTimestampRef.current = performance.now();
       firstAudioRecordedRef.current = false;
+      accumulatedGroqTextRef.current = "";
+      spokenFallbackTextRef.current = "";
+      isLlmStreamingRef.current = true;
 
       const controller = new AbortController();
       llmAbortRef.current = controller;
@@ -560,10 +774,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         } catch {
           // Ignorar
         }
-        setState((prev) => ({
-          ...prev,
-          isProcessingLLM: false,
-        }));
+        isLlmStreamingRef.current = false;
+        if (!isFallbackSpeakingRef.current && scheduledSourcesRef.current.size === 0) {
+          unlockVadAndResetAudioState();
+        } else {
+          setState((prev) => ({ ...prev, isProcessingLLM: false }));
+        }
       }, 10000);
 
       try {
@@ -580,7 +796,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         });
 
         if (!sttRes.ok) {
-          setState((prev) => ({ ...prev, isProcessingLLM: false }));
+          isLlmStreamingRef.current = false;
+          unlockVadAndResetAudioState();
           return;
         }
 
@@ -589,7 +806,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
         // 🛡️ BLOQUEADOR ESTRICTO: No enviar strings vacíos, nulos o < 3 caracteres al LLM
         if (isUselessOrNoiseTranscript(transcript)) {
-          setState((prev) => ({ ...prev, isProcessingLLM: false }));
+          isLlmStreamingRef.current = false;
+          unlockVadAndResetAudioState();
           return;
         }
 
@@ -645,14 +863,14 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         let fullAssistantText = "";
 
         const flushSentenceBuffer = (forceAll = false): void => {
-          const boundaryRegex = /([.!?;:\n,]+)\s+/;
+          const boundaryRegex = /([.!?;:\n]+)\s+/;
           let match = boundaryRegex.exec(sentenceBuffer);
 
           while (match !== null) {
             const cutIndex = match.index + match[1].length;
             const candidate = sentenceBuffer.slice(0, cutIndex).trim();
 
-            if (candidate.length >= 16) {
+            if (candidate.length >= 14) {
               sendTextChunkToTtsServer(candidate);
               sentenceBuffer = sentenceBuffer.slice(cutIndex).trimStart();
               match = boundaryRegex.exec(sentenceBuffer);
@@ -670,6 +888,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         const ingestTextDelta = (delta: string): void => {
           if (!delta) return;
           fullAssistantText += delta;
+          accumulatedGroqTextRef.current = fullAssistantText;
           sentenceBuffer += delta;
           setState((prev) => ({
             ...prev,
@@ -732,6 +951,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           sseLineBuffer = "";
         }
 
+        isLlmStreamingRef.current = false;
         flushSentenceBuffer(true);
 
         if (fullAssistantText.trim().length > 0) {
@@ -739,6 +959,19 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             ...conversationHistoryRef.current,
             { role: "assistant", content: fullAssistantText.trim() },
           ];
+
+          // Defensa extra: si el WebSocket cayó y nada entró en cola de audio, sintetizar inmediatamente el texto acumulado
+          if (
+            wsFallbackModeRef.current &&
+            !isFallbackSpeakingRef.current &&
+            fallbackQueueRef.current.length === 0 &&
+            spokenFallbackTextRef.current.trim().length === 0
+          ) {
+            spokenFallbackTextRef.current = fullAssistantText;
+            speakWithOsFallback(fullAssistantText);
+          }
+        } else {
+          unlockVadAndResetAudioState();
         }
 
         setState((prev) => ({
@@ -750,22 +983,45 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           onAssistantComplete(fullAssistantText.trim(), transcript);
         }
       } catch (err: unknown) {
+        isLlmStreamingRef.current = false;
         if (err instanceof DOMException && err.name === "AbortError") {
-          setState((prev) => ({ ...prev, isProcessingLLM: false }));
+          unlockVadAndResetAudioState();
           return;
         }
         const msg = err instanceof Error ? err.message : "Error en Susy Live Pipeline";
         setState((prev) => ({
           ...prev,
           isProcessingLLM: false,
+          isSpeaking: false,
+          isPlayingAudio: false,
           error: msg,
         }));
       } finally {
         clearTimeout(llmWatchdog);
-        setState((prev) => (prev.isProcessingLLM ? { ...prev, isProcessingLLM: false } : prev));
+        isLlmStreamingRef.current = false;
+        // Si no hay audio ni síntesis en curso ni chunks pendientes de WebSocket, liberar estados inmediatamente
+        if (
+          !isFallbackSpeakingRef.current &&
+          fallbackQueueRef.current.length === 0 &&
+          scheduledSourcesRef.current.size === 0 &&
+          pendingFallbackTextsRef.current.size === 0
+        ) {
+          unlockVadAndResetAudioState();
+        } else {
+          setState((prev) =>
+            prev.isProcessingLLM ? { ...prev, isProcessingLLM: false } : prev
+          );
+        }
       }
     },
-    [onTranscriptReady, onAssistantChunk, onAssistantComplete, sendTextChunkToTtsServer]
+    [
+      onTranscriptReady,
+      onAssistantChunk,
+      onAssistantComplete,
+      sendTextChunkToTtsServer,
+      speakWithOsFallback,
+      unlockVadAndResetAudioState,
+    ]
   );
 
   // =========================================================================
@@ -796,9 +1052,14 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     // 3. Abortar el stream actual del LLM (llmAbortRef.current?.abort())
     llmAbortRef.current?.abort();
     llmAbortRef.current = null;
+    isLlmStreamingRef.current = false;
 
     clearWsResponseTimeout();
+    clearFallbackWatchdog();
     pendingFallbackTextsRef.current.clear();
+    fallbackQueueRef.current = [];
+    isFallbackSpeakingRef.current = false;
+    activeFallbackUtteranceRef.current = null;
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
@@ -811,10 +1072,11 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     setState((prev) => ({
       ...prev,
       isUserSpeaking: true,
+      isSpeaking: false,
       isPlayingAudio: false,
       isProcessingLLM: false,
     }));
-  }, [clearWsResponseTimeout]);
+  }, [clearFallbackWatchdog, clearWsResponseTimeout]);
 
   const stopLiveSession = useCallback((): void => {
     interruptLivePlayback();
@@ -859,6 +1121,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       isListening: false,
       isUserSpeaking: false,
       isProcessingLLM: false,
+      isSpeaking: false,
       isPlayingAudio: false,
     }));
   }, [interruptLivePlayback]);
@@ -900,6 +1163,9 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
       const loop = (): void => {
         if (!vadAudioCtxRef.current) return;
+        if (vadAudioCtxRef.current.state === "suspended") {
+          vadAudioCtxRef.current.resume().catch(() => {});
+        }
 
         analyser.getFloatTimeDomainData(timeData);
         let sumSq = 0;
@@ -910,10 +1176,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         const now = performance.now();
 
         const isSystemSpeakingNow =
-          scheduledSourcesRef.current.size > 0 ||
-          (typeof window !== "undefined" &&
-            "speechSynthesis" in window &&
-            window.speechSynthesis.speaking);
+          scheduledSourcesRef.current.size > 0 || isFallbackSpeakingRef.current;
         const threshold = isSystemSpeakingNow ? 0.052 : 0.032;
 
         if (!isSpeakingRef.current) {
@@ -941,6 +1204,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
                 // Ignorar ruidos cortos (< 420ms o < 1500 bytes) tras una interrupción Barge-in
                 if (duration >= 420 && blob.size > 1500) {
                   processAudioUtterance(blob).catch(() => {});
+                } else {
+                  unlockVadAndResetAudioState();
                 }
               };
               mediaRecorderRef.current = recorder;
@@ -982,6 +1247,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         isLiveActive: false,
         isListening: false,
         isProcessingLLM: false,
+        isSpeaking: false,
+        isPlayingAudio: false,
         error: msg,
       }));
     }
@@ -990,6 +1257,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     connectWebSocket,
     onSpeechStart,
     processAudioUtterance,
+    unlockVadAndResetAudioState,
   ]);
 
   const toggleLiveMode = useCallback(async (): Promise<void> => {
@@ -1013,5 +1281,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     toggleLiveMode,
     interruptLivePlayback,
     onSpeechStart,
+    connectWebSocket,
+    sendTextChunkToTtsServer,
+    speakWithOsFallback,
   };
 }
