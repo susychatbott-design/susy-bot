@@ -300,8 +300,17 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       utterance.rate = 1.04;
       utterance.pitch = 1.02;
 
-      // 🌎 FASE 7.7: Forzar voz latina (es-AR / es-MX / es-US / es-419), nunca es-ES
-      applyLatinVoice(utterance);
+      // 🌎 FASE 7.7: Filtro estricto de Voz Latina (Argentina / México / Neutro), jamás es-ES
+      const voices = window.speechSynthesis.getVoices();
+      const latinVoice =
+        voices.find((v) => ["es-AR", "es-MX", "es-US", "es-419"].includes(v.lang)) ||
+        voices.find((v) => v.lang.startsWith("es") && v.lang !== "es-ES");
+      if (latinVoice) {
+        utterance.voice = latinVoice;
+        utterance.lang = latinVoice.lang || "es-AR";
+      } else {
+        applyLatinVoice(utterance);
+      }
 
       const maxSentenceDurationMs = Math.min(
         18000,
@@ -390,17 +399,35 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         fallbackTextBufferRef.current += (needsSpace ? " " : "") + rawTextChunk;
       }
 
-      // ⚡ FASE 7.7: Chunking de baja latencia (puntuación fuerte, suave o primeras palabras)
+      // ⚡ FASE 7.7: Aceleración de Buffering (Flush por Comas `,` y dos puntos `:` además de `.`, `?`, `!`, `\n`)
+      const strongSentenceRegex = /([^.?!\n,:]+[.?!\n,:]+)/;
+      let match = strongSentenceRegex.exec(fallbackTextBufferRef.current);
+
+      while (match !== null) {
+        const fullFragment = match[1].trim();
+        const cutIdx = match.index + match[1].length;
+        fallbackTextBufferRef.current = fallbackTextBufferRef.current
+          .slice(cutIdx)
+          .trimStart();
+
+        if (fullFragment.length > 0) {
+          fallbackSentenceQueueRef.current.push(fullFragment);
+        }
+        match = strongSentenceRegex.exec(fallbackTextBufferRef.current);
+      }
+
       const isFirstChunk =
         fallbackSentenceQueueRef.current.length === 0 &&
         !isFallbackSpeakingRef.current &&
         activeUtterancesRef.current.length === 0 &&
         !firstAudioRecordedRef.current;
-      const { chunks, rest } = extractSpeakableChunks(fallbackTextBufferRef.current, {
-        isFirstChunk,
-      });
-      fallbackTextBufferRef.current = rest;
-      fallbackSentenceQueueRef.current.push(...chunks);
+      if (fallbackTextBufferRef.current.length > 0) {
+        const { chunks, rest } = extractSpeakableChunks(fallbackTextBufferRef.current, {
+          isFirstChunk,
+        });
+        fallbackTextBufferRef.current = rest;
+        fallbackSentenceQueueRef.current.push(...chunks);
+      }
 
       // Al terminar el stream de Groq (flushRemaining = true), vaciar cualquier remanente final
       if (flushRemaining && fallbackTextBufferRef.current.trim().length > 0) {
@@ -968,22 +995,38 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         let fullAssistantText = "";
         let emittedChunks = 0;
 
-        // ⚡ FASE 7.7: Envío de baja latencia — corta en puntuación fuerte, suave (≥22 chars)
-        // o tras las primeras ~5 palabras del primer fragmento, sin esperar al punto final.
+        // ⚡ FASE 7.7: Flush inmediato por comas (`,`), dos puntos (`:`) y signos fuertes (`.`, `?`, `!`, `\n`)
         const flushSentenceBuffer = (forceAll = false): void => {
           if (controller.signal.aborted) {
             sentenceBuffer = "";
             return;
           }
-          const { chunks, rest } = extractSpeakableChunks(sentenceBuffer, {
-            isFirstChunk: emittedChunks === 0,
-          });
-          sentenceBuffer = rest;
+          const strongBoundaryRegex = /([^.?!\n,:]+[.?!\n,:]+)/;
+          let match = strongBoundaryRegex.exec(sentenceBuffer);
 
-          for (const candidate of chunks) {
-            if (controller.signal.aborted) return;
-            emittedChunks += 1;
-            sendTextChunkToTtsServer(candidate, false);
+          while (match !== null) {
+            const candidate = match[1].trim();
+            const cutIndex = match.index + match[1].length;
+            sentenceBuffer = sentenceBuffer.slice(cutIndex).trimStart();
+
+            if (candidate.length > 0 && !controller.signal.aborted) {
+              emittedChunks += 1;
+              sendTextChunkToTtsServer(candidate, false);
+            }
+            match = strongBoundaryRegex.exec(sentenceBuffer);
+          }
+
+          if (sentenceBuffer.length > 0) {
+            const { chunks, rest } = extractSpeakableChunks(sentenceBuffer, {
+              isFirstChunk: emittedChunks === 0,
+            });
+            sentenceBuffer = rest;
+
+            for (const candidate of chunks) {
+              if (controller.signal.aborted) return;
+              emittedChunks += 1;
+              sendTextChunkToTtsServer(candidate, false);
+            }
           }
 
           if (forceAll && !controller.signal.aborted && sentenceBuffer.trim().length > 0) {

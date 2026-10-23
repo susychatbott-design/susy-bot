@@ -108,8 +108,9 @@ export function applyLatinVoice(utterance: SpeechSynthesisUtterance): SpeechSynt
 /**
  * ⚡ CHUNKING DE BAJA LATENCIA PARA TTS:
  * Extrae fragmentos pronunciables de un buffer sin esperar al punto final.
- * - Corta siempre en puntuación fuerte (. ? ! \n).
- * - Corta en puntuación suave (, ; :) si el fragmento tiene ≥ `minSoftChars`.
+ * - Delimitadores fuertes: `.` `?` `!` `\n` y también `,` `:` `;` (Fase 7.7 – flush por comas).
+ *   La coma / dos puntos solo cortan si van seguidos de espacio, para no partir "1,5" ni "10:30".
+ * - `minSoftChars` permite exigir un largo mínimo antes de cortar en coma (default 1 = siempre).
  * - En el primer fragmento de la respuesta, corta tras ≥ `firstChunkWords` palabras
  *   en el último espacio para emitir sonido lo antes posible.
  * - Corte duro en el último espacio si el buffer supera `maxChars` sin puntuación.
@@ -118,30 +119,18 @@ export function extractSpeakableChunks(
   buffer: string,
   options: { isFirstChunk?: boolean; minSoftChars?: number; firstChunkWords?: number; maxChars?: number } = {}
 ): { chunks: string[]; rest: string } {
-  const { minSoftChars = 22, firstChunkWords = 5, maxChars = 140 } = options;
+  const { minSoftChars = 1, firstChunkWords = 5, maxChars = 140 } = options;
   let isFirst = options.isFirstChunk ?? false;
   const chunks: string[] = [];
   let rest = buffer;
 
   // eslint-disable-next-line no-constant-condition
   while (true) {
-    const strong = /[.?!\n]+/.exec(rest);
+    // Delimitadores fuertes de Fase 7.7: punto, signo de interrogación/exclamación, salto de línea, coma (,) y dos puntos (:)
+    const strong = /(?:[.?!\n]+|[,:;]+(?=\s|$))/.exec(rest);
     const strongIdx = strong ? strong.index + strong[0].length : -1;
 
-    let softIdx = -1;
-    const softRegex = /[,;:]+\s/g;
-    let m: RegExpExecArray | null;
-    while ((m = softRegex.exec(rest)) !== null) {
-      const cut = m.index + m[0].length;
-      if (cut >= minSoftChars && (strongIdx === -1 || cut < strongIdx)) {
-        softIdx = cut;
-        break;
-      }
-    }
-
-    let cutAt = -1;
-    if (softIdx !== -1) cutAt = softIdx;
-    else if (strongIdx !== -1) cutAt = strongIdx;
+    let cutAt = strongIdx >= minSoftChars ? strongIdx : -1;
 
     if (cutAt === -1 && isFirst) {
       const words = rest.trim().split(/\s+/);
