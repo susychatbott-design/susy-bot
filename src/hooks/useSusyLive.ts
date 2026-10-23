@@ -275,7 +275,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     }
 
     const cleanSentence = sanitizeForTTS(nextSentence);
-    if (!cleanSentence) {
+    // 🛡️ FASE 7.8: Prevención de Textos Vacíos / Emojis (debe contener al menos una letra o número)
+    if (!cleanSentence || !/[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/.test(cleanSentence)) {
       playNextSentenceFromFallbackQueue();
       return;
     }
@@ -370,6 +371,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       utterance.onerror = () => {
         finalizeUtteranceAndAdvance();
       };
+
+      // 🛡️ FASE 7.8: Validación alfanumérica estricta antes del .speak()
+      if (!/[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]/.test(utterance.text)) {
+        finalizeUtteranceAndAdvance();
+        return;
+      }
 
       window.speechSynthesis.speak(utterance);
     } catch {
@@ -1058,41 +1065,78 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           while (true) {
             if (controller.signal.aborted) break;
             const { done, value } = await reader.read();
-            if (done || controller.signal.aborted) break;
+            if (controller.signal.aborted) break;
 
-            const rawChunk = decoder.decode(value, { stream: true });
-            if (!rawChunk) continue;
+            if (value) {
+              const rawChunk = decoder.decode(value, { stream: true });
+              if (rawChunk) {
+                if (rawChunk.includes("data:") || sseLineBuffer.length > 0) {
+                  sseLineBuffer += rawChunk;
+                  const lines = sseLineBuffer.split("\n");
+                  sseLineBuffer = lines.pop() || "";
 
-            if (rawChunk.includes("data:") || sseLineBuffer.length > 0) {
-              sseLineBuffer += rawChunk;
-              const lines = sseLineBuffer.split("\n");
-              sseLineBuffer = lines.pop() || "";
+                  for (const rawLine of lines) {
+                    if (controller.signal.aborted) break;
+                    const trimmed = rawLine.trim();
+                    if (!trimmed || trimmed.startsWith(":")) continue;
 
-              for (const rawLine of lines) {
-                if (controller.signal.aborted) break;
-                const trimmed = rawLine.trim();
-                if (!trimmed || trimmed.startsWith(":")) continue;
-
-                if (trimmed.startsWith("data:")) {
-                  const dataStr = trimmed.slice(5).trim();
-                  if (dataStr === "[DONE]") continue;
-                  try {
-                    const parsed = JSON.parse(dataStr) as {
-                      text?: string;
-                      content?: string;
-                      delta?: string;
-                    };
-                    const piece = parsed.text ?? parsed.content ?? parsed.delta ?? "";
-                    if (piece) ingestTextDelta(piece);
-                  } catch {
-                    ingestTextDelta(dataStr);
+                    if (trimmed.startsWith("data:")) {
+                      const dataStr = trimmed.slice(5).trim();
+                      if (dataStr === "[DONE]") continue;
+                      try {
+                        const parsed = JSON.parse(dataStr) as {
+                          text?: string;
+                          content?: string;
+                          delta?: string;
+                        };
+                        const piece = parsed.text ?? parsed.content ?? parsed.delta ?? "";
+                        if (piece) ingestTextDelta(piece);
+                      } catch {
+                        ingestTextDelta(dataStr);
+                      }
+                    } else {
+                      ingestTextDelta(rawLine);
+                    }
                   }
                 } else {
-                  ingestTextDelta(rawLine);
+                  ingestTextDelta(rawChunk);
                 }
               }
-            } else {
-              ingestTextDelta(rawChunk);
+            }
+
+            // 🚨 FASE 7.8: Flush Incondicional al Finalizar el Stream (done === true)
+            if (done) {
+              isLlmStreamingRef.current = false;
+              if (sseLineBuffer.trim().length > 0) {
+                const trimmedLine = sseLineBuffer.trim();
+                if (trimmedLine.startsWith("data:")) {
+                  const dataStr = trimmedLine.slice(5).trim();
+                  if (dataStr && dataStr !== "[DONE]") {
+                    try {
+                      const parsed = JSON.parse(dataStr) as {
+                        text?: string;
+                        content?: string;
+                        delta?: string;
+                      };
+                      const piece = parsed.text ?? parsed.content ?? parsed.delta ?? "";
+                      if (piece) ingestTextDelta(piece);
+                    } catch {
+                      ingestTextDelta(dataStr);
+                    }
+                  }
+                } else {
+                  ingestTextDelta(trimmedLine);
+                }
+                sseLineBuffer = "";
+              }
+              flushSentenceBuffer(true);
+              const remainingFallback = fallbackTextBufferRef.current.trim();
+              if (remainingFallback.length > 0) {
+                fallbackTextBufferRef.current = "";
+                fallbackSentenceQueueRef.current.push(remainingFallback);
+                playNextSentenceFromFallbackQueue();
+              }
+              break;
             }
           }
         } catch (streamErr: unknown) {
@@ -1102,6 +1146,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           ) {
             isLlmStreamingRef.current = false;
             closeInterruptedTurn();
+            setState((prev) => ({ ...prev, isProcessingLLM: false }));
             return;
           }
           console.warn("[useSusyLive] Interrupción en lectura de chunks Groq:", streamErr);
@@ -1111,16 +1156,49 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         if (controller.signal.aborted) {
           isLlmStreamingRef.current = false;
           closeInterruptedTurn();
+          setState((prev) => ({ ...prev, isProcessingLLM: false }));
           return;
         }
 
-        if (sseLineBuffer.trim().length > 0 && !sseLineBuffer.trim().startsWith("data:")) {
-          ingestTextDelta(sseLineBuffer);
+        if (sseLineBuffer.trim().length > 0) {
+          const trimmedLine = sseLineBuffer.trim();
+          if (trimmedLine.startsWith("data:")) {
+            const dataStr = trimmedLine.slice(5).trim();
+            if (dataStr && dataStr !== "[DONE]") {
+              try {
+                const parsed = JSON.parse(dataStr) as {
+                  text?: string;
+                  content?: string;
+                  delta?: string;
+                };
+                const piece = parsed.text ?? parsed.content ?? parsed.delta ?? "";
+                if (piece) ingestTextDelta(piece);
+              } catch {
+                ingestTextDelta(dataStr);
+              }
+            }
+          } else {
+            ingestTextDelta(trimmedLine);
+          }
           sseLineBuffer = "";
         }
 
         isLlmStreamingRef.current = false;
         flushSentenceBuffer(true);
+
+        // 🚨 FASE 7.8: Vaciado Forzado (Flush Incondicional) del texto sobrante en Fallback
+        const remainingFallbackText = fallbackTextBufferRef.current.trim();
+        if (remainingFallbackText.length > 0) {
+          fallbackTextBufferRef.current = "";
+          fallbackSentenceQueueRef.current.push(remainingFallbackText);
+          playNextSentenceFromFallbackQueue();
+        } else if (
+          fallbackSentenceQueueRef.current.length > 0 &&
+          !isFallbackSpeakingRef.current &&
+          activeUtterancesRef.current.length === 0
+        ) {
+          playNextSentenceFromFallbackQueue();
+        }
 
         if (fullAssistantText.trim().length > 0) {
           conversationHistoryRef.current = [
@@ -1128,13 +1206,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             { role: "assistant", content: fullAssistantText.trim() },
           ];
 
-          // Defensa extra: si el WebSocket cayó y nada entró en cola de audio, sintetizar inmediatamente el texto acumulado
+          // Defensa extra: si el WebSocket cayó y nada entró en cola de audio ni se está reproduciendo, sintetizar el texto acumulado
           if (
             wsFallbackModeRef.current &&
             !isFallbackSpeakingRef.current &&
             activeUtterancesRef.current.length === 0 &&
-            fallbackSentenceQueueRef.current.length === 0 &&
-            spokenFallbackTextRef.current.trim().length === 0
+            fallbackSentenceQueueRef.current.length === 0
           ) {
             spokenFallbackTextRef.current = fullAssistantText;
             speakWithOsFallback(fullAssistantText, true);
@@ -1178,9 +1255,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         ) {
           unlockVadAndResetAudioState();
         } else {
-          setState((prev) =>
-            prev.isProcessingLLM ? { ...prev, isProcessingLLM: false } : prev
-          );
+          setState((prev) => ({ ...prev, isProcessingLLM: false }));
         }
       }
     },
