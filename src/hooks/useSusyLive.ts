@@ -2,6 +2,11 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { sanitizeForTTS } from "@/utils/audioUtils";
+import {
+  applyLatinVoice,
+  extractSpeakableChunks,
+  primeLatinVoices,
+} from "@/utils/latinVoice";
 
 export interface SusyLiveHistoryEntry {
   role: "user" | "assistant" | "system";
@@ -139,15 +144,25 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   const conversationHistoryRef = useRef<SusyLiveHistoryEntry[]>(messages);
   const sessionIdRef = useRef<string | null>(sessionId);
   const modeRef = useRef<string>(mode);
+  const lastMessagesSignatureRef = useRef<string>("");
+
+  // 🛡️ FASE 7.7 (Anti-Amnesia): `messages` llega como un array nuevo en cada render (`chat.messages.map(...)`).
+  // Solo re-sincronizar cuando el contenido real cambia, para no pisar los turnos vivos registrados en la llamada.
+  useEffect(() => {
+    if (!Array.isArray(messages) || messages.length === 0) return;
+    const last = messages[messages.length - 1];
+    const signature = `${messages.length}|${last?.role}|${(last?.content || "").slice(-80)}`;
+    if (signature === lastMessagesSignatureRef.current) return;
+    lastMessagesSignatureRef.current = signature;
+    conversationHistoryRef.current = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+  }, [messages]);
 
   useEffect(() => {
-    if (Array.isArray(messages) && messages.length > 0) {
-      conversationHistoryRef.current = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-    }
-  }, [messages]);
+    primeLatinVoices();
+  }, []);
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
@@ -282,34 +297,11 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       // 🛡️ Prevención de Garbage Collection en Chrome: retener en el array useRef<SpeechSynthesisUtterance[]>
       activeUtterancesRef.current.push(utterance);
 
-      utterance.lang = "es-AR";
       utterance.rate = 1.04;
       utterance.pitch = 1.02;
 
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice =
-        voices.find(
-          (v) =>
-            v.lang.toLowerCase().startsWith("es-ar") &&
-            (v.name.toLowerCase().includes("elena") ||
-              v.name.toLowerCase().includes("natural") ||
-              v.name.toLowerCase().includes("google"))
-        ) ||
-        voices.find(
-          (v) =>
-            (v.lang.toLowerCase().startsWith("es-419") ||
-              v.lang.toLowerCase().startsWith("es-us") ||
-              v.lang.toLowerCase().startsWith("es-mx")) &&
-            (v.name.toLowerCase().includes("natural") ||
-              v.name.toLowerCase().includes("sabina") ||
-              v.name.toLowerCase().includes("paulina"))
-        ) ||
-        voices.find((v) => v.lang.toLowerCase().startsWith("es"));
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-        utterance.lang = preferredVoice.lang || "es-AR";
-      }
+      // 🌎 FASE 7.7: Forzar voz latina (es-AR / es-MX / es-US / es-419), nunca es-ES
+      applyLatinVoice(utterance);
 
       const maxSentenceDurationMs = Math.min(
         18000,
@@ -398,22 +390,17 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         fallbackTextBufferRef.current += (needsSpace ? " " : "") + rawTextChunk;
       }
 
-      // Extraer únicamente oraciones completas delimitadas por puntuación fuerte (., ?, !, \n)
-      const strongSentenceRegex = /([^.?!\n]+[.?!\n]+)/;
-      let match = strongSentenceRegex.exec(fallbackTextBufferRef.current);
-
-      while (match !== null) {
-        const fullSentence = match[1].trim();
-        const cutIdx = match.index + match[1].length;
-        fallbackTextBufferRef.current = fallbackTextBufferRef.current
-          .slice(cutIdx)
-          .trimStart();
-
-        if (fullSentence.length > 0) {
-          fallbackSentenceQueueRef.current.push(fullSentence);
-        }
-        match = strongSentenceRegex.exec(fallbackTextBufferRef.current);
-      }
+      // ⚡ FASE 7.7: Chunking de baja latencia (puntuación fuerte, suave o primeras palabras)
+      const isFirstChunk =
+        fallbackSentenceQueueRef.current.length === 0 &&
+        !isFallbackSpeakingRef.current &&
+        activeUtterancesRef.current.length === 0 &&
+        !firstAudioRecordedRef.current;
+      const { chunks, rest } = extractSpeakableChunks(fallbackTextBufferRef.current, {
+        isFirstChunk,
+      });
+      fallbackTextBufferRef.current = rest;
+      fallbackSentenceQueueRef.current.push(...chunks);
 
       // Al terminar el stream de Groq (flushRemaining = true), vaciar cualquier remanente final
       if (flushRemaining && fallbackTextBufferRef.current.trim().length > 0) {
@@ -845,6 +832,33 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const controller = new AbortController();
       llmAbortRef.current = controller;
 
+      // 🧠 FASE 7.7 (Anti-Amnesia post Barge-in): cerrar el turno interrumpido de forma coherente
+      // para que el historial no quede con dos turnos `user` seguidos (lo que hacía que el LLM
+      // respondiera de nuevo la consulta anterior).
+      let liveAssistantText = "";
+      let committedUserTranscript = "";
+      let turnClosed = false;
+      const closeInterruptedTurn = (): void => {
+        if (turnClosed || !committedUserTranscript) return;
+        turnClosed = true;
+        const partial = liveAssistantText.trim();
+        if (partial.length > 0) {
+          conversationHistoryRef.current = [
+            ...conversationHistoryRef.current,
+            {
+              role: "assistant",
+              content: `${partial} [Respuesta interrumpida por el vecino]`,
+            },
+          ];
+        } else {
+          const hist = conversationHistoryRef.current;
+          const last = hist[hist.length - 1];
+          if (last && last.role === "user" && last.content === committedUserTranscript) {
+            conversationHistoryRef.current = hist.slice(0, -1);
+          }
+        }
+      };
+
       const llmWatchdog = setTimeout(() => {
         try {
           controller.abort();
@@ -896,13 +910,22 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         if (onTranscriptReady) onTranscriptReady(transcript);
 
         // Construir el historial completo de la conversación (chat.messages + turnos previos)
-        const priorHistory = conversationHistoryRef.current
+        const filteredHistory = conversationHistoryRef.current
           .filter((m) => m.content && m.content.trim().length > 0)
           .slice(-20)
           .map((m) => ({
             role: m.role === "assistant" ? ("assistant" as const) : ("user" as const),
             content: m.content.trim(),
           }));
+
+        // Eliminar turnos `user` huérfanos al final (pregunta vieja sin respuesta tras un Barge-in)
+        while (
+          filteredHistory.length > 0 &&
+          filteredHistory[filteredHistory.length - 1].role === "user"
+        ) {
+          filteredHistory.pop();
+        }
+        const priorHistory = filteredHistory;
 
         const fullMessagesPayload = [
           ...priorHistory,
@@ -911,6 +934,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
         // Actualizar inmediatamente la memoria en vivo con el turno del usuario
         conversationHistoryRef.current = fullMessagesPayload;
+        committedUserTranscript = transcript;
 
         // Paso B: Consultar LLM con stream: true e historial completo (`messages` y `history`)
         const llmRes = await fetch("/api/chat", {
@@ -942,25 +966,24 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         let sseLineBuffer = "";
         let sentenceBuffer = "";
         let fullAssistantText = "";
+        let emittedChunks = 0;
 
-        // Envolver únicamente por signos de puntuación fuerte (., ?, !, \n)
+        // ⚡ FASE 7.7: Envío de baja latencia — corta en puntuación fuerte, suave (≥22 chars)
+        // o tras las primeras ~5 palabras del primer fragmento, sin esperar al punto final.
         const flushSentenceBuffer = (forceAll = false): void => {
           if (controller.signal.aborted) {
             sentenceBuffer = "";
             return;
           }
-          const strongBoundaryRegex = /([^.?!\n]+[.?!\n]+)/;
-          let match = strongBoundaryRegex.exec(sentenceBuffer);
+          const { chunks, rest } = extractSpeakableChunks(sentenceBuffer, {
+            isFirstChunk: emittedChunks === 0,
+          });
+          sentenceBuffer = rest;
 
-          while (match !== null) {
-            const candidate = match[1].trim();
-            const cutIndex = match.index + match[1].length;
-            sentenceBuffer = sentenceBuffer.slice(cutIndex).trimStart();
-
-            if (candidate.length > 0 && !controller.signal.aborted) {
-              sendTextChunkToTtsServer(candidate, false);
-            }
-            match = strongBoundaryRegex.exec(sentenceBuffer);
+          for (const candidate of chunks) {
+            if (controller.signal.aborted) return;
+            emittedChunks += 1;
+            sendTextChunkToTtsServer(candidate, false);
           }
 
           if (forceAll && !controller.signal.aborted && sentenceBuffer.trim().length > 0) {
@@ -974,6 +997,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         const ingestTextDelta = (delta: string): void => {
           if (!delta || controller.signal.aborted) return;
           fullAssistantText += delta;
+          liveAssistantText = fullAssistantText;
           accumulatedGroqTextRef.current = fullAssistantText;
           sentenceBuffer += delta;
           setState((prev) => ({
@@ -1034,6 +1058,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             (streamErr instanceof DOMException && streamErr.name === "AbortError")
           ) {
             isLlmStreamingRef.current = false;
+            closeInterruptedTurn();
             return;
           }
           console.warn("[useSusyLive] Interrupción en lectura de chunks Groq:", streamErr);
@@ -1042,6 +1067,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
         // Si hubo Barge-in (abort), cortar inmediatamente sin volcar buffers viejos al Fallback
         if (controller.signal.aborted) {
           isLlmStreamingRef.current = false;
+          closeInterruptedTurn();
           return;
         }
 
@@ -1085,6 +1111,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       } catch (err: unknown) {
         isLlmStreamingRef.current = false;
         if (err instanceof DOMException && err.name === "AbortError") {
+          closeInterruptedTurn();
           unlockVadAndResetAudioState();
           return;
         }

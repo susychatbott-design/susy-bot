@@ -137,14 +137,23 @@ export async function POST(req: Request) {
       });
     }
 
-    // 🔄 DETECTOR INTELIGENTE DE CONTINUIDAD (Reconocimiento amplio de pedidos de continuación e hilo)
-    const isContinueRequest = /^(si|sí|continua|continuá|continúa|seguí|seguir|dale|adelante|retoma|retomá|completá|completa|terminá|termina|qué más|que mas|no terminaste|seguí contándome|seguí diciéndome|explicame más|explicame mas|respondé a mi última pregunta|responde mi pregunta|completá la info|completa la info)\b/i.test(effectiveUserText) ||
-      effectiveUserText.toLowerCase().includes("completá la info") ||
-      effectiveUserText.toLowerCase().includes("completa la info") ||
-      effectiveUserText.toLowerCase().includes("terminá de") ||
-      effectiveUserText.toLowerCase().includes("no terminaste") ||
-      effectiveUserText.toLowerCase().includes("respondé a mi última pregunta") ||
-      effectiveUserText.toLowerCase().includes("responde mi pregunta");
+    // 🔄 DETECTOR INTELIGENTE DE CONTINUIDAD (Fase 7.7 – Anti-Bucle Temático)
+    // Las muletillas cortas ("sí", "dale", "seguí") solo cuentan como pedido de continuar si la frase es breve
+    // (≤ 5 palabras). Así, "Sí, pero quiero saber de la licencia" se trata como consulta NUEVA.
+    const lowerUserText = effectiveUserText.toLowerCase();
+    const userWordCount = lowerUserText.split(/\s+/).filter(Boolean).length;
+    const isShortContinuationCue =
+      userWordCount <= 5 &&
+      /^(si|sí|continua|continuá|continúa|seguí|segui|seguir|dale|adelante|retoma|retomá|completá|completa|terminá|termina|qué más|que mas)\b/i.test(effectiveUserText);
+    const isExplicitContinuation =
+      /^(no terminaste|seguí contándome|seguí diciéndome|explicame más|explicame mas|respondé a mi última pregunta|responde mi pregunta)\b/i.test(effectiveUserText) ||
+      lowerUserText.includes("completá la info") ||
+      lowerUserText.includes("completa la info") ||
+      lowerUserText.includes("terminá de") ||
+      lowerUserText.includes("no terminaste") ||
+      lowerUserText.includes("continuá con lo que me estabas diciendo") ||
+      lowerUserText.includes("continua con lo que me estabas diciendo");
+    const isContinueRequest = isShortContinuationCue || isExplicitContinuation;
 
     let promptToInfer = effectiveUserText;
     

@@ -8,6 +8,12 @@ import { useSusyLazarilloHaptics } from "@/hooks/useSusyLazarilloHaptics";
 import { executeLocalInference } from "@/lib/susy/webgpu/localEngine";
 import { normalizePhoneticTextForSpeech } from "@/lib/susy/phoneticNormalizer";
 import { useSusyLive } from "@/hooks/useSusyLive";
+import {
+  applyLatinVoice,
+  extractSpeakableChunks,
+  isLikelyAssistantEcho,
+  primeLatinVoices,
+} from "@/utils/latinVoice";
 
 interface SusyRealtimeCallModalProps {
   isOpen: boolean;
@@ -436,11 +442,14 @@ export default function SusyRealtimeCallModal({
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
           fallbackTextBufferRef.current = spokenText;
-          const rawSentences =
-            fallbackTextBufferRef.current
-              .match(/[^.?!\n]+[.?!\n]*/g)
-              ?.map((s) => s.trim())
-              .filter((s) => s.length > 0) || [];
+          // ⚡ FASE 7.7: Fragmentación de baja latencia (primer fragmento corto + cortes en comas)
+          const { chunks: speakableChunks, rest: trailingText } = extractSpeakableChunks(
+            fallbackTextBufferRef.current,
+            { isFirstChunk: true, firstChunkWords: 6 }
+          );
+          const rawSentences = [...speakableChunks, trailingText.trim()].filter(
+            (s) => s.length > 0
+          );
 
           fallbackTextBufferRef.current = "";
           fallbackSentenceQueueRef.current =
@@ -450,21 +459,7 @@ export default function SusyRealtimeCallModal({
 
           const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 7) * 1000) + 6000);
 
-          const voices = window.speechSynthesis.getVoices();
-          const spanishVoice =
-            voices.find(
-              (v) =>
-                (v.lang.startsWith("es-AR") ||
-                  v.lang.startsWith("es-419") ||
-                  v.lang.startsWith("es-US") ||
-                  v.lang.startsWith("es")) &&
-                (v.name.toLowerCase().includes("female") ||
-                  v.name.toLowerCase().includes("paulina") ||
-                  v.name.toLowerCase().includes("elena") ||
-                  v.name.toLowerCase().includes("sabina") ||
-                  v.name.toLowerCase().includes("monica") ||
-                  v.name.toLowerCase().includes("natural"))
-            ) || voices.find((v) => v.lang.startsWith("es"));
+          primeLatinVoices();
 
           resetSpeechHeartbeat(estimatedDurationMs);
 
@@ -502,14 +497,11 @@ export default function SusyRealtimeCallModal({
             // 🛡️ Prevención de Garbage Collection en Chrome: guardar en array useRef<SpeechSynthesisUtterance[]>
             activeUtterancesRef.current.push(utterance);
 
-            utterance.lang = "es-AR";
             utterance.rate = 1.02;
             utterance.pitch = 1.04;
 
-            if (spanishVoice) {
-              utterance.voice = spanishVoice;
-              utterance.lang = spanishVoice.lang || "es-AR";
-            }
+            // 🌎 FASE 7.7: Forzar voz latina (es-AR / es-MX / es-US / es-419), nunca es-ES
+            applyLatinVoice(utterance);
 
             let advanced = false;
             const advanceToNextSentence = () => {
@@ -638,6 +630,8 @@ export default function SusyRealtimeCallModal({
 
           try {
             const interruptedContext = lastInterruptedResponseRef.current;
+            // 🧠 FASE 7.7: El contexto interrumpido se consume una sola vez; no debe arrastrarse a turnos nuevos
+            lastInterruptedResponseRef.current = null;
             const proxyAbort = new AbortController();
             const proxyTimeout = setTimeout(() => proxyAbort.abort(), 7500);
 
@@ -667,6 +661,13 @@ export default function SusyRealtimeCallModal({
 
                 // 🛡️ Bloqueador de transcripciones vacías o menores a 3 caracteres tras Barge-in
                 if (cleanCandidate.length < 3 || candidateTranscript === "[Sonido detectado]") {
+                  isProcessingRef.current = false;
+                  resumeListening();
+                  return;
+                }
+
+                // 🛡️ FASE 7.7: Descartar eco de la propia voz de Susy capturado durante el Barge-in
+                if (isLikelyAssistantEcho(candidateTranscript, lastCompletedAssistantTextRef.current)) {
                   isProcessingRef.current = false;
                   resumeListening();
                   return;
