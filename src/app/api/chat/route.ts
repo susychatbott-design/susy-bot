@@ -635,41 +635,7 @@ export async function POST(req: Request) {
 
     const supabase = createServerSupabaseClient();
 
-    const incomingMsgId = message_id || req.headers.get("x-message-id");
-    if (incomingMsgId && supabase) {
-      const { data: existingMsg, error: checkMsgErr } = await supabase
-        .from("susybot_messages")
-        .select("id")
-        .eq("metadata->>message_id", incomingMsgId)
-        .maybeSingle();
-
-      if (checkMsgErr) {
-        console.warn("[Susybot-Chat] Advertencia verificando mensaje previo:", checkMsgErr.code, checkMsgErr.message);
-      }
-
-      if (existingMsg) {
-        console.log("[Susybot-Chat] Mensaje ya procesado anteriormente:", incomingMsgId);
-        return NextResponse.json({ status: "ALREADY_PROCESSED" }, { status: 200 });
-      }
-    }
-
-    let activeSessionId = session_id;
-    if (!activeSessionId && supabase) {
-      const title = message.slice(0, 30) || "Nueva conversación";
-      console.log("[Susybot-Chat] 📝 Creando nueva sesión en susybot_sessions para user:", user_id);
-      const { data: newSession, error: sessErr } = await supabase
-        .from("susybot_sessions")
-        .insert([{ user_id, title }])
-        .select("id")
-        .single();
-      
-      if (sessErr) {
-        console.error("❌ [Susybot-Chat] Error BD en susybot_sessions:", sessErr.code, sessErr.message);
-      } else if (newSession) {
-        activeSessionId = newSession.id;
-        console.log("✓ [Susybot-Chat] Sesión creada con éxito, ID:", activeSessionId);
-      }
-    }
+    let activeSessionId = session_id || `susy_sess_${Date.now()}`;
 
     if (isImageGenerationIntent(effectiveMessage)) {
       const generatedImageText = await synthesizeImageResponse(effectiveMessage);
@@ -713,32 +679,12 @@ export async function POST(req: Request) {
     const rawHistory: { role: string; content: string }[] = [];
 
     if (Array.isArray(clientHistory) && clientHistory.length > 0) {
-      // Prioridad 1: Historial directo del cliente para latencia cero y cero desfasaje
+      // Historial directo del cliente para latencia cero y cero desfasaje
       const recentClientMsgs = clientHistory.slice(-35);
       for (const m of recentClientMsgs) {
         if (m && typeof m.content === "string" && m.content.trim()) {
           const role = (m.role === "assistant" || m.role === "model") ? "model" : "user";
           rawHistory.push({ role, content: m.content.trim() });
-        }
-      }
-    } else if (activeSessionId && supabase) {
-      // Prioridad 2: Consulta ordenada descendentemente (los más recientes) e invertida a cronología real
-      const { data: pastMsgs } = await supabase
-        .from("susybot_messages")
-        .select("role, content, created_at")
-        .eq("session_id", activeSessionId)
-        .order("created_at", { ascending: false })
-        .limit(35);
-      
-      if (pastMsgs && pastMsgs.length > 0) {
-        const chronologicalMsgs = [...pastMsgs].reverse();
-        for (const m of chronologicalMsgs) {
-          if (m && typeof m.content === "string" && m.content.trim()) {
-            rawHistory.push({
-              role: (m.role === "assistant" || m.role === "model") ? "model" : "user",
-              content: m.content.trim()
-            });
-          }
         }
       }
     }
@@ -773,7 +719,7 @@ export async function POST(req: Request) {
     const activeMode = contextData?.mode || "general";
     const adaptivePedagogicalDirectives = resolveAdaptiveEducationalContext(effectiveMessage, contextData);
 
-    let fullSystemPrompt = `${NORA_CONSTITUTIONAL_AXIOMS}\n\n${SUSY_SYSTEM_PROMPT}\n\n${generarContextoComandoMunicipalItuzaingo()}`;
+    let fullSystemPrompt = `${NORA_CONSTITUTIONAL_AXIOMS}\n\n${SUSY_SYSTEM_PROMPT}\n\n${generarContextoComandoMunicipalItuzaingo(effectiveMessage)}`;
     // 🧠 Calibración empática por turno (determinista, < 2 ms) + cadencia oral en llamadas de voz
     const vecinoProfile = analyzeVecino(effectiveMessage);
     if (interactionMode === "voice") fullSystemPrompt += SUSY_ORAL_CADENCE_MODULE;

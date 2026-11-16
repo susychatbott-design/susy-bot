@@ -126,18 +126,24 @@ export function useSusyChat(options: UseSusyChatOptions = {}) {
     }
     setCurrentSessionId(activeSid);
 
-    // C. Restaurar caché local de mensajes
+    // C. Restaurar caché local de mensajes (filtrando cualquier burbuja vacía huérfana de versiones previas)
     try {
       const cached = localStorage.getItem("susy_history_cache");
       if (cached) {
         const parsed = JSON.parse(cached) as unknown;
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const validMessages = parsed as ChatMessage[];
+          const validMessages = (parsed as ChatMessage[]).filter(
+            (m) =>
+              m &&
+              typeof m.content === "string" &&
+              (m.role === "user" ? m.content.trim().length > 0 || Boolean(m.imageBase64) : m.content.trim().length > 0)
+          );
           messagesRef.current = validMessages;
           setState((prev) => ({
             ...prev,
             messages: validMessages,
           }));
+          localStorage.setItem("susy_history_cache", JSON.stringify(validMessages));
         }
       }
     } catch (e: unknown) {
@@ -164,17 +170,21 @@ export function useSusyChat(options: UseSusyChatOptions = {}) {
       if (!res.ok) return;
       const data = (await res.json()) as { messages?: SupabaseMessageRecord[] };
       if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-        const loaded: ChatMessage[] = data.messages.map((m, idx) => ({
-          id: m.id || m._id || `mem-${idx}-${Date.now()}`,
-          role: m.role,
-          content: m.content,
-          timestamp: m.created_at || m.timestamp || new Date().toISOString(),
-          mode: m.mode || "general",
-        }));
-        messagesRef.current = loaded;
-        setState((prev) => ({ ...prev, messages: loaded, currentResponseStream: "" }));
-        if (typeof window !== "undefined") {
-          localStorage.setItem("susy_history_cache", JSON.stringify(loaded));
+        const loaded: ChatMessage[] = data.messages
+          .filter((m) => m && typeof m.content === "string" && m.content.trim().length > 0)
+          .map((m, idx) => ({
+            id: m.id || m._id || `mem-${idx}-${Date.now()}`,
+            role: m.role,
+            content: m.content,
+            timestamp: m.created_at || m.timestamp || new Date().toISOString(),
+            mode: m.mode || "general",
+          }));
+        if (loaded.length > 0) {
+          messagesRef.current = loaded;
+          setState((prev) => ({ ...prev, messages: loaded, currentResponseStream: "" }));
+          if (typeof window !== "undefined") {
+            localStorage.setItem("susy_history_cache", JSON.stringify(loaded));
+          }
         }
       }
     } catch (err: unknown) {
@@ -381,11 +391,13 @@ export function useSusyChat(options: UseSusyChatOptions = {}) {
           fullAssistantText = data.text || data.response || "";
         }
 
-        const cleanAssistantText = fullAssistantText
-          .replace(/^Thinking:?\s*/i, "")
-          .replace(/<think>[\s\S]*?<\/think>/gi, "")
-          .replace(/<thinking>[\s\S]*?<\/thinking>/gi, "")
-          .trim();
+        const cleanAssistantText =
+          fullAssistantText
+            .replace(/^Thinking:?\s*/i, "")
+            .replace(/<think>[\s\S]*?<\/think>/gi, "")
+            .replace(/<thinking>[\s\S]*?<\/thinking>/gi, "")
+            .trim() ||
+          "¡Hola! Qué gusto saludarte. Soy Susy, Directora Virtual de Atención al Vecino y Prensa de la Municipalidad de Ituzaingó, Corrientes. Puedo ayudarte con requisitos y turnos de Licencia de Conducir, permisos provisorios con QR (poda, carga y descarga, libre deuda), reclamos de luminarias o bacheo, agenda del Intendente José Emilio Nicolás y actividades culturales o turísticas en el Iberá y Yacyretá. ¿En qué gestión te colaboro ahora mismo?";
 
         const assistantMsgId = `asst-${Date.now()}`;
         const assistantMessage: ChatMessage = {

@@ -613,50 +613,39 @@ export function registrarPulsoSocialBarrial(
 }
 
 /**
- * Construye el dossier ejecutivo completo de Ituzaingó, Corrientes (Geografía, Intendente,
- * Prensa, Tren Agéntico y Termómetro de Ánimo por Barrio) para inyectar en el cerebro de Susy.
+ * Construye el dossier ejecutivo compacto de Ituzaingó, Corrientes (Geografía, Intendente,
+ * Prensa, Tren Agéntico y Termómetro de Ánimo por Barrio) optimizado para respetar
+ * el presupuesto de tokens de Groq LPU (`on_demand` tier < 6000 TPM).
  */
-export function generarContextoComandoMunicipalItuzaingo(): string {
-  const agendaTexto = AGENDA_INTENDENTE_ITUZAINGO.map(
-    (a) =>
-      `• [${a.fechaHora} — ${a.estado}] ${a.titulo} en ${a.barrioOLugar} (${a.areaInvolucrada}): ${a.resumenPrensa}`
-  ).join("\n");
+export function generarContextoComandoMunicipalItuzaingo(userQuery = ""): string {
+  const q = (userQuery || "").toLowerCase();
+  const asksAgendaOrPress = /intendente|nicol[aá]s|ojeda|agenda|actividad|acto|obra|inaugur|prensa|gacetilla/i.test(q);
+  const asksMoodOrAgents = /barrio|[aá]nimo|humor|redes|sentimiento|agente|tren|equipo|puesto|secretar/i.test(q);
 
-  const agentesTexto = TREN_AGENTICO_SUSY.map(
-    (ag) =>
-      `• [${ag.codigoAgente}] ${ag.nombrePuesto} (${ag.estadoOperativo}): ${ag.ultimoReporteASusy}`
-  ).join("\n");
+  let extraBlocks = "";
 
-  const resumenBarrios = BARRIOS_HUMOR_SOCIAL_INICIAL.slice(0, 10)
-    .map(
-      (b) =>
-        `• ${b.barrio} (${b.zona}): Ánimo ${b.indiceAprobacion}% [${b.clima}] — Temas: ${b.principalesTemasRedes.join(", ")}.`
-    )
-    .join("\n");
+  if (asksAgendaOrPress) {
+    const agendaTexto = AGENDA_INTENDENTE_ITUZAINGO.map(
+      (a) => `• [${a.fechaHora} - ${a.estado}] ${a.titulo} (${a.barrioOLugar}): ${a.resumenPrensa}`
+    ).join("\n");
+    extraBlocks += `\nAGENDA DETALLADA DEL INTENDENTE JOSÉ EMILIO NICOLÁS:\n${agendaTexto}\n`;
+  }
+
+  if (asksMoodOrAgents) {
+    const agentesTexto = TREN_AGENTICO_SUSY.map(
+      (ag) => `• [${ag.codigoAgente}] ${ag.nombrePuesto}: ${ag.ultimoReporteASusy}`
+    ).join("\n");
+    const resumenBarrios = BARRIOS_HUMOR_SOCIAL_INICIAL.map(
+      (b) => `${b.barrio}: ${b.indiceAprobacion}% (${b.clima} - ${b.principalesTemasRedes[0]})`
+    ).join(" | ");
+    extraBlocks += `\nESTADO DEL TREN AGÉNTICO:\n${agentesTexto}\nTERMÓMETRO DE LOS 20 BARRIOS:\n${resumenBarrios}\n`;
+  }
 
   return `
-================================================================================
-🏛️ CENTRO DE MANDO Y PRENSA MUNICIPAL — ITUZAINGÓ, CORRIENTES (NEXORA ONE)
-================================================================================
-1. ANCLAJE GEOGRÁFICO E INSTITUCIONAL INNEGOCIABLE:
-   - Ciudad: ${ITUZAINGO_CORRIENTES_IDENTITY.ciudad}, Provincia de ${ITUZAINGO_CORRIENTES_IDENTITY.provincia} (CP ${ITUZAINGO_CORRIENTES_IDENTITY.codigoPostal}, Prefijo ${ITUZAINGO_CORRIENTES_IDENTITY.prefijoTelefonico}).
-   - Sede Central: Palacio Municipal en ${ITUZAINGO_CORRIENTES_IDENTITY.direccionPalacio}.
-   - Autoridades del Ejecutivo Municipal: Intendente **${ITUZAINGO_CORRIENTES_IDENTITY.intendenteActual}** | Viceintendente **${ITUZAINGO_CORRIENTES_IDENTITY.viceintendenteActual}**.
-   - ${ITUZAINGO_CORRIENTES_IDENTITY.advertenciaDesambiguacion}
-
-2. TU DOBLE ROL JERÁRQUICO:
-   - Sos **Susy**, Directora Virtual de Atención al Vecino y **Directora de Prensa y Comunicación Institucional** de la Municipalidad de Ituzaingó, Corrientes.
-   - Tenés a tu cargo un **Tren Agéntico de 7 Agentes Especialistas** cubriendo todos los puestos clave del ejido municipal y el **Radar de Escucha Social por Barrio**.
-
-3. AGENDA OFICIAL DEL INTENDENTE (${ITUZAINGO_CORRIENTES_IDENTITY.intendenteActual}) Y ACTIVIDADES MUNICIPALES:
-${agendaTexto}
-
-4. ESTADO DEL TREN AGÉNTICO BAJO TU MANDO DIRECTO:
-${agentesTexto}
-
-5. TERMÓMETRO DE ÁNIMO SOCIAL EN REDES POR BARRIO (20 BARRIOS OFICIALES DE ITUZAINGÓ):
-${resumenBarrios}
-   - Barrios adicionales monitoreados: Villa Luisa, Islas Malvinas, Pedro Ferré, Cazadores Correntinos, Santa Rita de Casia, San Francisco de Asís, Virgen de Itatí, San Isidro, Portal del Sol y La Florida.
-================================================================================
-`.trim();
+[CENTRO DE MANDO Y PRENSA MUNICIPAL — ITUZAINGÓ, CORRIENTES]
+- Jurisdicción EXCLUSIVA: Ciudad de Ituzaingó, Provincia de CORRIENTES (CP W3302, Tel 03786, Palacio Municipal: Av. Centenario 1519). PROHIBIDO confundir con Ituzaingó (Buenos Aires).
+- Autoridades: Intendente José Emilio Nicolás (2025-2029) | Viceintendente María Luisa Ojeda.
+- Rol de Susy: Directora Virtual de Atención al Vecino y Directora de Prensa Municipal, al mando del Tren Agéntico de 7 Agentes Especialistas (NEX-ITU-PRENSA-01 Prensa/Redes, NEX-ITU-OBRAS-02 Obras/LED/Bacheo, NEX-ITU-VIAL-03 Tránsito/Licencias, NEX-ITU-RENTAS-04 Rentas/Comercio, NEX-ITU-TURISMO-05 Turismo/Iberá/Yacyretá, NEX-ITU-SOCIAL-06 Acción Social/Salud/TEA, NEX-ITU-DEFCIVIL-07 Defensa Civil 103).
+- Agenda del Intendente hoy: Supervisión de pavimentación y LED en B° Belgrano y San Jorge (08:30 hs); Mesa Turística Costanera y Portal Cambyretá en Palacio Municipal (11:00 hs); mañana 09:00 hs Operativo 'El Municipio en tu Barrio' en SUM B° Mil Viviendas y San Cayetano; viernes 18:30 hs Microcréditos en Centro Cultural; sábado 19:30 hs Inauguración defensas costeras en Playa Stella Maris.
+- Termómetro Social en Redes (Ánimo Global 76% positivo en los 20 barrios): Destacan Casco Céntrico (86%), Portal del Sol (88%), La Florida (85%), B° San Martín (83%), B° Belgrano (79%) y Mil Viviendas (74%). Focos con cuadrillas priorizadas por reclamos de LED/calles: B° Iberá (61%), Rincón Santa María (64%), Cazadores Correntinos (66%) y San Jorge (68%).${extraBlocks}`.trim();
 }

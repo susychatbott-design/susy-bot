@@ -19,11 +19,11 @@ export async function generateTextEmbedding(text: string): Promise<number[] | nu
   const cleanText = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 4000);
   if (!cleanText) return null;
 
-  // 1. Capa 1: Ollama Local (solo si no apunta a localhost en la nube)
-  const ollamaUrl = cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
-  const isCloudRuntime = Boolean(process.env.VERCEL || process.env.RENDER);
+  // 1. Capa 1: Ollama Local (solo si está explícitamente habilitado o es un túnel/VPS remoto)
+  const ollamaUrl = cleanKey(process.env.OLLAMA_TUNNEL_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
   const isLocalhostOllama = /localhost|127\.0\.0\.1/.test(ollamaUrl);
-  if (ollamaUrl && !(isCloudRuntime && isLocalhostOllama)) {
+  const shouldUseOllama = Boolean(ollamaUrl) && (!isLocalhostOllama || process.env.ENABLE_LOCAL_OLLAMA === "true");
+  if (shouldUseOllama) {
     try {
       const res = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
         method: "POST",

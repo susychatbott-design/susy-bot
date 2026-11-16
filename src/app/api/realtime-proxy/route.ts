@@ -173,7 +173,7 @@ export async function POST(req: Request) {
     let contextualSystemPrompt =
       NORA_PROSODY_SYSTEM_PROMPT +
       "\n\n" +
-      generarContextoComandoMunicipalItuzaingo() +
+      generarContextoComandoMunicipalItuzaingo(effectiveUserText) +
       SUSY_ORAL_CADENCE_MODULE +
       buildSusyPnlContext(vecinoProfile);
     

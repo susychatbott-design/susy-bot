@@ -598,6 +598,18 @@ export default function SusyBotPage() {
               <BarChart3 size={14} className="text-indigo-400" />
               <span>Tablero Gestión</span>
             </Link>
+
+            {chat.messages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => chat.startNewChat()}
+                className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900/90 text-teal-300 border border-teal-500/30 hover:bg-slate-800 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all"
+                title="Iniciar una consulta limpia desde cero"
+              >
+                <Sparkles size={14} className="text-teal-400" />
+                <span>Nueva Consulta</span>
+              </button>
+            )}
           </div>
 
           {/* PANEL DE DEFENSA CIVIL Y ALERTA HIDROMETEOROLÓGICA DE ITUZAINGÓ */}

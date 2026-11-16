@@ -435,14 +435,17 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
 
   const cleanImage = imageBase64 ? (imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64) : null;
   const isVisionRequest = Boolean(cleanImage);
-  const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
-  const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
+  // Si el caller ya envía su propio systemPrompt completo, no duplicar SUSY_MASTER_SYSTEM_PROMPT
+  // para mantener el payload por debajo del límite TPM de Groq LPU (< 6000 tokens).
+  const basePrompt = systemPrompt && systemPrompt.length > 600 ? systemPrompt : `${SUSY_MASTER_SYSTEM_PROMPT}\n\n${systemPrompt}`;
+  const fullSystem = `[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${basePrompt}`.trim().slice(0, 9500);
+  const openAiMessages = buildOpenAiMessages(history.slice(-6), userMessage, fullSystem, cleanImage);
 
-  // 1. CAPA 1: Ollama Local / Servidor VPS Municipal (solo si no apunta a localhost en la nube)
-  const ollamaUrl = cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
-  const isCloudRuntime = Boolean(process.env.VERCEL || process.env.RENDER);
+  // 1. CAPA 1: Ollama Local / Servidor VPS Municipal (solo si está explícitamente habilitado o es una URL pública/túnel)
+  const ollamaUrl = cleanKey(process.env.OLLAMA_TUNNEL_URL) || cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
   const isLocalhostOllama = /localhost|127\.0\.0\.1/.test(ollamaUrl);
-  if (ollamaUrl && !(isCloudRuntime && isLocalhostOllama)) {
+  const shouldUseOllama = Boolean(ollamaUrl) && (!isLocalhostOllama || process.env.ENABLE_LOCAL_OLLAMA === "true");
+  if (shouldUseOllama) {
     const candidateModels = isVisionRequest
       ? [cleanKey(process.env.OLLAMA_VISION_MODEL) || "llava", "qwen2.5-vl"]
       : [cleanKey(process.env.OLLAMA_TEXT_MODEL) || "llama3.3", "qwen2.5:72b"];
@@ -474,8 +477,8 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
     const groqCandidateModels = isVisionRequest
-      ? ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"]
-      : ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
+      ? ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+      : ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"];
 
     for (const gModel of groqCandidateModels) {
       try {
@@ -489,15 +492,18 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
             model: gModel,
             messages: openAiMessages,
             stream: true,
-            max_tokens: isVisionRequest ? 1500 : Math.max(900, maxTokens),
+            max_tokens: isVisionRequest ? 900 : 650,
             temperature
           }),
-          signal: AbortSignal.timeout(6500)
+          signal: AbortSignal.timeout(8000)
         });
 
         if (groqRes.ok && groqRes.body) {
           console.log(`[Sovereign Core - Capa 2 Groq LPU]: Inferencia exitosa (${gModel})`);
           return transformOpenAiStreamToSSE(groqRes.body, sessionId, isVisionRequest, userMessage, history, mode);
+        } else {
+          const errTxt = await groqRes.text().catch(() => "");
+          console.warn(`[Sovereign Core Groq Warn ${gModel}]:`, groqRes.status, errTxt.slice(0, 160));
         }
       } catch (groqErr) {}
     }
@@ -629,8 +635,9 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
   }
 
   const cleanImage = imageBase64 ? (imageBase64.includes(",") ? imageBase64.split(",")[1] : imageBase64) : null;
-  const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
-  const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
+  const basePrompt = systemPrompt && systemPrompt.length > 600 ? systemPrompt : `${SUSY_MASTER_SYSTEM_PROMPT}\n\n${systemPrompt}`;
+  const fullSystem = `[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${basePrompt}`.trim().slice(0, 9500);
+  const openAiMessages = buildOpenAiMessages(history.slice(-6), userMessage, fullSystem, cleanImage);
 
   const isVoiceMode = mode === "voice";
 
