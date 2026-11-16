@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { SusyMode } from "@/lib/prompts/types";
 import { sanitizeForTTS } from "@/utils/audioUtils";
+import { selectLatinSpanishVoice, primeLatinVoices, DEFAULT_LATIN_LANG } from "@/utils/latinVoice";
 
 export type AudioEngineType = "cloud-whisper" | "native-edge";
 
@@ -68,89 +69,14 @@ interface WindowWithSpeechRecognition extends Window {
 }
 
 /**
- * Selector estricto de Voz Argentina / Cono Sur (Cero acento de España)
+ * Selector de voz unificado: delega en el selector estricto de `latinVoice.ts`.
+ * NUNCA devuelve una voz en otro idioma (antes caía a `voices[0]`, que en la
+ * mayoría de los dispositivos es una voz en inglés).
  */
 export function selectBestArgentineNaturalVoice(
   voices: SpeechSynthesisVoice[]
 ): SpeechSynthesisVoice | null {
-  if (!voices || voices.length === 0) return null;
-
-  const isSpainVoice = (v: SpeechSynthesisVoice): boolean => {
-    const l = (v.lang || "").toLowerCase();
-    const n = (v.name || "").toLowerCase();
-    return (
-      l.includes("es-es") ||
-      l.includes("es_es") ||
-      n.includes("spain") ||
-      n.includes("españa") ||
-      n.includes("helena") ||
-      n.includes("monica") ||
-      n.includes("laura") ||
-      n.includes("pablo")
-    );
-  };
-
-  // 1. Prioridad máxima: Voz Argentina Natural / Neuronal (es-AR, Elena Argentina, Tomas, Brenda, etc.)
-  const argVoice = voices.find((v) => {
-    if (isSpainVoice(v)) return false;
-    const l = (v.lang || "").toLowerCase();
-    const n = (v.name || "").toLowerCase();
-    return (
-      l.includes("es-ar") ||
-      l.includes("es_ar") ||
-      n.includes("argentina") ||
-      n.includes("tomas") ||
-      n.includes("brenda") ||
-      n.includes("diego") ||
-      (n.includes("elena") && l.includes("es-ar"))
-    );
-  });
-  if (argVoice) return argVoice;
-
-  // 2. Segunda prioridad: Voces Neuronales / Naturales Latinoamericanas (es-419, es-MX, es-US, es-UY, Sabina, Paulina, Dalia)
-  const latamNatural = voices.find((v) => {
-    if (isSpainVoice(v)) return false;
-    const l = (v.lang || "").toLowerCase();
-    const n = (v.name || "").toLowerCase();
-    return (
-      (n.includes("natural") || n.includes("online") || n.includes("google")) &&
-      (l.startsWith("es-419") ||
-        l.startsWith("es-mx") ||
-        l.startsWith("es-us") ||
-        l.startsWith("es-uy") ||
-        l.startsWith("es-cl"))
-    );
-  });
-  if (latamNatural) return latamNatural;
-
-  // 3. Tercera prioridad: Voces expresivas latinoamericanas
-  const latamStandard = voices.find((v) => {
-    if (isSpainVoice(v)) return false;
-    const l = (v.lang || "").toLowerCase();
-    const n = (v.name || "").toLowerCase();
-    return (
-      l.includes("es-419") ||
-      l.includes("es-us") ||
-      l.includes("es-mx") ||
-      l.includes("es-uy") ||
-      l.includes("es-cl") ||
-      n.includes("sabina") ||
-      n.includes("paulina") ||
-      n.includes("dalia") ||
-      n.includes("jimena") ||
-      n.includes("latino")
-    );
-  });
-  if (latamStandard) return latamStandard;
-
-  // 4. Cuarta prioridad: Cualquier voz en español que no sea de España
-  const anyNonSpain = voices.find((v) => {
-    const l = (v.lang || "").toLowerCase();
-    return l.startsWith("es") && !isSpainVoice(v);
-  });
-  if (anyNonSpain) return anyNonSpain;
-
-  return voices.find((v) => (v.lang || "").toLowerCase().startsWith("es")) || voices[0] || null;
+  return selectLatinSpanishVoice(voices);
 }
 
 /**
@@ -190,7 +116,7 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
 
   const selectBestNaturalVoice = useCallback((): SpeechSynthesisVoice | null => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
-    const voices = window.speechSynthesis.getVoices();
+    const voices = primeLatinVoices();
     return selectBestArgentineNaturalVoice(voices);
   }, []);
 
@@ -313,7 +239,7 @@ export function useSusyAudio(options: UseSusyAudioOptions = {}) {
         const naturalVoice = selectBestNaturalVoice();
         if (naturalVoice) {
           utterance.voice = naturalVoice;
-          utterance.lang = naturalVoice.lang || "es-AR";
+          utterance.lang = (naturalVoice.lang || DEFAULT_LATIN_LANG).replace(/_/g, "-");
         }
 
         utterance.onstart = () => {

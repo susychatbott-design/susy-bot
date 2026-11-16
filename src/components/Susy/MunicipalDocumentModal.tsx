@@ -61,7 +61,7 @@ export default function MunicipalDocumentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn">
+    <div className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn">
       <div className="bg-[#0b111e] border border-sky-600/40 rounded-3xl max-w-xl w-full text-slate-100 shadow-2xl relative my-auto overflow-hidden">
         {/* Barra Superior con Acciones */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-800 bg-[#070b14] print:hidden">

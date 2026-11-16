@@ -14,6 +14,7 @@ import {
   isLikelyAssistantEcho,
   primeLatinVoices,
 } from "@/utils/latinVoice";
+import { analyzeVecino } from "@/lib/susy/pnl/susyPnlEngine";
 
 interface SusyRealtimeCallModalProps {
   isOpen: boolean;
@@ -246,6 +247,7 @@ export default function SusyRealtimeCallModal({
   const isFallbackSpeakingRef = useRef<boolean>(false);
   const fallbackEpochRef = useRef<number>(0);
   const llmAbortRef = useRef<AbortController | null>(null);
+  const activeVoiceParamsRef = useRef<{ rate: number; pitch: number }>({ rate: 1.03, pitch: 1.01 });
 
   useEffect(() => {
     if (isOpen) {
@@ -497,8 +499,8 @@ export default function SusyRealtimeCallModal({
             // 🛡️ Prevención de Garbage Collection en Chrome: guardar en array useRef<SpeechSynthesisUtterance[]>
             activeUtterancesRef.current.push(utterance);
 
-            utterance.rate = 1.02;
-            utterance.pitch = 1.04;
+            utterance.rate = activeVoiceParamsRef.current.rate;
+            utterance.pitch = activeVoiceParamsRef.current.pitch;
 
             // 🌎 FASE 7.7: Forzar voz latina (es-AR / es-MX / es-US / es-419), nunca es-ES
             applyLatinVoice(utterance);
@@ -677,6 +679,11 @@ export default function SusyRealtimeCallModal({
                 phoneticText = data.phoneticText || "";
                 resAudio = data.audioBase64 || null;
                 transcribedUserText = candidateTranscript;
+                if (data.voiceParams && typeof data.voiceParams.rate === "number") {
+                  activeVoiceParamsRef.current = data.voiceParams;
+                } else {
+                  activeVoiceParamsRef.current = analyzeVecino(candidateTranscript).voice;
+                }
               } else {
                 throw new Error("HTTP_FAILED");
               }
@@ -698,6 +705,8 @@ export default function SusyRealtimeCallModal({
               resumeListening();
               return;
             }
+
+            activeVoiceParamsRef.current = analyzeVecino(fallbackQuery).voice;
 
             if (typeof navigator === "undefined" || navigator.onLine) {
               try {
@@ -1251,6 +1260,11 @@ export default function SusyRealtimeCallModal({
       if (res.ok) {
         const data = await res.json();
         if (data.text) {
+          if (data.voiceParams && typeof data.voiceParams.rate === "number") {
+            activeVoiceParamsRef.current = data.voiceParams;
+          } else {
+            activeVoiceParamsRef.current = analyzeVecino(textToSend).voice;
+          }
           setAssistantText(data.text);
           historyRef.current.push({ role: "user", content: textToSend });
           historyRef.current.push({ role: "assistant", content: data.text });

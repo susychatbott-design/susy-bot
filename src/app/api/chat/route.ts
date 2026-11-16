@@ -11,6 +11,7 @@ import { applyReputationalShield } from "@/lib/susy/security/susyReputationalPat
 import { buscarEventosCulturalesEnVivo, generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
 import { queryMunicipalGraphRAG } from "@/lib/susy/graphrag/susyGraphRAG";
+import { analyzeVecino, buildSusyPnlContext, SUSY_ORAL_CADENCE_MODULE } from "@/lib/susy/pnl/susyPnlEngine";
 
 
 export const runtime = "nodejs";
@@ -100,13 +101,23 @@ Operás bajo un esquema de Generación Aumentada por Recuperación (RAG) conecta
 
 ---
 
-### ⚡ 3. CAPACIDAD TRANSACCIONAL (MÓDULO DE RECLAMOS URBANOS ITUZAINGÓ - FUNCTION CALLING)
-Tenés la facultad administrativa de interactuar con el backend para generar acciones gubernamentales vinculantes. Cuando un vecino exprese una intención de reporte o reclamo urbano (baches, luminarias, recolección de ramas), debés activar el protocolo de extracción de datos con la máxima diligencia.
+### ⚡ 3. CAPACIDAD TRANSACCIONAL Y EMISIÓN DE DOCUMENTOS PROVISORIOS (FUNCTION CALLING OFICIAL)
+Tenés la facultad administrativa oficial para emitir comprobantes de turno, permisos provisorios con código QR y registrar reclamos urbanos vinculantes. El sistema detecta tus etiquetas [CALL_FUNCTION: ...] y despliega automáticamente el documento oficial con QR en la pantalla del vecino listo para imprimir o compartir:
 
-Deberás estructurar la salida en un formato limpio utilizando la función registrarReclamoMunicipal:
-[CALL_FUNCTION: registrarReclamoMunicipal(tipo_reclamo="infraestructura", ubicacion_exacta="Centenario y Mitre", descripcion_vecino="Pozo de gran tamaño en calzada")]
-- **Campos obligatorios requeridos:** tipo_reclamo (infraestructura, luminaria, bromatologia, transito, limpieza, general), ubicacion_exacta (Calles/Barrio), descripcion_vecino.
-- **Acción:** Una vez extraídos los datos, confirmá la transacción emitiendo el número de ticket de seguimiento y explicá cordialmente el procedimiento que seguirá la cuadrilla municipal.
+1. **Reclamos Urbanos (baches, luminarias apagadas, recolección de ramas, bromatología, tránsito):**
+   [CALL_FUNCTION: registrarReclamoMunicipal(tipo_reclamo="infraestructura", ubicacion_exacta="Centenario y Mitre", descripcion_vecino="Pozo de gran tamaño en calzada")]
+   - Valores válidos para tipo_reclamo: "infraestructura" | "luminaria" | "bromatologia" | "transito" | "limpieza" | "general".
+
+2. **Emisión de Turnos Oficiales Presenciales (Tránsito, Rentas, Acción Social, Comercio, Obras Públicas, Mesa de Entradas):**
+   Cuando el vecino solicite un turno y te indique Nombre y DNI (o te pida el comprobante de inmediato), incluí:
+   [CALL_FUNCTION: emitirTurno(nombre_vecino="Juan Pérez", dni="30123456", dependencia="transito", tramite="Renovación Licencia de Conducir", horario_sugerido="08:30 hs")]
+   - Valores válidos para dependencia: "transito" | "rentas" | "accion_social" | "comercio" | "obras_publicas" | "mesa_entradas".
+
+3. **Emisión de Permisos Provisorios y Constancias con QR (Validez 72 hs):**
+   Cuando el vecino solicite permiso de poda de ramas, carga y descarga, mudanza, constancia de libre deuda en trámite o habilitación comercial provisoria, incluí:
+   [CALL_FUNCTION: emitirPermisoProvisorio(nombre_vecino="Juan Pérez", dni="30123456", domicilio="Belgrano 1240", motivo="poda_ramas")]
+   - Valores válidos para motivo: "poda_ramas" | "carga_descarga" | "mudanza" | "libre_deuda_tramite" | "uso_espacio_publico" | "habilitacion_provisoria".
+   - Si el vecino pide emitir el permiso o turno y aún no te dijo su nombre o DNI, pedíselo amablemente en una sola oración corta o, si pide un comprobante rápido de inmediato, emitilo con los datos que tengas indicando que ya le aparece en pantalla.
 
 ---
 
@@ -750,6 +761,10 @@ export async function POST(req: Request) {
     const adaptivePedagogicalDirectives = resolveAdaptiveEducationalContext(effectiveMessage, contextData);
 
     let fullSystemPrompt = `${NORA_CONSTITUTIONAL_AXIOMS}\n\n${SUSY_SYSTEM_PROMPT}`;
+    // 🧠 Calibración empática por turno (determinista, < 2 ms) + cadencia oral en llamadas de voz
+    const vecinoProfile = analyzeVecino(effectiveMessage);
+    if (interactionMode === "voice") fullSystemPrompt += SUSY_ORAL_CADENCE_MODULE;
+    fullSystemPrompt += buildSusyPnlContext(vecinoProfile);
     if (adaptivePedagogicalDirectives) fullSystemPrompt += adaptivePedagogicalDirectives;
     if (continuousUserMemory) fullSystemPrompt += continuousUserMemory;
     if (weatherData) fullSystemPrompt += `\n\n${weatherData}`;

@@ -52,7 +52,9 @@ export async function POST(req: Request) {
             body: JSON.stringify({
               inputs: cleanSpeechText,
               parameters: {
-                voice: voice === "es-la" ? "af_nicole" : "af_sky",
+                // Kokoro: prefijo "e" = español. ("af_*" son voces de inglés americano
+                // y provocaban el acento inglés en el modo Live.)
+                voice: voice === "es-male" ? "em_alex" : "ef_dora",
                 language: "es"
               }
             }),

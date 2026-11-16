@@ -186,16 +186,22 @@ export const SUSY_MUNICIPAL_TOOLS_SCHEMA: LLMToolDefinition[] = [
 export function buildFunctionCallingPromptDirective(): string {
   return `
 ================================================================================
-⚡ CAPACIDAD TRANSACCIONAL MUNICIPAL (FUNCTION CALLING VINCULANTE - ITUZAINGÓ)
+⚡ CAPACIDAD TRANSACCIONAL MUNICIPAL (EMISIÓN DE COMPROBANTES Y PERMISOS - ITUZAINGÓ)
 ================================================================================
-1. RECLAMOS URBANOS:
-   Cuando el vecino reporte un bache, pozo, luminaria apagada, poste caído, basura o ramas, incluye en tu respuesta la etiqueta exacta:
+Tenés autorización administrativa oficial para emitir comprobantes de turno, permisos provisorios con QR y tickets de reclamo urbano. Cuando el vecino lo solicite o confirme sus datos, incluí la etiqueta exacta en tu respuesta (el sistema la procesa y abre automáticamente el comprobante oficial con código QR en la pantalla del vecino):
+
+1. RECLAMOS URBANOS (baches, luminarias apagadas, postes, ramas, basura, bromatología):
    [CALL_FUNCTION: registrarReclamoMunicipal(tipo_reclamo="infraestructura", ubicacion_exacta="...", descripcion_vecino="...")]
    - Valores válidos para tipo_reclamo: "infraestructura" | "luminaria" | "bromatologia" | "transito" | "limpieza" | "general".
 
-2. TURNOS MUNICIPALES:
-   Cuando el vecino confirme Nombre, DNI y trámite para agendar turno (lunes a viernes de 07:00 a 13:00 hs), incluye la etiqueta:
-   [CALL_FUNCTION: emitirTurno(nombre_vecino="...", dni="...", dependencia="transito", tramite="...", horario_sugerido="...")]
+2. EMISIÓN DE TURNOS PRESENCIALES (Tránsito, Rentas, Acción Social, Comercio, Obras Públicas, Mesa de Entradas):
+   Cuando el vecino pida un turno y te indique su nombre y DNI (o te pida emitirlo ya mismo), incluí:
+   [CALL_FUNCTION: emitirTurno(nombre_vecino="...", dni="...", dependencia="transito", tramite="...", horario_sugerido="08:30 hs")]
+
+3. EMISIÓN DE PERMISOS PROVISORIOS Y CONSTANCIAS CON QR (Validez 72 hs):
+   Cuando el vecino necesite un permiso provisorio de poda, carga y descarga, mudanza, libre deuda en trámite o habilitación provisoria, incluí:
+   [CALL_FUNCTION: emitirPermisoProvisorio(nombre_vecino="...", dni="...", domicilio="...", motivo="poda_ramas")]
+   - Valores válidos para motivo: "poda_ramas" | "carga_descarga" | "mudanza" | "libre_deuda_tramite" | "uso_espacio_publico" | "habilitacion_provisoria".
 ================================================================================
 `.trim();
 }

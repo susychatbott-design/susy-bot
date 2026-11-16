@@ -7,6 +7,7 @@ import {
   extractSpeakableChunks,
   primeLatinVoices,
 } from "@/utils/latinVoice";
+import { analyzeVecino } from "@/lib/susy/pnl/susyPnlEngine";
 
 export interface SusyLiveHistoryEntry {
   role: "user" | "assistant" | "system";
@@ -193,6 +194,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   const fallbackWatchdogTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fallbackBargeInEpochRef = useRef<number>(0);
   const fallbackSpeechStartTsRef = useRef<number>(0);
+  const activeVoiceParamsRef = useRef<{ rate: number; pitch: number }>({ rate: 1.03, pitch: 1.01 });
 
   // Referencias del Reproductor Secuencial con Solapamiento (Web Audio API)
   const playbackCtxRef = useRef<AudioContext | null>(null);
@@ -298,20 +300,12 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       // 🛡️ Prevención de Garbage Collection en Chrome: retener en el array useRef<SpeechSynthesisUtterance[]>
       activeUtterancesRef.current.push(utterance);
 
-      utterance.rate = 1.04;
-      utterance.pitch = 1.02;
+      utterance.rate = activeVoiceParamsRef.current.rate;
+      utterance.pitch = activeVoiceParamsRef.current.pitch;
 
-      // 🌎 FASE 7.7: Filtro estricto de Voz Latina (Argentina / México / Neutro), jamás es-ES
-      const voices = window.speechSynthesis.getVoices();
-      const latinVoice =
-        voices.find((v) => ["es-AR", "es-MX", "es-US", "es-419"].includes(v.lang)) ||
-        voices.find((v) => v.lang.startsWith("es") && v.lang !== "es-ES");
-      if (latinVoice) {
-        utterance.voice = latinVoice;
-        utterance.lang = latinVoice.lang || "es-AR";
-      } else {
-        applyLatinVoice(utterance);
-      }
+      // 🌎 Selector estricto unificado (latinVoice.ts): es-AR → es-MX → es-US → es-419.
+      // Normaliza códigos Android (es_AR), descarta es-ES y JAMÁS cae a una voz en inglés.
+      applyLatinVoice(utterance);
 
       const maxSentenceDurationMs = Math.min(
         18000,
@@ -942,6 +936,10 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
 
         setState((prev) => ({ ...prev, lastTranscript: transcript }));
         if (onTranscriptReady) onTranscriptReady(transcript);
+
+        // 🧠 Calibrar prosodia de la respuesta según el clima emocional/urgencia del vecino
+        const pnl = analyzeVecino(transcript);
+        activeVoiceParamsRef.current = pnl.voice;
 
         // Construir el historial completo de la conversación (chat.messages + turnos previos)
         const filteredHistory = conversationHistoryRef.current

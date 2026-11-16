@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { sanitizeForTTS } from "@/utils/audioUtils";
+import { applyLatinVoice } from "@/utils/latinVoice";
 
 export type ClockPosition =
   | "9 en punto"
@@ -131,19 +132,7 @@ export function useSusyVision() {
       utterance.rate = 1.30; // Rápida y de urgencia táctica
       utterance.pitch = 1.10;
 
-      const voices = window.speechSynthesis.getVoices();
-      const alertVoice =
-        voices.find(
-          (v) =>
-            v.lang.toLowerCase().includes("es-ar") ||
-            (v.lang.startsWith("es") && !v.lang.toLowerCase().includes("es-es") && v.name.includes("Natural"))
-        ) ||
-        voices.find((v) => v.lang.startsWith("es") && !v.lang.toLowerCase().includes("es-es")) ||
-        null;
-
-      if (alertVoice) {
-        utterance.voice = alertVoice;
-      }
+      applyLatinVoice(utterance);
       window.speechSynthesis.speak(utterance);
     }
   }, []);

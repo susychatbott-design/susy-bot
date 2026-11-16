@@ -8,6 +8,8 @@
  * ==============================================================================
  */
 
+import { applyLatinVoice } from "@/utils/latinVoice";
+
 export type AudioChimeType = "alerta_defensa_civil" | "tramite_iniciado" | "tramite_completado";
 
 export class SusyAudioHardware {
@@ -178,9 +180,7 @@ export class SusyAudioHardware {
     utterance.rate = 1.0;
     utterance.pitch = 1.05;
 
-    const voices = window.speechSynthesis.getVoices();
-    const argVoice = voices.find(v => v.lang.startsWith("es-AR") || v.lang.startsWith("es-419") || v.lang.startsWith("es"));
-    if (argVoice) utterance.voice = argVoice;
+    applyLatinVoice(utterance);
 
     // 🛡️ Watchdog Centinela de 400ms: Si se detecta interacción del lector TalkBack/VoiceOver, cortar de inmediato
     this.screenReaderWatchdog = setTimeout(() => {

@@ -24,10 +24,7 @@ import {
 // 1. Ecosistema Sensorial de Hooks Desacoplados (Fase 1)
 import { useSusyChat, SusyAttachedFile } from "@/hooks/useSusyChat";
 import { useSusyVision } from "@/hooks/useSusyVision";
-import {
-  useSusyAudio,
-  selectBestArgentineNaturalVoice,
-} from "@/hooks/useSusyAudio";
+import { useSusyAudio } from "@/hooks/useSusyAudio";
 import { useSusyVAD } from "@/hooks/useSusyVAD";
 import { useSusyDeviceCapabilities } from "@/hooks/useSusyDeviceCapabilities";
 import { useSusyGestures } from "@/hooks/useSusyGestures";
@@ -55,31 +52,16 @@ import MunicipalPressModal from "@/components/Susy/MunicipalPressModal";
 import MunicipalDocumentModal from "@/components/Susy/MunicipalDocumentModal";
 import SusyEmergencyModal from "@/components/Susy/SusyEmergencyModal";
 import SusyRealtimeCallModal from "@/components/Susy/SusyRealtimeCallModal";
-import { FunctionPlotter } from "@/components/Susy/FunctionPlotter";
 import { MunicipalDepartment } from "@/lib/susy/municipal/departmentsData";
 import {
   municipalStore,
   MunicipalTurno,
   PermisoProvisorio,
+  parseAndExecuteMunicipalFunctionCalls,
 } from "@/lib/susy/municipal/municipalActions";
 import { syncOnlineDeltasIfAvailable } from "@/lib/susy/offline/knowledgeCache";
 
-/**
- * Re-exportación de compatibilidad para selectores de voz argentina
- */
-export function getBestArgentineVoice(
-  voices: SpeechSynthesisVoice[]
-): SpeechSynthesisVoice | undefined {
-  return selectBestArgentineNaturalVoice(voices) || undefined;
-}
 
-/**
- * Extrae expresiones matemáticas `[PLOT: f(x)]` para el graficador interactivo
- */
-function extractPlotExpression(content: string): string | null {
-  const match = /\[PLOT:\s*([^\]]+)\]/i.exec(content);
-  return match ? match[1].trim() : null;
-}
 
 /**
  * ============================================================================
@@ -113,6 +95,21 @@ export default function SusyBotPage() {
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const lastSpokenMessageIdRef = useRef<string | null>(null);
+  const processedFunctionCallSignaturesRef = useRef<Set<string>>(new Set());
+
+  const processAssistantMunicipalActions = useCallback((assistantContent: string): void => {
+    if (!assistantContent || !assistantContent.includes("CALL_FUNCTION")) return;
+    const actions = parseAndExecuteMunicipalFunctionCalls(assistantContent);
+    for (const act of actions) {
+      if (processedFunctionCallSignaturesRef.current.has(act.rawTag)) continue;
+      processedFunctionCallSignaturesRef.current.add(act.rawTag);
+      if (act.type === "turno") {
+        setSelectedDocumentModal({ type: "turno", turno: act.turno });
+      } else if (act.type === "permiso") {
+        setSelectedDocumentModal({ type: "permiso", permiso: act.permiso });
+      }
+    }
+  }, []);
 
   // =========================================================================
   // 1. INICIALIZACIÓN DE HOOKS SENSORIALES Y CONVERSACIONALES
@@ -181,6 +178,9 @@ export default function SusyBotPage() {
     })),
     sessionId: chat.sessionId,
     mode: chat.activeMode,
+    onAssistantComplete: (fullResponse: string) => {
+      processAssistantMunicipalActions(fullResponse);
+    },
   });
 
   const vad = useSusyVAD({
@@ -414,6 +414,13 @@ export default function SusyBotPage() {
     }
     return "";
   }, [chat.messages]);
+
+  // Ejecutar y desplegar automáticamente comprobantes/permisos provisorios con QR cuando Susy emite [CALL_FUNCTION: ...]
+  useEffect(() => {
+    if (!chat.isStreaming && lastAssistantMessage) {
+      processAssistantMunicipalActions(lastAssistantMessage);
+    }
+  }, [chat.isStreaming, lastAssistantMessage, processAssistantMunicipalActions]);
 
   const canonicalMode = resolveCanonicalProfileId(chat.activeMode);
   const hasPictoTokensInLastReply = useMemo(
@@ -718,7 +725,6 @@ export default function SusyBotPage() {
           <div className="space-y-4" role="log" aria-live="polite">
             {chat.messages.map((msg) => {
               const isUser = msg.role === "user";
-              const plotExpr = !isUser ? extractPlotExpression(msg.content) : null;
 
               return (
                 <article
@@ -750,15 +756,14 @@ export default function SusyBotPage() {
 
                     <div className="prose prose-invert prose-sm max-w-none break-words">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content || (chat.isStreaming ? "Procesando consulta municipal..." : "")}
+                        {(msg.content
+                          ? msg.content.replace(
+                              /\[CALL_FUNCTION:\s*([a-zA-Z0-9_]+)\(([\s\S]*?)\)\]/gi,
+                              "\n\n✅ **[Comprobante Oficial Emitido por Susy Bot — Verificable con Código QR]**"
+                            )
+                          : "") || (chat.isStreaming ? "Procesando consulta municipal..." : "")}
                       </ReactMarkdown>
                     </div>
-
-                    {plotExpr && (
-                      <div className="mt-3">
-                        <FunctionPlotter expression={plotExpr} />
-                      </div>
-                    )}
 
                     {!isUser && msg.content && (
                       <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between gap-2 text-[11px] text-slate-400">
@@ -895,6 +900,9 @@ export default function SusyBotPage() {
         onClose={() => setShowRealtimeCallModal(false)}
         activeMode={chat.activeMode}
         isUsingFallback={susyLive.isUsingFallback}
+        onMessageLogged={(_userText, assistantText) => {
+          processAssistantMunicipalActions(assistantText);
+        }}
         initialHistory={chat.messages.map((m) => ({
           role: m.role,
           content: m.content,

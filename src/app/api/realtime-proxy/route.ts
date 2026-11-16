@@ -14,6 +14,7 @@ import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 import { generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 import { MUNICIPAL_DEPARTMENTS, MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
+import { analyzeVecino, buildSusyPnlContext, SUSY_ORAL_CADENCE_MODULE } from "@/lib/susy/pnl/susyPnlEngine";
 
 /**
  * Fragmenta texto en oraciones atómicas de máx. 15 palabras.
@@ -166,7 +167,10 @@ export async function POST(req: Request) {
     }
 
     // 🎭 CONTEXTO INSTITUCIONAL Y CULTURAL EN VIVO DE ITUZAINGÓ
-    let contextualSystemPrompt = NORA_PROSODY_SYSTEM_PROMPT;
+    // 🧠 Calibración empática determinista (< 2 ms, sin llamada extra al LLM)
+    const vecinoProfile = analyzeVecino(effectiveUserText);
+    let contextualSystemPrompt =
+      NORA_PROSODY_SYSTEM_PROMPT + SUSY_ORAL_CADENCE_MODULE + buildSusyPnlContext(vecinoProfile);
     
     // 1. Detección de consultas culturales, teatro y eventos de fin de semana
     const isCulturalQuery = /evento|actividad|finde|fin de semana|teatro|obra|cultura|chamam|musica|música|costanera|pescador|artesano|feria|centro cultural/i.test(promptToInfer);
@@ -234,7 +238,13 @@ export async function POST(req: Request) {
       audioBase64: sovereignRes.audioBase64,
       transcribedUserText: effectiveUserText,
       latencyMs: totalLatency,
-      model: sovereignRes.modelTag
+      model: sovereignRes.modelTag,
+      voiceParams: vecinoProfile.voice,
+      vecinoProfile: {
+        emotionalTone: vecinoProfile.emotionalTone,
+        urgency: vecinoProfile.urgency,
+        sensoryChannel: vecinoProfile.sensoryChannel
+      }
     }, {
       headers: {
         "Content-Type": "application/json; charset=utf-8",

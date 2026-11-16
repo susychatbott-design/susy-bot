@@ -303,3 +303,159 @@ class MunicipalStore {
 }
 
 export const municipalStore = new MunicipalStore();
+
+export type ParsedMunicipalAction =
+  | { type: "turno"; turno: MunicipalTurno; rawTag: string }
+  | { type: "permiso"; permiso: PermisoProvisorio; rawTag: string }
+  | {
+      type: "reclamo";
+      reclamo: {
+        ticketId: string;
+        tipo: string;
+        ubicacion: string;
+        descripcion: string;
+      };
+      rawTag: string;
+    };
+
+function extractArgValue(rawArgs: string, key: string, fallback = ""): string {
+  const re = new RegExp(`${key}\\s*=\\s*["']([^"']*)["']`, "i");
+  const m = rawArgs.match(re);
+  return m && m[1] ? m[1].trim() : fallback;
+}
+
+const DEPARTMENT_NAMES: Record<string, string> = {
+  transito: "Dirección de Tránsito y Seguridad Vial",
+  rentas: "Secretaría de Hacienda y Rentas Municipales",
+  accion_social: "Secretaría de Acción Social y Desarrollo Humano",
+  comercio: "Dirección de Comercio, Bromatología e Inspección General",
+  obras_publicas: "Secretaría de Obras y Servicios Públicos",
+  mesa_entradas: "Mesa General de Entradas - Palacio Municipal",
+};
+
+const PERMISO_MOTIVO_MAP: Record<string, TipoPermisoProvisorio> = {
+  poda: "poda_ramas",
+  poda_ramas: "poda_ramas",
+  carga_descarga: "carga_descarga",
+  mudanza: "carga_descarga",
+  libre_deuda: "libre_deuda_tramite",
+  libre_deuda_tramite: "libre_deuda_tramite",
+  ocupacion_calzada: "uso_espacio_publico",
+  uso_espacio_publico: "uso_espacio_publico",
+  habilitacion: "habilitacion_provisoria",
+  habilitacion_provisoria: "habilitacion_provisoria",
+};
+
+/**
+ * Detecta y ejecuta etiquetas `[CALL_FUNCTION: ...]` emitidas por Susy en texto o voz:
+ * - `emitirTurno(...)` → registra un turno oficial en `municipalStore`
+ * - `emitirPermisoProvisorio(...)` → emite un permiso provisorio con QR en `municipalStore`
+ * - `registrarReclamoMunicipal(...)` → genera comprobante de reclamo
+ */
+export function parseAndExecuteMunicipalFunctionCalls(text: string): ParsedMunicipalAction[] {
+  if (!text || !text.includes("CALL_FUNCTION")) return [];
+  const actions: ParsedMunicipalAction[] = [];
+
+  // 1. emitirTurno
+  const turnoRegex = /\[CALL_FUNCTION:\s*emitirTurno\(([\s\S]*?)\)\]/gi;
+  let match: RegExpExecArray | null;
+  while ((match = turnoRegex.exec(text)) !== null) {
+    const rawArgs = match[1];
+    const nombre = extractArgValue(rawArgs, "nombre_vecino", "Vecino de Ituzaingó");
+    const dni = extractArgValue(rawArgs, "dni", "En validación presencial");
+    const depKey = extractArgValue(rawArgs, "dependencia", "transito").toLowerCase();
+    const tramite = extractArgValue(rawArgs, "tramite", "Atención Presencial Municipal");
+    const horario = extractArgValue(rawArgs, "horario_sugerido", "Próximo día hábil • 08:30 hs");
+
+    const turno = municipalStore.addTurno({
+      departmentId: depKey,
+      departmentName: DEPARTMENT_NAMES[depKey] || "Palacio Municipal de Ituzaingó",
+      citizenName: nombre,
+      citizenDni: dni,
+      citizenPhone: "Registrado vía Susy Bot",
+      procedureType: tramite,
+      dateStr: new Date(Date.now() + 86400000).toLocaleDateString("es-AR"),
+      timeSlot: horario,
+      requirements: [
+        "Presentar DNI original y fotocopia con domicilio en Ituzaingó",
+        "Exhibir este comprobante digital o código QR en ventanilla",
+      ],
+    });
+    actions.push({ type: "turno", turno, rawTag: match[0] });
+  }
+
+  // 2. emitirPermisoProvisorio
+  const permisoRegex = /\[CALL_FUNCTION:\s*emitirPermisoProvisorio\(([\s\S]*?)\)\]/gi;
+  while ((match = permisoRegex.exec(text)) !== null) {
+    const rawArgs = match[1];
+    const nombre = extractArgValue(rawArgs, "nombre_vecino", "Vecino Frentista de Ituzaingó");
+    const dni = extractArgValue(rawArgs, "dni", "En validación");
+    const domicilio = extractArgValue(rawArgs, "domicilio", "Ejido Urbano de Ituzaingó");
+    const motivoKey = extractArgValue(rawArgs, "motivo", "poda_ramas").toLowerCase();
+    const detalle = extractArgValue(
+      rawArgs,
+      "detalle",
+      `Autorización provisoria (${motivoKey.replace(/_/g, " ")}) emitida por Susy Bot Municipal.`
+    );
+
+    const tipo: TipoPermisoProvisorio = PERMISO_MOTIVO_MAP[motivoKey] || "poda_ramas";
+    const permiso = municipalStore.addPermiso({
+      tipo,
+      titularNombre: nombre,
+      titularDni: dni,
+      titularDomicilio: domicilio,
+      titularTelefono: "Registrado vía Susy Bot",
+      motivoDetalle: detalle,
+      validezHoras: 72,
+    });
+    actions.push({ type: "permiso", permiso, rawTag: match[0] });
+  }
+
+  // 3. registrarReclamoMunicipal
+  const reclamoRegex = /\[CALL_FUNCTION:\s*registrarReclamoMunicipal\(([\s\S]*?)\)\]/gi;
+  while ((match = reclamoRegex.exec(text)) !== null) {
+    const rawArgs = match[1];
+    const tipo = extractArgValue(rawArgs, "tipo_reclamo", "infraestructura");
+    const ubicacion = extractArgValue(rawArgs, "ubicacion_exacta", "Ejido Urbano Ituzaingó");
+    const descripcion = extractArgValue(rawArgs, "descripcion_vecino", "Reporte ciudadano");
+    const ticketId = `ITU-${Math.floor(1000 + Math.random() * 9000)}`;
+    actions.push({
+      type: "reclamo",
+      reclamo: { ticketId, tipo, ubicacion, descripcion },
+      rawTag: match[0],
+    });
+  }
+
+  return actions;
+}
+
+/**
+ * Reemplaza las etiquetas `[CALL_FUNCTION: ...]` por sellos legibles de confirmación oficial
+ * para que la burbuja de chat muestre el comprobante de manera limpia.
+ */
+export function formatMunicipalFunctionTagsForDisplay(
+  text: string,
+  executedActions: ParsedMunicipalAction[]
+): string {
+  if (!text) return "";
+  let out = text;
+  for (const act of executedActions) {
+    if (act.type === "turno") {
+      out = out.replace(
+        act.rawTag,
+        `\n\n✅ **[COMPROBANTE OFICIAL DE TURNO EMITIDO: #${act.turno.id} — ${act.turno.departmentName} (${act.turno.timeSlot})]**`
+      );
+    } else if (act.type === "permiso") {
+      out = out.replace(
+        act.rawTag,
+        `\n\n✅ **[PERMISO MUNICIPAL PROVISORIO CON QR EMITIDO: #${act.permiso.id} — ${act.permiso.titulo} (Válido 72 hs)]**`
+      );
+    } else if (act.type === "reclamo") {
+      out = out.replace(
+        act.rawTag,
+        `\n\n✅ **[RECLAMO URBANO REGISTRADO OFICIALMENTE — Ticket #${act.reclamo.ticketId} (${act.reclamo.ubicacion})]**`
+      );
+    }
+  }
+  return out.replace(/\[CALL_FUNCTION:[^\]]*\]/gi, "").trim();
+}
