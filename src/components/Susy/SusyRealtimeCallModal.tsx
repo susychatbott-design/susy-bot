@@ -1398,14 +1398,24 @@ export default function SusyRealtimeCallModal({
 
         {/* Pantalla Previa de Conexión Segura si no se ha hecho tap */}
         {!isEngineReady ? (
-          <div className="my-auto flex flex-col items-center justify-center w-full py-8 text-center space-y-5">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-cyan-500 via-teal-400 to-indigo-500 flex items-center justify-center shadow-xl shadow-cyan-500/30 animate-pulse">
-              <Sparkles size={40} className="text-slate-950" />
+          <div className="my-auto flex flex-col items-center justify-center w-full py-6 text-center space-y-4">
+            <div className="relative w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-500 shadow-xl shadow-emerald-500/30">
+              <div className="w-full h-full rounded-full overflow-hidden bg-slate-900">
+                <img
+                  src="/icons/susy-avatar-portrait.png"
+                  alt="Susy — Directora de Atención al Vecino y Prensa de Ituzaingó"
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+              <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-slate-950 animate-pulse" />
             </div>
             <div className="space-y-1 max-w-xs">
-              <h4 className="text-white font-bold text-base">Llamada con Susy • Atención al Vecino</h4>
+              <h4 className="text-white font-bold text-base">Susy • Atención al Vecino y Prensa</h4>
+              <p className="text-[11px] text-emerald-400 font-semibold">
+                Municipalidad de Ituzaingó, Corrientes
+              </p>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Toca el botón para activar el audio de alta fidelidad y hablar en tiempo real.
+                Tocá el botón para conversar en vivo con Susy sobre trámites, permisos QR, agenda del Intendente o reclamos barriales.
               </p>
               {micError && (
                 <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs text-center animate-fadeIn">

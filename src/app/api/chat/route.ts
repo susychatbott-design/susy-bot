@@ -10,6 +10,7 @@ import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 import { applyReputationalShield } from "@/lib/susy/security/susyReputationalPatch";
 import { buscarEventosCulturalesEnVivo, generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
+import { generarContextoComandoMunicipalItuzaingo } from "@/lib/susy/municipal/ituzaingoCommandCenter";
 import { queryMunicipalGraphRAG } from "@/lib/susy/graphrag/susyGraphRAG";
 import { analyzeVecino, buildSusyPnlContext, SUSY_ORAL_CADENCE_MODULE } from "@/lib/susy/pnl/susyPnlEngine";
 
@@ -772,7 +773,7 @@ export async function POST(req: Request) {
     const activeMode = contextData?.mode || "general";
     const adaptivePedagogicalDirectives = resolveAdaptiveEducationalContext(effectiveMessage, contextData);
 
-    let fullSystemPrompt = `${NORA_CONSTITUTIONAL_AXIOMS}\n\n${SUSY_SYSTEM_PROMPT}`;
+    let fullSystemPrompt = `${NORA_CONSTITUTIONAL_AXIOMS}\n\n${SUSY_SYSTEM_PROMPT}\n\n${generarContextoComandoMunicipalItuzaingo()}`;
     // 🧠 Calibración empática por turno (determinista, < 2 ms) + cadencia oral en llamadas de voz
     const vecinoProfile = analyzeVecino(effectiveMessage);
     if (interactionMode === "voice") fullSystemPrompt += SUSY_ORAL_CADENCE_MODULE;

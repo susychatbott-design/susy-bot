@@ -39,6 +39,7 @@ import MunicipalLocationCard from "@/components/Susy/MunicipalLocationCard";
 import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
 import { MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 import { PanelDefensaCivil } from "@/components/Dashboard/PanelDefensaCivil";
+import { PanelTrenAgenticoYBarrios } from "@/components/Dashboard/PanelTrenAgenticoYBarrios";
 
 
 export default function MunicipalDashboardPage() {
@@ -72,7 +73,7 @@ export default function MunicipalDashboardPage() {
     sessionStorage.removeItem("susy_municipal_staff_auth");
   };
 
-  const [activeTab, setActiveTab] = useState<"metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa" | "defensa_civil">("metricas");
+  const [activeTab, setActiveTab] = useState<"tren_agentico" | "metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa" | "defensa_civil">("tren_agentico");
 
   
   // Estados de datos
@@ -264,6 +265,7 @@ export default function MunicipalDashboardPage() {
       {/* Navegación por Pestañas */}
       <div className="bg-[#090e18] border-b border-slate-800/80 px-4 sm:px-8 flex items-center gap-2 overflow-x-auto no-scrollbar py-2 shrink-0">
         {[
+          { id: "tren_agentico", label: "🧠 Tren Agéntico & Ánimo Barrial (20 Barrios)", icon: Sparkles },
           { id: "metricas", label: "Métricas & Tráfico", icon: BarChart3 },
           { id: "turnos", label: `Turnos (${turnos.length})`, icon: Clock },
           { id: "permisos", label: `Permisos con QR (${permisos.length})`, icon: ShieldCheck },
@@ -290,6 +292,11 @@ export default function MunicipalDashboardPage() {
 
       {/* Contenido Principal */}
       <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6">
+        {/* PESTAÑA 0: TREN AGÉNTICO MUNICIPAL, PRENSA Y TERMÓMETRO SOCIAL BARRIAL */}
+        {activeTab === "tren_agentico" && (
+          <PanelTrenAgenticoYBarrios />
+        )}
+
         {/* PESTAÑA 1: MÉTRICAS */}
         {activeTab === "metricas" && (
           <div className="space-y-6">

@@ -59,6 +59,7 @@ import {
   PermisoProvisorio,
   parseAndExecuteMunicipalFunctionCalls,
 } from "@/lib/susy/municipal/municipalActions";
+import { registrarPulsoSocialBarrial } from "@/lib/susy/municipal/ituzaingoCommandCenter";
 import { syncOnlineDeltasIfAvailable } from "@/lib/susy/offline/knowledgeCache";
 
 
@@ -333,6 +334,12 @@ export default function SusyBotPage() {
     async (overrideText?: string): Promise<void> => {
       const textToSend = (overrideText !== undefined ? overrideText : inputText).trim();
       if (!textToSend && !selectedImageBase64 && !vision.isCameraActive) return;
+
+      if (textToSend) {
+        try {
+          registrarPulsoSocialBarrial(textToSend);
+        } catch {}
+      }
 
       if (overrideText === undefined) {
         setInputText("");
@@ -938,7 +945,12 @@ export default function SusyBotPage() {
         onClose={() => setShowRealtimeCallModal(false)}
         activeMode={chat.activeMode}
         isUsingFallback={susyLive.isUsingFallback}
-        onMessageLogged={(_userText, assistantText) => {
+        onMessageLogged={(userText, assistantText) => {
+          if (userText) {
+            try {
+              registrarPulsoSocialBarrial(userText);
+            } catch {}
+          }
           processAssistantMunicipalActions(assistantText);
         }}
         initialHistory={chat.messages.map((m) => ({

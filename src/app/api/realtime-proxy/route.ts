@@ -14,6 +14,7 @@ import { transcribeAudioWithWhisper } from "@/lib/susy/audioTranscriber";
 import { generarContextoAgendaCultural } from "@/lib/susy/municipal/municipalAgenda";
 import { MUNICIPAL_DEPARTMENTS, MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 import { generarContextoPatrimonialHistorico } from "@/lib/susy/municipal/municipalHistory";
+import { generarContextoComandoMunicipalItuzaingo } from "@/lib/susy/municipal/ituzaingoCommandCenter";
 import { analyzeVecino, buildSusyPnlContext, SUSY_ORAL_CADENCE_MODULE } from "@/lib/susy/pnl/susyPnlEngine";
 
 /**
@@ -170,7 +171,11 @@ export async function POST(req: Request) {
     // 🧠 Calibración empática determinista (< 2 ms, sin llamada extra al LLM)
     const vecinoProfile = analyzeVecino(effectiveUserText);
     let contextualSystemPrompt =
-      NORA_PROSODY_SYSTEM_PROMPT + SUSY_ORAL_CADENCE_MODULE + buildSusyPnlContext(vecinoProfile);
+      NORA_PROSODY_SYSTEM_PROMPT +
+      "\n\n" +
+      generarContextoComandoMunicipalItuzaingo() +
+      SUSY_ORAL_CADENCE_MODULE +
+      buildSusyPnlContext(vecinoProfile);
     
     // 1. Detección de consultas culturales, teatro y eventos de fin de semana
     const isCulturalQuery = /evento|actividad|finde|fin de semana|teatro|obra|cultura|chamam|musica|música|costanera|pescador|artesano|feria|centro cultural/i.test(promptToInfer);
