@@ -318,10 +318,10 @@ export function exportNoraCleanWord(title: string, markdownContent: string) {
       </div>
       <div>${cleanBodyHtml}</div>
       <div class="doc-disclaimer" style="margin-top: 30px; border-top: 1px dashed #cbd5e1; padding-top: 8px; font-size: 7.5pt; color: #64748b; text-align: justify; line-height: 1.4;">
-        <strong>Nota de exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor agéntico soberano Susybot (Nexora One • Tel: 3786414533 • mjnexora.visual@gmail.com). Su contenido tiene fines exclusivamente académicos, pedagógicos o de planificación organizativa interna. No constituye un dictamen profesional vinculante ni una certificación legal o médica oficial.
+        <strong>Aviso y exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor de Inteligencia Artificial Susybot (Nexora One • Tel: 3786414533 • nexoraone@nexativanews.com.ar). Como sistema de IA, puede cometer errores y no reemplaza la intervención, revisión ni el dictamen vinculante de un agente o profesional humano autorizado.
       </div>
       <div class="doc-footer">
-        Documento generado por Susybot AI • Desarrollada por Nexora One (Ituzaingó, Corrientes • Tel: 3786414533 • mjnexora.visual@gmail.com) • Copia Formal Verificada
+        Documento generado por Susybot AI • Desarrollada por Nexora One (Ituzaingó, Corrientes • Tel: 3786414533 • nexoraone@nexativanews.com.ar) • Copia Formal Verificada
       </div>
     </body>
     </html>
@@ -418,7 +418,7 @@ export function exportNoraCleanPdf(title: string, markdownContent: string) {
         </div>
         <div>${cleanBodyHtml}</div>
         <div class="doc-disclaimer">
-          <strong>Nota de exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor agéntico soberano Susybot (Nexora One • Tel: 3786414533 • mjnexora.visual@gmail.com). Su contenido tiene fines exclusivamente académicos, pedagógicos o de planificación organizativa interna. No constituye un dictamen profesional vinculante ni una certificación legal o médica oficial.
+          <strong>Aviso y exención de responsabilidad:</strong> Este documento fue asistido y estructurado por el motor de Inteligencia Artificial Susybot (Nexora One • Tel: 3786414533 • nexoraone@nexativanews.com.ar). Como sistema de IA, puede cometer errores y no reemplaza la intervención, revisión ni el dictamen vinculante de un agente o profesional humano autorizado.
         </div>
         <div class="doc-footer">
           Documento generado por Susybot AI (Nexora One • Tel: 3786414533) • Ituzaingó, Corrientes • Copia Formal para Evaluación / Impresión

@@ -364,10 +364,12 @@ export function SusyHeader({
                 <span>Presentación PowerPoint (.pptx)</span>
               </button>
 
-              <div className="px-3.5 py-2 bg-slate-950/90 border-t border-white/10 text-[10px] text-slate-400">
+              <div className="px-3.5 py-2 bg-slate-950/90 border-t border-white/10 text-[10px] text-slate-400 space-y-0.5">
                 <div className="font-bold text-slate-200">Nexora One</div>
-                <div>Tel: 3786414533</div>
-                <div className="truncate">mjnexora.visual@gmail.com</div>
+                <div>Tel / WhatsApp: 3786414533</div>
+                <div className="text-[9px] text-slate-500 leading-tight pt-0.5">
+                  Asistente IA: puede cometer errores y no reemplaza la intervención humana.
+                </div>
               </div>
             </div>
           )}

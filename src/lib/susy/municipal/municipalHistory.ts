@@ -4,7 +4,7 @@
  * Ubicación: src/lib/susy/municipal/municipalHistory.ts
  * 
  * Grafo Patrimonial del Digesto y Archivo Histórico de Ituzaingó, Corrientes.
- * Propiedad Intelectual: Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
+ * Propiedad Intelectual: Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar)
  * ==============================================================================
  */
 

@@ -3,7 +3,7 @@
 /**
  * ============================================================================
  * 🌎 SELECTOR ESTRICTO DE VOZ LATINA PARA WEB SPEECH API (FASE 7.7)
- * Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
+ * Desarrollado por Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar)
  *
  * - Prioriza es-AR → es-MX → es-US → es-419 → resto de Latinoamérica.
  * - Jamás devuelve una voz de España (es-ES). Si solo existe es-ES, devuelve

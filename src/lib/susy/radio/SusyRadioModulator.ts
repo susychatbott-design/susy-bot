@@ -5,7 +5,7 @@
  * 
  * Genera tramas RDS para sintonizadores FM y señales acústicas AFSK (Bell 202)
  * transmitibles por equipos de radiodifusión comercial en situaciones de catástrofe.
- * Propiedad Intelectual: Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
+ * Propiedad Intelectual: Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar)
  * ==============================================================================
  */
 

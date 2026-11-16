@@ -1712,6 +1712,11 @@ export default function SusyRealtimeCallModal({
           </button>
         </div>
 
+        {/* Firma Nexora One y Aviso de Transparencia de IA */}
+        <div className="w-full pt-2 text-center text-[10px] text-slate-400/90 leading-snug">
+          Desarrollado por <strong className="text-slate-200">Nexora One</strong> (Tel: 3786414533) • Susy es una IA: puede cometer errores y no reemplaza la intervención humana.
+        </div>
+
       </div>
     </div>
   );

@@ -98,7 +98,7 @@ function isUselessOrNoiseTranscript(raw: string): boolean {
  * ============================================================================
  * ⚡ useSusyLive: HOOK AISLADO DE PIPELINE DE VOZ ULTRARRÁPIDA (< 500ms)
  * Ubicación: src/hooks/useSusyLive.ts
- * Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
+ * Desarrollado por Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar)
  *
  * Hotfix Fase 7.4 Incluido:
  * - Sentence Buffering para Web Speech API: En modo Fallback acumula los chunks

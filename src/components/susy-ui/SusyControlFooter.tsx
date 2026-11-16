@@ -38,7 +38,7 @@ export interface SusyControlFooterProps {
  * SusyControlFooter: Barra inferior Mobile-First de control multimodal accesible (DUA).
  * - Exterminado el botón fantasma ("Línea Curva" / VAD Wave) encima de la caja de texto que provocaba escritura en bucle.
  * - Barra única y limpia con Cámara Titán, Adjuntar Imagen, Llamada en Vivo, Micrófono, Input y Enviar.
- * - Muestra la firma oficial de Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com).
+ * - Muestra la firma oficial de Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar).
  */
 export function SusyControlFooter({
   inputText,
@@ -237,24 +237,29 @@ export function SusyControlFooter({
         </button>
       </div>
 
-      {/* FIRMA INSTITUCIONAL Y CONTACTO TÉCNICO NEXORA ONE */}
-      <div className="w-full max-w-5xl mx-auto mt-1.5 px-2 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
-        <span>
-          Desarrollado por <strong className="text-slate-200">Nexora One</strong> • Municipalidad de Ituzaingó
-        </span>
-        <span>
-          Contacto Técnico:{" "}
-          <a href="tel:3786414533" className="text-indigo-400 hover:underline font-medium">
-            3786414533
-          </a>{" "}
-          •{" "}
-          <a
-            href="mailto:mjnexora.visual@gmail.com"
-            className="text-indigo-400 hover:underline font-medium"
-          >
-            mjnexora.visual@gmail.com
-          </a>
-        </span>
+      {/* FIRMA INSTITUCIONAL, AVISO DE IA Y CONTACTO TÉCNICO NEXORA ONE */}
+      <div className="w-full max-w-5xl mx-auto mt-1.5 px-2 flex flex-col gap-0.5 text-[10px] text-slate-400">
+        <div className="text-center text-[10px] text-slate-400/90 leading-snug">
+          ⚠️ <strong className="text-slate-300">Aviso:</strong> Susy es un asistente de Inteligencia Artificial; puede cometer errores y no reemplaza la intervención ni el dictamen de un agente municipal humano.
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+          <span>
+            Desarrollado por <strong className="text-slate-200">Nexora One</strong> • Municipalidad de Ituzaingó
+          </span>
+          <span>
+            Contacto Técnico:{" "}
+            <a href="tel:3786414533" className="text-indigo-400 hover:underline font-medium">
+              3786414533
+            </a>{" "}
+            •{" "}
+            <a
+              href="mailto:nexoraone@nexativanews.com.ar"
+              className="text-indigo-400 hover:underline font-medium"
+            >
+              Nexora One Oficial
+            </a>
+          </span>
+        </div>
       </div>
     </footer>
   );

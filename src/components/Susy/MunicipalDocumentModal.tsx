@@ -185,7 +185,10 @@ export default function MunicipalDocumentModal({
                 Válido ante Inspectores de Tránsito, Obras Públicas y Policía de Corrientes.
               </p>
               <p className="text-[9px] font-mono text-slate-500">
-                Hash: {docId} • Susy Bot Municipal
+                Hash: {docId} • Susy Bot Municipal • Nexora One
+              </p>
+              <p className="text-[9px] text-slate-500 leading-tight pt-0.5">
+                Constancia provisoria emitida por IA (Susy Bot). Sujeta a verificación y validación final por personal municipal autorizado; no reemplaza el dictamen administrativo humano.
               </p>
             </div>
 

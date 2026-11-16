@@ -11,7 +11,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Susybot | Municipalidad de Ituzaingó, Corrientes • Nexora One",
-  description: "Directora Virtual de Atención al Vecino e Innovación Urbana. Trámites, reclamos urbanos, turismo en Esteros del Iberá y atención inclusiva. Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com).",
+  description: "Directora Virtual de Atención al Vecino e Innovación Urbana. Trámites, reclamos urbanos, turismo en Esteros del Iberá y atención inclusiva. Desarrollado por Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar).",
   manifest: "/manifest.json",
   icons: {
     icon: "/icons/icon-192x192.png",

@@ -1,5 +1,5 @@
 // Susybot PWA Service Worker - Municipalidad de Ituzaingó
-// Desarrollado por Nexora One (Tel: 3786414533 • mjnexora.visual@gmail.com)
+// Desarrollado por Nexora One (Tel: 3786414533 • nexoraone@nexativanews.com.ar)
 
 const CACHE_NAME = "susybot-core-v4";
 const ASSETS_TO_CACHE = [
