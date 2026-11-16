@@ -648,19 +648,28 @@ export default function SusyBotPage() {
           {chat.messages.length === 0 && (
             <section className="p-6 rounded-3xl bg-gradient-to-b from-slate-900/95 to-slate-950 border border-white/10 shadow-2xl space-y-5">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold">
-                    <Sparkles size={12} />
-                    <span>CONCIERGE MUNICIPAL • NEXORA ONE</span>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="relative w-20 h-24 sm:w-24 sm:h-28 rounded-2xl overflow-hidden border-2 border-emerald-500/50 shadow-xl shrink-0 bg-slate-900">
+                    <img
+                      src="/icons/susy-avatar-portrait.png"
+                      alt="Susy — Asistente Oficial de la Municipalidad de Ituzaingó"
+                      className="w-full h-full object-cover object-top"
+                    />
                   </div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                    ¡Hola! Soy Susy Bot, tu asistente municipal
-                  </h1>
-                  <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-                    Consultá requisitos verificados del Digesto Municipal, costos de Licencia de
-                    Conducir (CENAT + Tasa), farmacias de turno, agenda cultural y turística en vivo,
-                    o registrá un reclamo urbano con número de seguimiento oficial.
-                  </p>
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[11px] font-bold">
+                      <Sparkles size={12} />
+                      <span>CONCIERGE MUNICIPAL • NEXORA ONE</span>
+                    </div>
+                    <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                      ¡Hola! Soy Susy, tu asistente municipal
+                    </h1>
+                    <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                      Consultá requisitos verificados del Digesto Municipal, costos de Licencia de
+                      Conducir (CENAT + Tasa), farmacias de turno, permisos provisorios con QR, agenda
+                      cultural y turística en vivo, o registrá un reclamo urbano con número de seguimiento oficial.
+                    </p>
+                  </div>
                 </div>
 
                 <button
@@ -732,8 +741,12 @@ export default function SusyBotPage() {
                   className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   {!isUser && (
-                    <div className="w-8 h-8 rounded-2xl bg-indigo-600/25 border border-indigo-500/40 flex items-center justify-center shrink-0 mt-1">
-                      <Bot size={16} className="text-indigo-300" />
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-900 border-2 border-emerald-500/50 flex items-center justify-center shrink-0 mt-1 shadow-md">
+                      <img
+                        src="/icons/susy-avatar.png"
+                        alt="Susy"
+                        className="w-full h-full object-cover object-top"
+                      />
                     </div>
                   )}
 
@@ -830,8 +843,12 @@ export default function SusyBotPage() {
             {/* Burbuja de respuesta en tiempo real mientras Susy está transmitiendo (Streaming / Procesando) */}
             {(chat.isLoading || chat.isStreaming) && (
               <article className="flex gap-3 justify-start">
-                <div className="w-8 h-8 rounded-2xl bg-indigo-600/25 border border-indigo-500/40 flex items-center justify-center shrink-0 mt-1">
-                  <Bot size={16} className="text-indigo-300 animate-pulse" />
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-900 border-2 border-emerald-500/60 flex items-center justify-center shrink-0 mt-1 shadow-md animate-pulse">
+                  <img
+                    src="/icons/susy-avatar.png"
+                    alt="Susy"
+                    className="w-full h-full object-cover object-top"
+                  />
                 </div>
                 <div className="max-w-[88%] sm:max-w-[80%] rounded-2xl rounded-bl-xs px-4 py-3 text-sm leading-relaxed shadow-md bg-slate-900/95 border border-indigo-500/30 text-slate-100">
                   <div className="prose prose-invert prose-sm max-w-none break-words">

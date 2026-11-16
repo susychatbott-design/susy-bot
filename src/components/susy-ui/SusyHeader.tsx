@@ -170,6 +170,26 @@ export function SusyHeader({
           </button>
         )}
 
+        {/* AVATAR IDENTITARIO DE SUSY (CONCIERGE MUNICIPAL DE ITUZAINGÓ) */}
+        <div className="flex items-center gap-2 pr-1">
+          <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-emerald-500/60 shadow-md shrink-0 bg-slate-900">
+            <img
+              src="/icons/susy-avatar.png"
+              alt="Susy — Directora Virtual de Atención al Vecino de Ituzaingó"
+              className="w-full h-full object-cover object-top"
+            />
+            <span
+              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-slate-950 ${
+                isOnline ? "bg-emerald-400" : "bg-amber-400"
+              }`}
+            />
+          </div>
+          <div className="hidden lg:flex flex-col leading-tight">
+            <span className="text-xs font-extrabold text-white tracking-tight">Susy Bot</span>
+            <span className="text-[10px] text-emerald-400 font-medium">Municipalidad de Ituzaingó</span>
+          </div>
+        </div>
+
         {/* SELECTOR DE MODO COGNITIVO (EJECUTIVO / LAZARILLO / TEA) */}
         <div
           className="flex items-center bg-slate-900/90 p-0.5 sm:p-1 rounded-xl border border-white/10 gap-0.5 sm:gap-1 shrink-0"

@@ -1551,18 +1551,16 @@ export default function SusyRealtimeCallModal({
                     transform: `scale(${1 + (audioLevel / 100) * 0.22})`
                   }}
                 >
-                  <div className="absolute inset-1 rounded-full bg-slate-950/40 backdrop-blur-xs flex flex-col items-center justify-center text-center">
-                    <span className="text-3xl" aria-hidden="true">
-                      {callState === "speaking"
-                        ? "🗣️"
-                        : callState === "thinking"
-                        ? "⚡"
-                        : isSpeakingRef.current || isPushTalking
-                        ? "🎙️"
-                        : "✨"}
-                    </span>
+                  <div className="absolute inset-1 rounded-full bg-slate-950/90 overflow-hidden flex flex-col items-center justify-center text-center">
+                    <img
+                      src="/icons/susy-avatar-portrait.png"
+                      alt="Susy — En llamada"
+                      className="w-full h-full object-cover object-top opacity-95"
+                    />
                     {isSpeakingRef.current && (
-                      <span className="text-[10px] text-emerald-300 font-mono mt-1 font-semibold">Enviar ya</span>
+                      <span className="absolute bottom-2 px-2 py-0.5 rounded-full bg-slate-950/85 text-[10px] text-emerald-300 font-mono font-semibold border border-emerald-500/40">
+                        Enviar ya
+                      </span>
                     )}
                   </div>
                 </button>
