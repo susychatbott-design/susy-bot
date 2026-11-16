@@ -826,6 +826,27 @@ export default function SusyBotPage() {
                 </article>
               );
             })}
+
+            {/* Burbuja de respuesta en tiempo real mientras Susy está transmitiendo (Streaming / Procesando) */}
+            {(chat.isLoading || chat.isStreaming) && (
+              <article className="flex gap-3 justify-start">
+                <div className="w-8 h-8 rounded-2xl bg-indigo-600/25 border border-indigo-500/40 flex items-center justify-center shrink-0 mt-1">
+                  <Bot size={16} className="text-indigo-300 animate-pulse" />
+                </div>
+                <div className="max-w-[88%] sm:max-w-[80%] rounded-2xl rounded-bl-xs px-4 py-3 text-sm leading-relaxed shadow-md bg-slate-900/95 border border-indigo-500/30 text-slate-100">
+                  <div className="prose prose-invert prose-sm max-w-none break-words">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {chat.currentResponseStream
+                        ? chat.currentResponseStream.replace(
+                            /\[CALL_FUNCTION:\s*([a-zA-Z0-9_]+)\(([\s\S]*?)\)\]/gi,
+                            "\n\n✅ **[Emitiendo Comprobante Oficial con Código QR...]**"
+                          )
+                        : "Procesando tu consulta municipal en vivo..."}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </article>
+            )}
             <div ref={messagesEndRef} />
           </div>
         </div>

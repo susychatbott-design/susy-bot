@@ -19,9 +19,11 @@ export async function generateTextEmbedding(text: string): Promise<number[] | nu
   const cleanText = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().substring(0, 4000);
   if (!cleanText) return null;
 
-  // 1. Capa 1: Ollama Local (nomic-embed-text / all-minilm / bge-m3)
+  // 1. Capa 1: Ollama Local (solo si no apunta a localhost en la nube)
   const ollamaUrl = cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
-  if (ollamaUrl) {
+  const isCloudRuntime = Boolean(process.env.VERCEL || process.env.RENDER);
+  const isLocalhostOllama = /localhost|127\.0\.0\.1/.test(ollamaUrl);
+  if (ollamaUrl && !(isCloudRuntime && isLocalhostOllama)) {
     try {
       const res = await fetch(`${ollamaUrl.replace(/\/$/, "")}/api/embeddings`, {
         method: "POST",
@@ -30,7 +32,7 @@ export async function generateTextEmbedding(text: string): Promise<number[] | nu
           model: "nomic-embed-text",
           prompt: cleanText
         }),
-        signal: AbortSignal.timeout(3000)
+        signal: AbortSignal.timeout(1200)
       });
       if (res.ok) {
         const data = await res.json();

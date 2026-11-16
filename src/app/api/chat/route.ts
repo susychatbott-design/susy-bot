@@ -749,12 +749,24 @@ export async function POST(req: Request) {
       "grados hace", "sensación térmica", "sensacion termica"
     ].some(w => lowerMessageForIntent.includes(w));
 
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
+      Promise.race([
+        promise.catch(() => fallback),
+        new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+      ]);
+
     const [weatherData, ragNewsData, ragBizData, continuousUserMemory, municipalKnowledge] = await Promise.all([
-      isWeatherExplicit ? fetchRealtimeWeather() : Promise.resolve(null),
-      supabase ? fetchSemanticArticlesRAG(supabase, effectiveMessage) : Promise.resolve(""),
-      supabase ? fetchDirectoryBusinessesRAG(supabase, effectiveMessage) : Promise.resolve(""),
-      (supabase && user_id) ? fetchUserContinuousMemory(supabase, user_id) : Promise.resolve(null),
-      supabase ? fetchMunicipalKnowledgeRAG(supabase, effectiveMessage) : Promise.resolve({ contextText: "", maxConfidence: 0, hasDirectMatch: false })
+      isWeatherExplicit ? withTimeout(fetchRealtimeWeather(), 900, null) : Promise.resolve(null),
+      supabase ? withTimeout(fetchSemanticArticlesRAG(supabase, effectiveMessage), 1500, "") : Promise.resolve(""),
+      supabase ? withTimeout(fetchDirectoryBusinessesRAG(supabase, effectiveMessage), 1200, "") : Promise.resolve(""),
+      (supabase && user_id) ? withTimeout(fetchUserContinuousMemory(supabase, user_id), 1000, null) : Promise.resolve(null),
+      supabase
+        ? withTimeout(
+            fetchMunicipalKnowledgeRAG(supabase, effectiveMessage),
+            1600,
+            { contextText: "", maxConfidence: 0, hasDirectMatch: false }
+          )
+        : Promise.resolve({ contextText: "", maxConfidence: 0, hasDirectMatch: false })
     ]);
 
     const activeMode = contextData?.mode || "general";

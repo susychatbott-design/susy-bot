@@ -438,12 +438,14 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
   const fullSystem = `${SUSY_MASTER_SYSTEM_PROMPT}\n\n[MODO ACTIVO: ${mode.toUpperCase()}]\n\n${systemPrompt}`.trim();
   const openAiMessages = buildOpenAiMessages(history, userMessage, fullSystem, cleanImage);
 
-  // 1. CAPA 1: Ollama Local / Servidor VPS Municipal (100% Soberano y Privado)
+  // 1. CAPA 1: Ollama Local / Servidor VPS Municipal (solo si no apunta a localhost en la nube)
   const ollamaUrl = cleanKey(process.env.LOCAL_OLLAMA_URL) || cleanKey(process.env.OLLAMA_BASE_URL) || cleanKey(process.env.NEXT_PUBLIC_OLLAMA_URL);
-  if (ollamaUrl) {
+  const isCloudRuntime = Boolean(process.env.VERCEL || process.env.RENDER);
+  const isLocalhostOllama = /localhost|127\.0\.0\.1/.test(ollamaUrl);
+  if (ollamaUrl && !(isCloudRuntime && isLocalhostOllama)) {
     const candidateModels = isVisionRequest
       ? [cleanKey(process.env.OLLAMA_VISION_MODEL) || "llava", "qwen2.5-vl"]
-      : [cleanKey(process.env.OLLAMA_TEXT_MODEL) || "llama3.3", "llama3.1:8b", "qwen2.5:72b"];
+      : [cleanKey(process.env.OLLAMA_TEXT_MODEL) || "llama3.3", "qwen2.5:72b"];
 
     for (const model of candidateModels) {
       try {
@@ -457,23 +459,23 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
             temperature,
             max_tokens: maxTokens
           }),
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(1800)
         });
 
         if (oRes.ok && oRes.body) {
           console.log(`[Sovereign Core - Capa 1 Ollama]: Inferencia exitosa (${model})`);
-          return transformOpenAiStreamToSSE(oRes.body, sessionId, isVisionRequest);
+          return transformOpenAiStreamToSSE(oRes.body, sessionId, isVisionRequest, userMessage, history, mode);
         }
       } catch (err) {}
     }
   }
 
-  // 2. CAPA 2: Groq Open Weights Tier (Inferencia Ultrarrápida 300ms) (Llama 3.3 70B / Gemma 2 / Qwen Open-Weights)
+  // 2. CAPA 2: Groq LPU Tier (Inferencia Ultrarrápida ~400ms: Qwen 3.8 27B / GPT-OSS 120B)
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
     const groqCandidateModels = isVisionRequest
-      ? ["llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"]
-      : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+      ? ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"]
+      : ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
 
     for (const gModel of groqCandidateModels) {
       try {
@@ -487,21 +489,21 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
             model: gModel,
             messages: openAiMessages,
             stream: true,
-            max_tokens: isVisionRequest ? 1500 : maxTokens,
+            max_tokens: isVisionRequest ? 1500 : Math.max(900, maxTokens),
             temperature
           }),
           signal: AbortSignal.timeout(6500)
         });
 
         if (groqRes.ok && groqRes.body) {
-          console.log(`[Sovereign Core - Capa 3 Groq Open]: Inferencia exitosa (${gModel})`);
-          return transformOpenAiStreamToSSE(groqRes.body, sessionId, isVisionRequest);
+          console.log(`[Sovereign Core - Capa 2 Groq LPU]: Inferencia exitosa (${gModel})`);
+          return transformOpenAiStreamToSSE(groqRes.body, sessionId, isVisionRequest, userMessage, history, mode);
         }
       } catch (groqErr) {}
     }
   }
 
-  // 3. CAPA 3: Pollinations Open Neural Mesh (100% Gratuito, Sin Keys, Open-Weights)
+  // 3. CAPA 3: Pollinations Open Neural Mesh (con holgura de tokens para modelos con reasoning)
   try {
     const polRes = await fetch("https://text.pollinations.ai/openai", {
       method: "POST",
@@ -510,14 +512,15 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
         messages: openAiMessages,
         model: "openai",
         stream: true,
+        max_tokens: 1500,
         temperature
       }),
-      signal: AbortSignal.timeout(2800)
+      signal: AbortSignal.timeout(4500)
     });
 
     if (polRes.ok && polRes.body) {
-      console.log("[Sovereign Core - Capa 2 Pollinations]: Inferencia exitosa en Open Mesh");
-      return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest);
+      console.log("[Sovereign Core - Capa 3 Pollinations]: Inferencia exitosa en Open Mesh");
+      return transformOpenAiStreamToSSE(polRes.body, sessionId, isVisionRequest, userMessage, history, mode);
     }
   } catch (polErr) {}
 
@@ -554,7 +557,7 @@ export async function executeSovereignStream(params: SovereignCoreParams): Promi
 
           if (hfRes.ok && hfRes.body) {
             console.log(`[Sovereign Core - Capa 4 HuggingFace Open]: Inferencia exitosa (${model})`);
-            return transformOpenAiStreamToSSE(hfRes.body, sessionId, isVisionRequest);
+            return transformOpenAiStreamToSSE(hfRes.body, sessionId, isVisionRequest, userMessage, history, mode);
           }
           if (hfRes.status === 503 || hfRes.status === 429) break;
         }
@@ -631,10 +634,10 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
 
   const isVoiceMode = mode === "voice";
 
-  // 1. Inferencia Abierta Groq Open Weights
+  // 1. Inferencia Abierta Groq LPU (Qwen 3.8 27B / GPT-OSS 120B)
   const groqKey = cleanKey(process.env.GROQ_API_KEY) || cleanKey(process.env.NEXT_PUBLIC_GROQ_API_KEY);
   if (groqKey) {
-    const groqModels = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+    const groqModels = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"];
     for (const gModel of groqModels) {
       try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -647,9 +650,9 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
             model: gModel,
             messages: openAiMessages,
             temperature,
-            max_tokens: Math.max(750, maxTokens)
+            max_tokens: Math.max(950, maxTokens)
           }),
-          signal: AbortSignal.timeout(isVoiceMode ? 6500 : 7500)
+          signal: AbortSignal.timeout(isVoiceMode ? 5500 : 6500)
         });
 
         if (res.ok) {
@@ -730,7 +733,10 @@ export async function executeSovereignText(params: SovereignCoreParams): Promise
 function transformOpenAiStreamToSSE(
   bodyStream: ReadableStream,
   sessionId?: string | null,
-  isVision: boolean = false
+  isVision: boolean = false,
+  userMessage: string = "",
+  history: CoreMessage[] = [],
+  mode: string = "general"
 ): Response {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -804,16 +810,22 @@ function transformOpenAiStreamToSSE(
           }
         }
 
-        // Si el stream finalizó abruptamente dentro de <think>, descartar el búfer
-        if (isInsideThinkTag) {
+        // 🛡️ GARANTÍA DE RESPUESTA NO VACÍA: Si el stream del proveedor solo envió tokens de `reasoning` o `<think>` sin `content`
+        if (!accumulatedText.trim()) {
           thinkBuffer = "";
-          if (!accumulatedText.trim()) {
-            const rescue = "Te escucho con atención, vecino. ¿En qué trámite o consulta municipal de Ituzaingó te puedo colaborar?";
+          try {
+            const fallbackRes = await executeLocalInference(
+              userMessage,
+              history.map(h => ({ role: h.role, content: typeof h.content === "string" ? h.content : String(h.content || "") })),
+              mode
+            );
+            const fallbackText = fallbackRes.text || "¡Hola! Te escucho atentamente. Para registrar tu reclamo o gestionar tu trámite en la Municipalidad de Ituzaingó, ¿me indicás la calle o los datos principales?";
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: fallbackText, session_id: sessionId })}\n\n`));
+          } catch {
+            const rescue = "¡Hola! Te escucho con atención, vecino. ¿Me indicás la dirección o el detalle de tu consulta municipal en Ituzaingó para ayudarte ahora mismo?";
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: rescue, session_id: sessionId })}\n\n`));
           }
         }
-
-        // 🎙️ Síntesis vocal humana delegada al navegador (cero audio MP3 robótico de Google Translate)
 
         controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
       } catch (err) {
