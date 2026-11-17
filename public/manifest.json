@@ -58,16 +58,23 @@
   ],
   "shortcuts": [
     {
-      "name": "Llamada a Susy",
+      "name": "Dashboard Municipal",
+      "short_name": "Dashboard",
+      "description": "Panel de Defensa Civil y Reclamos Urbanos",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Llamada de Voz Live",
       "short_name": "Llamar",
       "description": "Iniciar llamada de voz con Susy Bot",
       "url": "/?action=call",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Cámara Titán",
+      "name": "Nora Live Exteriores",
       "short_name": "Cámara",
-      "description": "Abrir reconocimiento de cámara urbana",
+      "description": "Relevamiento de calzada y siniestros viales",
       "url": "/?action=camera",
       "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
     }
