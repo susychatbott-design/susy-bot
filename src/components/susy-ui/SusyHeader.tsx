@@ -384,6 +384,13 @@ export function SusyHeader({
                 <span>Presentación PowerPoint (.pptx)</span>
               </button>
 
+              <a
+                href="/dashboard"
+                className="w-full text-left px-3.5 py-2 text-[11px] text-slate-400 hover:text-white hover:bg-slate-800 border-t border-white/10 flex items-center justify-between cursor-pointer"
+              >
+                <span>🏛️ Acceso Personal Municipal (PIN)</span>
+              </a>
+
               <div className="px-3.5 py-2 bg-slate-950/90 border-t border-white/10 text-[10px] text-slate-400 space-y-0.5">
                 <div className="font-bold text-slate-200">Nexora One</div>
                 <div>Tel / WhatsApp: 3786414533</div>

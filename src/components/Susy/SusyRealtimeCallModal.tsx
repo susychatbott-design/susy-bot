@@ -250,10 +250,8 @@ export default function SusyRealtimeCallModal({
   const activeVoiceParamsRef = useRef<{ rate: number; pitch: number }>({ rate: 1.03, pitch: 1.01 });
 
   useEffect(() => {
-    if (isOpen) {
-      susyLive.connectWebSocket();
-    }
-  }, [isOpen, susyLive.connectWebSocket]);
+    // Eliminado el intento de WebSocket a ws://localhost:3010 que disparaba el cartel falso "TTS Local Desconectado"
+  }, [isOpen]);
 
   const clearSpeechHeartbeat = useCallback(() => {
     if (speechHeartbeatRef.current) {
@@ -984,7 +982,7 @@ export default function SusyRealtimeCallModal({
               liveTranscriptRef.current = cleanCur;
               setUserTranscript(`"${cleanCur}"`);
 
-              // En PC: asegurar que tras 1100ms de pausa luego de STT se envíe el turno aunque el VAD frecuencial no dispare
+              // En PC: asegurar que tras 800ms de pausa luego de STT se envíe el turno inmediatamente
               if (speechRecCommitTimer) clearTimeout(speechRecCommitTimer);
               speechRecCommitTimer = setTimeout(() => {
                 if (isProcessingRef.current || isSusySpeakingRef.current) return;
@@ -997,7 +995,7 @@ export default function SusyRealtimeCallModal({
                   silenceStartRef.current = null;
                   sendVoiceAudioTurn(new Blob([], { type: mimeType }), mimeType);
                 }
-              }, 1150);
+              }, 800);
             };
 
             rec.onerror = (err: any) => {
@@ -1384,18 +1382,6 @@ export default function SusyRealtimeCallModal({
           </button>
         </div>
 
-        {/* Indicador Discreto de Fallback TTS Local */}
-        {isTtsFallbackActive && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="w-full px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-500/40 text-amber-300 text-[11px] font-medium flex items-center justify-center gap-1.5 shadow-sm"
-          >
-            <AlertTriangle size={13} className="text-amber-400 shrink-0" />
-            <span>TTS Local Desconectado - Usando Voz de Respaldo</span>
-          </div>
-        )}
-
         {/* Pantalla Previa de Conexión Segura si no se ha hecho tap */}
         {!isEngineReady ? (
           <div className="my-auto flex flex-col items-center justify-center w-full py-6 text-center space-y-4">
@@ -1415,7 +1401,7 @@ export default function SusyRealtimeCallModal({
                 Municipalidad de Ituzaingó, Corrientes
               </p>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Tocá el botón para conversar en vivo con Susy sobre trámites, permisos QR, agenda del Intendente o reclamos barriales.
+                Tocá el botón para conversar en manos libres con Susy sobre trámites, permisos QR, agenda del Intendente o reclamos barriales.
               </p>
               {micError && (
                 <div className="p-2.5 rounded-xl bg-rose-950/80 border border-rose-500/40 text-rose-300 text-xs text-center animate-fadeIn">
@@ -1440,60 +1426,45 @@ export default function SusyRealtimeCallModal({
               className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-400 to-indigo-500 hover:opacity-90 active:scale-95 text-slate-950 font-bold text-sm shadow-xl shadow-cyan-500/30 transition-all flex items-center gap-2 cursor-pointer"
             >
               <Play size={18} className="fill-slate-950" />
-              <span>{isInitializing ? "Conectando micrófono..." : "Iniciar Llamada Segura"}</span>
+              <span>{isInitializing ? "Conectando micrófono..." : "Iniciar Llamada en Vivo"}</span>
             </button>
           </div>
         ) : (
           <>
-            {/* Barra de Modos de Accesibilidad */}
-            <div className="w-full flex flex-wrap items-center justify-center gap-1.5 mt-2">
-              <button
-                type="button"
-                role="button"
-                aria-pressed={interactionMode === "hands_free"}
-                aria-label="Modo Flujo Continuo Manos Libres"
-                onClick={() => setInteractionMode("hands_free")}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  interactionMode === "hands_free"
-                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                    : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
+            {/* INDICADOR DE ESTADO EN VIVO ULTRA CLARO (ESTILO LLAMADA TELEFÓNICA PURA) */}
+            <div className="w-full flex items-center justify-center mt-1">
+              <div
+                role="status"
+                aria-live="polite"
+                className={`px-4 py-1.5 rounded-full text-xs font-extrabold flex items-center gap-2 border shadow-md transition-all ${
+                  callState === "speaking"
+                    ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-200"
+                    : callState === "thinking"
+                    ? "bg-purple-500/25 border-purple-400/50 text-purple-200 animate-pulse"
+                    : isSpeakingRef.current || audioLevel > 16
+                    ? "bg-emerald-500/25 border-emerald-400/60 text-emerald-200"
+                    : "bg-slate-900/90 border-emerald-500/30 text-emerald-300"
                 }`}
               >
-                <Radio size={11} />
-                <span>Manos Libres</span>
-              </button>
-              <button
-                type="button"
-                role="button"
-                aria-pressed={interactionMode === "push_to_talk"}
-                aria-label="Modo Pulsar para Hablar"
-                onClick={() => setInteractionMode("push_to_talk")}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
-                  interactionMode === "push_to_talk"
-                    ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                    : "bg-slate-800/50 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Hand size={11} />
-                <span>Pulsar p/ Hablar</span>
-              </button>
-
-              {/* Botón Accesible: Modo Lector del Sistema (TalkBack / VoiceOver) */}
-              <button
-                type="button"
-                role="button"
-                aria-pressed={useSystemScreenReader}
-                aria-label={`Lector de Pantalla del Sistema TalkBack o VoiceOver ${useSystemScreenReader ? "activado" : "desactivado"}`}
-                onClick={toggleSystemScreenReader}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1 transition border cursor-pointer ${
-                  useSystemScreenReader
-                    ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm"
-                    : "bg-slate-800/50 text-slate-400 border-slate-700/50 hover:text-slate-200"
-                }`}
-              >
-                <Radio size={11} className={useSystemScreenReader ? "text-amber-400 animate-pulse" : ""} />
-                <span>{useSystemScreenReader ? "Lector SO (TalkBack/VoiceOver) Activo" : "Lector SO"}</span>
-              </button>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    callState === "speaking"
+                      ? "bg-cyan-400 animate-ping"
+                      : callState === "thinking"
+                      ? "bg-purple-400 animate-ping"
+                      : "bg-emerald-400 animate-pulse"
+                  }`}
+                />
+                <span>
+                  {callState === "speaking"
+                    ? "🗣️ SUSY ESTÁ RESPONDIENDO (Hablá o tocá su foto para interrumpirla)"
+                    : callState === "thinking"
+                    ? "⚡ PROCESANDO TU CONSULTA EN VIVO..."
+                    : isSpeakingRef.current || audioLevel > 16
+                    ? "🎙️ ESCUCHANDO TU VOZ EN VIVO..."
+                    : "🟢 MICRÓFONO ABIERTO — HABLÁ CON NORMALIDAD"}
+                </span>
+              </div>
             </div>
 
             {/* Orb Central Reactivo Accesible */}
@@ -1507,14 +1478,13 @@ export default function SusyRealtimeCallModal({
                       ? "Respondiendo a tu consulta. Toca para interrumpir."
                       : callState === "thinking"
                       ? "Procesando respuesta"
-                      : isSpeakingRef.current || isPushTalking
+                      : isSpeakingRef.current
                       ? "Escuchando tu voz. Toca para enviar consulta."
                       : "En espera. Habla cuando desees."
                   }`}
                   aria-pressed={callState === "speaking" || isSpeakingRef.current}
                   onClick={() => {
                     if (callState === "speaking") {
-                      // 1. Si Susy habla, guardar contexto de la interrupción y reactivar escucha
                       if (lastCompletedAssistantTextRef.current) {
                         lastInterruptedResponseRef.current = {
                           text: lastCompletedAssistantTextRef.current,
@@ -1525,7 +1495,6 @@ export default function SusyRealtimeCallModal({
                       resumeListening();
                       playAccessibleChime("start");
                     } else if (callState === "thinking") {
-                      // 2. Si Susy está pensando o bloqueada, cancelar de inmediato
                       if (abortControllerRef.current) {
                         abortControllerRef.current.abort();
                         abortControllerRef.current = null;
@@ -1534,97 +1503,102 @@ export default function SusyRealtimeCallModal({
                       resumeListening();
                       playAccessibleChime("start");
                     } else if (isSpeakingRef.current || (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording")) {
-                      // 3. Si el usuario está hablando, forzar envío de inmediato
                       isSpeakingRef.current = false;
                       silenceStartRef.current = null;
                       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
                         mediaRecorderRef.current.stop();
                       }
                     } else {
-                      // 4. Si está en espera, resetear estado y asegurar escucha activa
                       isSpeakingRef.current = false;
                       silenceStartRef.current = null;
                       resumeListening();
                       playAccessibleChime("start");
                     }
                   }}
-                  className={`w-28 h-28 sm:w-36 sm:h-36 rounded-full transition-all duration-100 flex items-center justify-center cursor-pointer ${
+                  className={`w-32 h-32 sm:w-38 sm:h-38 rounded-full transition-all duration-100 flex items-center justify-center cursor-pointer ${
                     callState === "speaking"
-                      ? "bg-gradient-to-tr from-cyan-400 via-emerald-400 to-teal-300 animate-pulse shadow-2xl shadow-cyan-500/50 scale-105"
+                      ? "bg-gradient-to-tr from-cyan-400 via-emerald-400 to-teal-300 shadow-2xl shadow-cyan-500/50 scale-105 ring-4 ring-cyan-400/40"
                       : callState === "thinking"
-                      ? "bg-gradient-to-tr from-purple-500 via-pink-500 to-indigo-500 animate-spin shadow-2xl shadow-purple-500/50"
-                      : isSpeakingRef.current || isPushTalking
-                      ? "bg-gradient-to-tr from-emerald-400 to-cyan-500 shadow-2xl shadow-emerald-500/40 scale-102 ring-4 ring-emerald-500/30"
-                      : "bg-gradient-to-tr from-slate-800 via-slate-700 to-slate-800 opacity-90"
+                      ? "bg-gradient-to-tr from-purple-500 via-pink-500 to-indigo-500 animate-pulse shadow-2xl shadow-purple-500/50 ring-4 ring-purple-400/40"
+                      : isSpeakingRef.current || audioLevel > 16
+                      ? "bg-gradient-to-tr from-emerald-400 to-cyan-500 shadow-2xl shadow-emerald-500/50 scale-105 ring-4 ring-emerald-400/50"
+                      : "bg-gradient-to-tr from-emerald-600/70 via-slate-800 to-teal-600/70 ring-2 ring-emerald-500/40"
                   }`}
                   style={{
                     transform: `scale(${1 + (audioLevel / 100) * 0.22})`
                   }}
                 >
-                  <div className="absolute inset-1 rounded-full bg-slate-950/90 overflow-hidden flex flex-col items-center justify-center text-center">
+                  <div className="absolute inset-1.5 rounded-full bg-slate-950/90 overflow-hidden flex flex-col items-center justify-center text-center">
                     <img
                       src="/icons/susy-avatar-portrait.png"
                       alt="Susy — En llamada"
                       className="w-full h-full object-cover object-top opacity-95"
                     />
-                    {isSpeakingRef.current && (
-                      <span className="absolute bottom-2 px-2 py-0.5 rounded-full bg-slate-950/85 text-[10px] text-emerald-300 font-mono font-semibold border border-emerald-500/40">
-                        Enviar ya
-                      </span>
-                    )}
                   </div>
                 </button>
               </div>
 
-              {/* Subtítulos y Botón de Reanudación de Susy */}
-              <div className="w-full mt-3 px-3 min-h-[65px] flex flex-col items-center justify-center">
-                {callState === "thinking" ? (
-                  <p className="text-xs text-purple-300 font-medium animate-pulse" role="status">
-                    ⚡ Susy está pensando...
-                  </p>
-                ) : assistantText ? (
-                  <div className="max-w-sm bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-col items-center gap-1.5 text-center">
-                    <p className="text-xs text-emerald-300 font-medium leading-relaxed">
-                      "{assistantText}"
-                    </p>
-                    {lastInterruptedResponseRef.current && callState === "listening" && (
-                      <button
-                        onClick={() => {
-                          const resumeQuery = "Por favor continuá con lo que me estabas diciendo.";
-                          setUserTranscript(`"${resumeQuery}"`);
-                          setTypedMessage(resumeQuery);
-                          setTimeout(() => {
-                            handleSendTypedMessage();
-                          }, 50);
-                        }}
-                        className="mt-1 px-3 py-1 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-300 text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm"
-                      >
-                        <span>▶ Tocar para continuar escuchando</span>
-                      </button>
-                    )}
-                  </div>
-                ) : userTranscript ? (
-                  <p className="text-xs text-cyan-300 font-medium italic line-clamp-2 max-w-xs">
-                    {userTranscript}
-                  </p>
-                ) : (
-                  <div className="space-y-1 text-center">
-                    <p className="text-xs text-slate-300 font-medium">
-                      {interactionMode === "hands_free"
-                        ? "Te escucho atentamente y sin cortes"
-                        : "Mantené presionado el botón o Espacio para hablar"}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      {interactionMode === "hands_free"
-                        ? "Hablá con libertad. Susy te escucha y te responde con calidez."
-                        : "Pulsá cuando quieras hablar."}
+              {/* Barra Visual de Nivel de Voz (Vúmetro en Vivo) */}
+              <div className="w-48 mt-3 flex flex-col items-center gap-1">
+                <div className="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden border border-slate-700/70">
+                  <div
+                    className={`h-full rounded-full transition-all duration-75 ${
+                      callState === "speaking"
+                        ? "bg-cyan-400"
+                        : callState === "thinking"
+                        ? "bg-purple-400 w-full animate-pulse"
+                        : "bg-emerald-400"
+                    }`}
+                    style={{
+                      width:
+                        callState === "thinking"
+                          ? "100%"
+                          : `${Math.max(8, Math.min(100, audioLevel * 1.6))}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {callState === "speaking"
+                    ? "Tocá la foto de Susy si querés interrumpirla"
+                    : callState === "thinking"
+                    ? "Conectando con el Centro de Mando de Ituzaingó..."
+                    : userTranscript
+                    ? "Pausa breve para que Susy te responda (o tocá su foto para enviar ya)"
+                    : "Manos Libres Activo • No hace falta apretar ningún botón"}
+                </span>
+              </div>
+
+              {/* Subtítulos en Vivo de lo que decís vos y lo que responde Susy */}
+              <div className="w-full mt-3 px-2 min-h-[82px] flex flex-col items-center justify-center gap-2">
+                {userTranscript && (
+                  <div className="w-full max-w-sm px-3 py-2 rounded-xl bg-slate-900/95 border border-emerald-500/30 text-center">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400 block">
+                      🎙️ Lo que te escucho decir:
+                    </span>
+                    <p className="text-xs text-white font-medium italic">
+                      {userTranscript}
                     </p>
                   </div>
                 )}
+
+                {callState === "thinking" ? (
+                  <p className="text-xs text-purple-300 font-semibold animate-pulse" role="status">
+                    ⚡ Susy está elaborando tu respuesta...
+                  </p>
+                ) : assistantText ? (
+                  <div className="w-full max-w-sm bg-slate-900/95 border border-cyan-500/30 rounded-2xl p-3 shadow-lg flex flex-col items-center gap-1.5 text-center">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-cyan-400 block">
+                      🗣️ Respuesta de Susy:
+                    </span>
+                    <p className="text-xs text-emerald-200 font-medium leading-relaxed">
+                      "{assistantText}"
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              {/* Entrada de Texto Híbrida en Modo Voz */}
-              <div className="w-full flex items-center gap-2 mt-2 px-1">
+              {/* Entrada de Texto Auxiliar Discreta */}
+              <div className="w-full flex items-center gap-2 mt-1 px-1">
                 <input
                   type="text"
                   value={typedMessage}
@@ -1635,7 +1609,7 @@ export default function SusyRealtimeCallModal({
                     }
                   }}
                   aria-label="Escribe tu consulta por texto para la llamada"
-                  placeholder="Escribe aquí si prefieres tipear..."
+                  placeholder="O escribí un dato puntual acá (ej. DNI o calle)..."
                   className="flex-1 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-700/80 text-xs text-white placeholder-slate-400 focus:outline-hidden focus:border-cyan-500 transition-colors"
                 />
                 <button
@@ -1649,29 +1623,6 @@ export default function SusyRealtimeCallModal({
                 </button>
               </div>
             </div>
-
-            {/* Modo Pulsar para Hablar */}
-            {interactionMode === "push_to_talk" && (
-              <div className="w-full flex justify-center py-1">
-                <button
-                  role="button"
-                  aria-pressed={isPushTalking}
-                  aria-label="Mantener presionado para hablar con Susy"
-                  onMouseDown={handlePushTalkStart}
-                  onMouseUp={handlePushTalkEnd}
-                  onTouchStart={handlePushTalkStart}
-                  onTouchEnd={handlePushTalkEnd}
-                  className={`w-full py-2.5 rounded-2xl font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer ${
-                    isPushTalking
-                      ? "bg-emerald-500 text-slate-950 scale-98 shadow-emerald-500/30"
-                      : "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700"
-                  }`}
-                >
-                  <Mic size={16} className={isPushTalking ? "animate-pulse" : ""} />
-                  <span>{isPushTalking ? "Susy te está escuchando..." : "Mantener presionado para hablar"}</span>
-                </button>
-              </div>
-            )}
           </>
         )}
 

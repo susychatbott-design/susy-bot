@@ -19,20 +19,33 @@ import {
   AgenteMunicipalEspecialista,
   HumorSocialBarrio,
   ITUZAINGO_CORRIENTES_IDENTITY,
+  obtenerBitacoraOperacionesAgenticas,
   obtenerTermometroBarrial,
-  registrarPulsoSocialBarrial,
+  registrarInteraccionEnTrenAgentico,
+  RegistroOperacionAgentica,
   TREN_AGENTICO_SUSY,
 } from "@/lib/susy/municipal/ituzaingoCommandCenter";
 
 export function PanelTrenAgenticoYBarrios() {
   const [barrios, setBarrios] = useState<HumorSocialBarrio[]>(() => obtenerTermometroBarrial());
+  const [bitacoraOps, setBitacoraOps] = useState<RegistroOperacionAgentica[]>(() =>
+    obtenerBitacoraOperacionesAgenticas()
+  );
   const [filtroZona, setFiltroZona] = useState<string>("TODAS");
   const [textoSimulacion, setTextoSimulacion] = useState<string>("");
   const [barrioSeleccionado, setBarrioSeleccionado] = useState<string>("Casco Céntrico");
   const [ultimoImpacto, setUltimoImpacto] = useState<string | null>(null);
 
   useEffect(() => {
-    setBarrios(obtenerTermometroBarrial());
+    const syncAll = () => {
+      setBarrios(obtenerTermometroBarrial());
+      setBitacoraOps(obtenerBitacoraOperacionesAgenticas());
+    };
+    syncAll();
+    if (typeof window !== "undefined") {
+      window.addEventListener("susy_agentic_ops_updated", syncAll);
+      return () => window.removeEventListener("susy_agentic_ops_updated", syncAll);
+    }
   }, []);
 
   const promedioAprobacion = Math.round(
@@ -49,10 +62,16 @@ export function PanelTrenAgenticoYBarrios() {
   const handleIngestarMencionRedes = (e: React.FormEvent) => {
     e.preventDefault();
     if (!textoSimulacion.trim()) return;
-    const res = registrarPulsoSocialBarrial(textoSimulacion, barrioSeleccionado);
+    const reg = registrarInteraccionEnTrenAgentico({
+      canal: "ESCANER_REDES",
+      consultaVecino: textoSimulacion,
+      respuestaSusy: `Pulso social registrado en ${barrioSeleccionado} y asignado al agente especialista.`,
+      barrioExplicito: barrioSeleccionado,
+    });
     setBarrios(obtenerTermometroBarrial());
+    setBitacoraOps(obtenerBitacoraOperacionesAgenticas());
     setUltimoImpacto(
-      `Pulso procesado por NEX-ITU-PRENSA-01 en ${res.barrioImpactado}: emoción ${res.perfilDetectado} → Nuevo índice ${res.nuevoIndice}%`
+      `Operación ${reg.id} procesada por ${reg.agenteAsignadoCodigo} en ${reg.barrioDetectado} (Emoción: ${reg.emocionDetectada})`
     );
     setTextoSimulacion("");
   };
@@ -101,7 +120,77 @@ export function PanelTrenAgenticoYBarrios() {
         </div>
       </div>
 
-      {/* SECCIÓN 1: TREN AGÉNTICO MUNICIPAL (7 AGENTES BAJO EL MANDO DE SUSY) */}
+      {/* SECCIÓN 1: BITÁCORA EN TIEMPO REAL DE PROCESOS, INTERACCIONES Y RESULTADOS DEL TREN AGÉNTICO */}
+      <div className="bg-slate-900/90 border border-emerald-500/30 rounded-3xl p-5 space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+              <Radio size={17} className="text-emerald-400 animate-pulse" />
+              Consola de Procesos y Resultados en Vivo del Tren Agéntico ({bitacoraOps.length} operaciones registradas)
+            </h3>
+            <p className="text-xs text-slate-400">
+              Cada llamada en vivo, chat ciudadano o escaneo de redes queda registrado aquí con el barrio detectado, el agente municipal interviniente y la resolución.
+            </p>
+          </div>
+          <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold self-start">
+            Sincronización en Tiempo Real Activa
+          </span>
+        </div>
+
+        <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+          {bitacoraOps.map((op) => (
+            <div
+              key={op.id}
+              className="p-3.5 rounded-2xl bg-slate-950/95 border border-slate-800 hover:border-sky-500/40 transition-all flex flex-col gap-2"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono font-bold text-emerald-400">{op.id}</span>
+                  <span className="text-slate-400">• {op.timestamp}</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-sky-300 font-semibold">
+                    {op.canal === "VOZ_LIVE" ? "📞 Llamada Live" : op.canal === "CHAT_WEB" ? "💬 Chat Ciudadano" : "📡 Escáner Redes"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-indigo-950/70 border border-indigo-500/30 text-indigo-300 font-semibold">
+                    📍 {op.barrioDetectado}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 font-mono text-[10px] text-amber-300">
+                    {op.agenteIcono} {op.agenteAsignadoCodigo}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      op.estado === "DERIVADO_CUADRILLA"
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                        : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    }`}
+                  >
+                    {op.estado.replace(/_/g, " ")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                    Entrada Ciudadana / Red Social (Clima PNL: {op.emocionDetectada}):
+                  </span>
+                  <p className="text-slate-200 font-medium">"{op.consultaVecino}"</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/20">
+                  <span className="text-[10px] uppercase font-bold text-emerald-400 block mb-0.5">
+                    Resultado / Resolución ({op.accionEjecutada}):
+                  </span>
+                  <p className="text-slate-200">{op.respuestaSusy}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* SECCIÓN 2: TREN AGÉNTICO MUNICIPAL (7 AGENTES BAJO EL MANDO DE SUSY) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>

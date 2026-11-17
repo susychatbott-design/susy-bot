@@ -59,7 +59,7 @@ import {
   PermisoProvisorio,
   parseAndExecuteMunicipalFunctionCalls,
 } from "@/lib/susy/municipal/municipalActions";
-import { registrarPulsoSocialBarrial } from "@/lib/susy/municipal/ituzaingoCommandCenter";
+import { registrarInteraccionEnTrenAgentico } from "@/lib/susy/municipal/ituzaingoCommandCenter";
 import { syncOnlineDeltasIfAvailable } from "@/lib/susy/offline/knowledgeCache";
 
 
@@ -335,12 +335,6 @@ export default function SusyBotPage() {
       const textToSend = (overrideText !== undefined ? overrideText : inputText).trim();
       if (!textToSend && !selectedImageBase64 && !vision.isCameraActive) return;
 
-      if (textToSend) {
-        try {
-          registrarPulsoSocialBarrial(textToSend);
-        } catch {}
-      }
-
       if (overrideText === undefined) {
         setInputText("");
       }
@@ -358,7 +352,7 @@ export default function SusyBotPage() {
       setSelectedImageBase64(null);
       setAttachedFileMeta(null);
 
-      await chat.sendMessage({
+      const assistantReply = await chat.sendMessage({
         text: textToSend || "Analizá lo que enfoca la cámara.",
         userName: deviceCapabilities.userName,
         imageBase64: imagePayload,
@@ -366,6 +360,16 @@ export default function SusyBotPage() {
         deviceLocation: deviceCapabilities.location,
         attachedFile: filePayload,
       });
+
+      if (textToSend) {
+        try {
+          registrarInteraccionEnTrenAgentico({
+            canal: "CHAT_WEB",
+            consultaVecino: textToSend,
+            respuestaSusy: assistantReply || "",
+          });
+        } catch {}
+      }
     },
     [inputText, selectedImageBase64, attachedFileMeta, vision, chat, deviceCapabilities]
   );
@@ -590,14 +594,6 @@ export default function SusyBotPage() {
               <Calendar size={14} />
               <span>Emitir Turno QR</span>
             </button>
-
-            <Link
-              href="/dashboard"
-              className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900/90 text-slate-300 border border-white/10 hover:bg-slate-800 flex items-center gap-1.5 shrink-0 transition-all"
-            >
-              <BarChart3 size={14} className="text-indigo-400" />
-              <span>Tablero Gestión</span>
-            </Link>
 
             {chat.messages.length > 0 && (
               <button
@@ -960,7 +956,11 @@ export default function SusyBotPage() {
         onMessageLogged={(userText, assistantText) => {
           if (userText) {
             try {
-              registrarPulsoSocialBarrial(userText);
+              registrarInteraccionEnTrenAgentico({
+                canal: "VOZ_LIVE",
+                consultaVecino: userText,
+                respuestaSusy: assistantText,
+              });
             } catch {}
           }
           processAssistantMunicipalActions(assistantText);

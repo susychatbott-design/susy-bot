@@ -541,9 +541,178 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
 ];
 
 // ============================================================================
-// 5. MOTOR EN VIVO DE ACTUALIZACIÓN BARRIAL Y GENERADOR DE CONTEXTO PARA SUSY
+// 5. MOTOR EN VIVO DE ACTUALIZACIÓN BARRIAL, REGISTRO DE INTERACCIONES Y DESPACHO AGÉNTICO
 // ============================================================================
 const STORAGE_KEY_BARRIOS = "susy_ituzaingo_humor_barrios_v1";
+const STORAGE_KEY_OPERATIONS_LOG = "susy_ituzaingo_agentic_ops_log_v1";
+
+export interface RegistroOperacionAgentica {
+  id: string;
+  timestamp: string;
+  canal: "VOZ_LIVE" | "CHAT_WEB" | "ESCANER_REDES";
+  barrioDetectado: string;
+  agenteAsignadoCodigo: string;
+  agenteNombre: string;
+  agenteIcono: string;
+  consultaVecino: string;
+  respuestaSusy: string;
+  emocionDetectada: SusyEmotionalTone;
+  urgencia: "NORMAL" | "ALTA" | "CRITICA";
+  accionEjecutada: string;
+  estado: "COMPLETADO" | "EN_ EJECUCION_TERRENO" | "DERIVADO_CUADRILLA";
+}
+
+const INITIAL_OPERATIONS_LOG: RegistroOperacionAgentica[] = [
+  {
+    id: "OP-ITU-904",
+    timestamp: "Hace 2 min",
+    canal: "VOZ_LIVE",
+    barrioDetectado: "Barrio Iberá",
+    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteNombre: "Agente de Obras Públicas, Luminarias LED y Bacheo",
+    agenteIcono: "🚧",
+    consultaVecino: "Reclamo por dos luminarias LED apagadas en esquina tras la lluvia.",
+    respuestaSusy: "Ticket #ITU-842 emitido y derivado a la cuadrilla de Electrotecnia Municipal.",
+    emocionDetectada: "ANGER",
+    urgencia: "ALTA",
+    accionEjecutada: "Ticket de Reclamo Urbano #ITU-842 (Alumbrado Público)",
+    estado: "DERIVADO_CUADRILLA",
+  },
+  {
+    id: "OP-ITU-903",
+    timestamp: "Hace 5 min",
+    canal: "CHAT_WEB",
+    barrioDetectado: "General Manuel Belgrano",
+    agenteAsignadoCodigo: "NEX-ITU-RENTAS-04",
+    agenteNombre: "Agente de Hacienda, Rentas y Permisos QR",
+    agenteIcono: "🏛️",
+    consultaVecino: "Solicitud de permiso provisorio de poda de ramas frente al domicilio.",
+    respuestaSusy: "Permiso Provisorio #PERM-ITU-2026-418 emitido con validez de 72 hs y código QR.",
+    emocionDetectada: "CALM",
+    urgencia: "NORMAL",
+    accionEjecutada: "Permiso Provisorio QR #PERM-ITU-2026-418",
+    estado: "COMPLETADO",
+  },
+  {
+    id: "OP-ITU-902",
+    timestamp: "Hace 9 min",
+    canal: "ESCANER_REDES",
+    barrioDetectado: "Casco Céntrico",
+    agenteAsignadoCodigo: "NEX-ITU-PRENSA-01",
+    agenteNombre: "Agente de Prensa Oficial y Escucha Social",
+    agenteIcono: "📡",
+    consultaVecino: "Monitoreo de menciones en Instagram y Facebook sobre la Feria de Artesanos y obra teatral.",
+    respuestaSusy: "Repercusión 86% positiva en Casco Céntrico. Informe elevado a Dirección de Prensa.",
+    emocionDetectada: "JOY",
+    urgencia: "NORMAL",
+    accionEjecutada: "Actualización de Termómetro Barrial (+3% Casco Céntrico)",
+    estado: "COMPLETADO",
+  },
+  {
+    id: "OP-ITU-901",
+    timestamp: "Hace 14 min",
+    canal: "CHAT_WEB",
+    barrioDetectado: "Mil Viviendas",
+    agenteAsignadoCodigo: "NEX-ITU-VIAL-03",
+    agenteNombre: "Agente de Tránsito y Licencias CENAT",
+    agenteIcono: "🚓",
+    consultaVecino: "Consulta de costos y turno para renovación de Licencia de Conducir Categoría B.",
+    respuestaSusy: "Informado arancel CENAT + Tasa Municipal y emitido Turno #TURNO-ITU-2026-3102.",
+    emocionDetectada: "CALM",
+    urgencia: "NORMAL",
+    accionEjecutada: "Comprobante Oficial de Turno #TURNO-ITU-2026-3102",
+    estado: "COMPLETADO",
+  },
+];
+
+export function obtenerBitacoraOperacionesAgenticas(): RegistroOperacionAgentica[] {
+  if (typeof window === "undefined") return INITIAL_OPERATIONS_LOG;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_OPERATIONS_LOG);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return INITIAL_OPERATIONS_LOG;
+}
+
+function resolverAgenteParaConsulta(texto: string): AgenteMunicipalEspecialista {
+  const t = texto.toLowerCase();
+  if (/incendio|inundaci|cable|tormenta|alerta|defensa civil|emergencia|auxilio|103|100|107/.test(t)) {
+    return TREN_AGENTICO_SUSY[6]; // NEX-ITU-DEFCIVIL-07
+  }
+  if (/bache|pozo|luz|luminaria|led|poda|rama|basura|calle|zanjeo|obra|cord[oó]n/.test(t)) {
+    return TREN_AGENTICO_SUSY[1]; // NEX-ITU-OBRAS-02
+  }
+  if (/licencia|carnet|conducir|cenat|tr[aá]nsito|multa|estacionamiento|vial/.test(t)) {
+    return TREN_AGENTICO_SUSY[2]; // NEX-ITU-VIAL-03
+  }
+  if (/tasa|rentas|libre deuda|comercio|habilitaci[oó]n|bromatolog|impuesto|pago/.test(t)) {
+    return TREN_AGENTICO_SUSY[3]; // NEX-ITU-RENTAS-04
+  }
+  if (/turismo|playa|yacyret[aá]|iber[aá]|cambyret[aá]|teatro|cultura|chamam[eé]|hotel|caba[ñn]a/.test(t)) {
+    return TREN_AGENTICO_SUSY[4]; // NEX-ITU-TURISMO-05
+  }
+  if (/salud|cud|discapacidad|tea|acci[oó]n social|vacuna|zoonosis|hospital/.test(t)) {
+    return TREN_AGENTICO_SUSY[5]; // NEX-ITU-SOCIAL-06
+  }
+  return TREN_AGENTICO_SUSY[0]; // NEX-ITU-PRENSA-01 por defecto
+}
+
+export function registrarInteraccionEnTrenAgentico(params: {
+  canal: "VOZ_LIVE" | "CHAT_WEB" | "ESCANER_REDES";
+  consultaVecino: string;
+  respuestaSusy?: string;
+  barrioExplicito?: string;
+}): RegistroOperacionAgentica {
+  const { canal, consultaVecino, respuestaSusy = "", barrioExplicito } = params;
+  const pulso = registrarPulsoSocialBarrial(consultaVecino, barrioExplicito);
+  const pnl = analyzeVecino(consultaVecino);
+  const agente = resolverAgenteParaConsulta(`${consultaVecino} ${respuestaSusy}`);
+
+  let accionEjecutada = "Orientación y Respuesta Institucional Verificada";
+  let estado: RegistroOperacionAgentica["estado"] = "COMPLETADO";
+
+  if (/emitirPermisoProvisorio|PERM-ITU/i.test(respuestaSusy)) {
+    accionEjecutada = "Emisión de Permiso Provisorio Municipal con QR (72 hs)";
+  } else if (/emitirTurno|TURNO-ITU/i.test(respuestaSusy)) {
+    accionEjecutada = "Asignación de Turno Presencial con Código QR";
+  } else if (/registrarReclamoMunicipal|Ticket #ITU|bache|luminaria|led/i.test(`${consultaVecino} ${respuestaSusy}`)) {
+    accionEjecutada = `Derivación a Cuadrilla (${agente.codigoAgente})`;
+    estado = "DERIVADO_CUADRILLA";
+  }
+
+  const nuevoRegistro: RegistroOperacionAgentica = {
+    id: `OP-ITU-${Math.floor(1000 + Math.random() * 9000)}`,
+    timestamp: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    canal,
+    barrioDetectado: pulso.barrioImpactado,
+    agenteAsignadoCodigo: agente.codigoAgente,
+    agenteNombre: agente.nombrePuesto,
+    agenteIcono: agente.icono,
+    consultaVecino: consultaVecino.slice(0, 220),
+    respuestaSusy: respuestaSusy
+      .replace(/\[CALL_FUNCTION:[^\]]*\]/gi, "")
+      .trim()
+      .slice(0, 260) || "Procesado por el Tren Agéntico de Susy.",
+    emocionDetectada: pnl.emotionalTone,
+    urgencia: pnl.urgency,
+    accionEjecutada,
+    estado,
+  };
+
+  if (typeof window !== "undefined") {
+    try {
+      const actual = obtenerBitacoraOperacionesAgenticas();
+      const actualizado = [nuevoRegistro, ...actual].slice(0, 60);
+      localStorage.setItem(STORAGE_KEY_OPERATIONS_LOG, JSON.stringify(actualizado));
+      window.dispatchEvent(new Event("susy_agentic_ops_updated"));
+    } catch {}
+  }
+
+  return nuevoRegistro;
+}
 
 export function obtenerTermometroBarrial(): HumorSocialBarrio[] {
   if (typeof window === "undefined") return BARRIOS_HUMOR_SOCIAL_INICIAL;
