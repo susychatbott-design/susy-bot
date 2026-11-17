@@ -202,6 +202,22 @@ class MunicipalStore {
     return newTurno;
   }
 
+  public updateTurno(id: string, updates: Partial<MunicipalTurno>): MunicipalTurno | null {
+    const idx = this.turnos.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    this.turnos[idx] = { ...this.turnos[idx], ...updates };
+    this.saveToStorage();
+    return this.turnos[idx];
+  }
+
+  public removeTurno(id: string): MunicipalTurno | null {
+    const idx = this.turnos.findIndex((t) => t.id === id);
+    if (idx === -1) return null;
+    const removed = this.turnos.splice(idx, 1)[0];
+    this.saveToStorage();
+    return removed;
+  }
+
   // Permisos Provisorios
   public getPermisos(): PermisoProvisorio[] {
     return [...this.permisos];
@@ -283,6 +299,22 @@ class MunicipalStore {
     return newPermiso;
   }
 
+  public updatePermiso(id: string, updates: Partial<PermisoProvisorio>): PermisoProvisorio | null {
+    const idx = this.permisos.findIndex((p) => p.id === id);
+    if (idx === -1) return null;
+    this.permisos[idx] = { ...this.permisos[idx], ...updates };
+    this.saveToStorage();
+    return this.permisos[idx];
+  }
+
+  public removePermiso(id: string): PermisoProvisorio | null {
+    const idx = this.permisos.findIndex((p) => p.id === id);
+    if (idx === -1) return null;
+    const removed = this.permisos.splice(idx, 1)[0];
+    this.saveToStorage();
+    return removed;
+  }
+
   // Gacetillas
   public getGacetillas(): GacetillaPrensa[] {
     return [...this.gacetillas];
@@ -299,6 +331,22 @@ class MunicipalStore {
     this.gacetillas.unshift(newGacetilla);
     this.saveToStorage();
     return newGacetilla;
+  }
+
+  public updateGacetilla(id: string, updates: Partial<GacetillaPrensa>): GacetillaPrensa | null {
+    const idx = this.gacetillas.findIndex((g) => g.id === id);
+    if (idx === -1) return null;
+    this.gacetillas[idx] = { ...this.gacetillas[idx], ...updates };
+    this.saveToStorage();
+    return this.gacetillas[idx];
+  }
+
+  public removeGacetilla(id: string): GacetillaPrensa | null {
+    const idx = this.gacetillas.findIndex((g) => g.id === id);
+    if (idx === -1) return null;
+    const removed = this.gacetillas.splice(idx, 1)[0];
+    this.saveToStorage();
+    return removed;
   }
 }
 

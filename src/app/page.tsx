@@ -60,6 +60,7 @@ import {
   parseAndExecuteMunicipalFunctionCalls,
 } from "@/lib/susy/municipal/municipalActions";
 import { registrarInteraccionEnTrenAgentico } from "@/lib/susy/municipal/ituzaingoCommandCenter";
+import { resolverReferenciaUrbanaItuzaingo } from "@/lib/susy/municipal/ituzaingoGeo";
 import { syncOnlineDeltasIfAvailable } from "@/lib/susy/offline/knowledgeCache";
 
 
@@ -478,13 +479,15 @@ export default function SusyBotPage() {
         onToggleFacingMode={vision.toggleCameraFacing}
         onEvidenceCaptured={(evidence, category) => {
           setSelectedImageBase64(evidence.imageBase64);
-          const gpsNote = evidence.gps
-            ? ` en coordenadas GPS (${evidence.gps.latitude.toFixed(4)}, ${evidence.gps.longitude.toFixed(4)})`
-            : "";
+          let ubicacionHumana = "Ituzaingó (Centro / Radio Urbano)";
+          if (evidence.gps) {
+            const geoRef = resolverReferenciaUrbanaItuzaingo(evidence.gps.latitude, evidence.gps.longitude);
+            ubicacionHumana = `${geoRef.barrio} (${geoRef.referenciaCercana}) [${geoRef.zona}]`;
+          }
           const prompt =
             category === "siniestro_vial" || category === "defensa_civil"
-              ? `[ALERTA SINIESTRO/DEFENSA CIVIL${gpsNote}]: Envío fotografía capturada en vivo. Por favor evaluá la gravedad de la problemática para derivar a las cuadrillas y notificar a emergencias.`
-              : `[RELEVAMIENTO EXTERIORES${gpsNote}]: Adjunto fotografía para registrar el reclamo municipal correspondiente a ${category}.`;
+              ? `[ALERTA DE EMERGENCIA EN: ${ubicacionHumana}]: Envío fotografía para Defensa Civil y servicios de guardia. Por favor registrá el ticket y derivá a la cuadrilla de inmediato.`
+              : `[RELEVAMIENTO DE PROBLEMÁTICA EN: ${ubicacionHumana}]: Adjunto fotografía sobre ${category.replace(/_/g, " ")}. Registrá el reclamo oficial con ticket #ITU directamente y confirmame el área interviniente.`;
           handleSendUserQuery(prompt);
         }}
       />

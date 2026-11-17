@@ -40,6 +40,9 @@ import MunicipalCommerceGuide from "@/components/Susy/MunicipalCommerceGuide";
 import { MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 import { PanelDefensaCivil } from "@/components/Dashboard/PanelDefensaCivil";
 import { PanelTrenAgenticoYBarrios } from "@/components/Dashboard/PanelTrenAgenticoYBarrios";
+import { PanelArchivoHistorico } from "@/components/Dashboard/PanelArchivoHistorico";
+import { municipalArchive } from "@/lib/susy/municipal/municipalArchiveStore";
+import { Trash2, Edit3, Archive } from "lucide-react";
 
 
 export default function MunicipalDashboardPage() {
@@ -73,7 +76,7 @@ export default function MunicipalDashboardPage() {
     sessionStorage.removeItem("susy_municipal_staff_auth");
   };
 
-  const [activeTab, setActiveTab] = useState<"tren_agentico" | "metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa" | "defensa_civil">("tren_agentico");
+  const [activeTab, setActiveTab] = useState<"tren_agentico" | "metricas" | "turnos" | "permisos" | "prensa" | "comercio" | "mapa" | "defensa_civil" | "archivo_historico">("tren_agentico");
 
   
   // Estados de datos
@@ -81,6 +84,61 @@ export default function MunicipalDashboardPage() {
   const [permisos, setPermisos] = useState<PermisoProvisorio[]>([]);
   const [gacetillas, setGacetillas] = useState<GacetillaPrensa[]>([]);
   
+  // Estados de edición para operadores
+  const [turnoEnEdicion, setTurnoEnEdicion] = useState<MunicipalTurno | null>(null);
+  const [permisoEnEdicion, setPermisoEnEdicion] = useState<PermisoProvisorio | null>(null);
+
+  const handleArchivarTurno = (turno: MunicipalTurno) => {
+    if (!confirm(`¿Archivar el turno ${turno.id} de ${turno.citizenName}? (Quedará resguardado en el Archivo Histórico de Soporte)`)) return;
+    municipalArchive.archivar({
+      originalId: turno.id,
+      tipo: "TURNO",
+      tituloOAsunto: `${turno.procedureType} • ${turno.departmentName}`,
+      detalleCiudadano: `${turno.citizenName} (DNI ${turno.citizenDni} - Tel ${turno.citizenPhone})`,
+      areaResponsable: turno.departmentName,
+      fechaRegistroOriginal: `${turno.dateStr} ${turno.timeSlot}`,
+      motivoArchivado: "RESUELTO",
+      operadorNota: "Archivado por operador desde tablero de turnos",
+      payloadCompleto: { ...turno },
+    });
+    municipalStore.removeTurno(turno.id);
+    refreshData();
+  };
+
+  const handleArchivarPermiso = (permiso: PermisoProvisorio) => {
+    if (!confirm(`¿Archivar el permiso ${permiso.id} de ${permiso.titularNombre}? (Quedará resguardado en el Archivo Histórico de Soporte)`)) return;
+    municipalArchive.archivar({
+      originalId: permiso.id,
+      tipo: "PERMISO_QR",
+      tituloOAsunto: permiso.titulo,
+      detalleCiudadano: `${permiso.titularNombre} (DNI ${permiso.titularDni} - Domicilio: ${permiso.titularDomicilio})`,
+      areaResponsable: "Secretaría de Obras y Hacienda",
+      fechaRegistroOriginal: permiso.fechaEmision,
+      motivoArchivado: "RESUELTO",
+      operadorNota: "Archivado por operador desde tablero de permisos",
+      payloadCompleto: { ...permiso },
+    });
+    municipalStore.removePermiso(permiso.id);
+    refreshData();
+  };
+
+  const handleArchivarGacetilla = (gacetilla: GacetillaPrensa) => {
+    if (!confirm(`¿Archivar la gacetilla ${gacetilla.id}? (Quedará resguardada en el Archivo Histórico de Soporte)`)) return;
+    municipalArchive.archivar({
+      originalId: gacetilla.id,
+      tipo: "GACETILLA",
+      tituloOAsunto: gacetilla.titulo,
+      detalleCiudadano: gacetilla.bajada,
+      areaResponsable: "Dirección de Prensa Municipal",
+      fechaRegistroOriginal: gacetilla.fecha,
+      motivoArchivado: "DEPURADO_OPERADOR",
+      operadorNota: "Archivado por operador de prensa",
+      payloadCompleto: { ...gacetilla },
+    });
+    municipalStore.removeGacetilla(gacetilla.id);
+    refreshData();
+  };
+
   // Modal de documento imprimible
   const [selectedDoc, setSelectedDoc] = useState<{
     type: "turno" | "permiso";
@@ -272,7 +330,8 @@ export default function MunicipalDashboardPage() {
           { id: "prensa", label: `Gacetillas de Prensa (${gacetillas.length})`, icon: Newspaper },
           { id: "comercio", label: `Guía Comercial (${MUNICIPAL_COMMERCE_LIST.length})`, icon: Store },
           { id: "mapa", label: "Mapa de Oficinas", icon: MapPin },
-          { id: "defensa_civil", label: "🚨 Defensa Civil LoRa Mesh", icon: Radio }
+          { id: "defensa_civil", label: "🚨 Defensa Civil LoRa Mesh", icon: Radio },
+          { id: "archivo_historico", label: "📦 Archivo Histórico & Soporte", icon: Archive }
         ].map((tab) => (
 
           <button
@@ -394,13 +453,22 @@ export default function MunicipalDashboardPage() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedDoc({ type: "turno", turno: t })}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-sky-950 border border-sky-600/50 text-sky-300 hover:bg-sky-900 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                  >
-                    <Eye size={13} />
-                    <span>Ver Comprobante</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setSelectedDoc({ type: "turno", turno: t })}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-sky-950 border border-sky-600/50 text-sky-300 hover:bg-sky-900 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye size={13} />
+                      <span>Ver Comprobante</span>
+                    </button>
+                    <button
+                      onClick={() => handleArchivarTurno(t)}
+                      title="Archivar turno resuelto (enviar a repositorio)"
+                      className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-rose-300 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -446,13 +514,22 @@ export default function MunicipalDashboardPage() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedDoc({ type: "permiso", permiso: p })}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-950 border border-emerald-600/50 text-emerald-300 hover:bg-emerald-900 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                  >
-                    <ShieldCheck size={14} />
-                    <span>Ver Documento QR</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setSelectedDoc({ type: "permiso", permiso: p })}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-950 border border-emerald-600/50 text-emerald-300 hover:bg-emerald-900 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ShieldCheck size={14} />
+                      <span>Ver Documento QR</span>
+                    </button>
+                    <button
+                      onClick={() => handleArchivarPermiso(p)}
+                      title="Archivar permiso (enviar a repositorio)"
+                      className="p-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-rose-300 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -514,17 +591,26 @@ export default function MunicipalDashboardPage() {
 
                   <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-800/60">
                     <span>Contacto: {g.contactoPrensa}</span>
-                    <button
-                      onClick={() => {
-                        if (typeof navigator !== "undefined") {
-                          navigator.clipboard.writeText(`${g.titulo}\n\n${g.bajada}\n\n${g.cuerpo}`);
-                          alert("Gacetilla copiada al portapapeles!");
-                        }
-                      }}
-                      className="text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
-                    >
-                      Copiar Texto Completo
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          if (typeof navigator !== "undefined") {
+                            navigator.clipboard.writeText(`${g.titulo}\n\n${g.bajada}\n\n${g.cuerpo}`);
+                            alert("Gacetilla copiada al portapapeles!");
+                          }
+                        }}
+                        className="text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                      >
+                        Copiar Texto
+                      </button>
+                      <button
+                        onClick={() => handleArchivarGacetilla(g)}
+                        title="Archivar gacetilla histórica"
+                        className="p-1 rounded-lg bg-slate-800 hover:bg-rose-950 text-rose-300 transition-colors cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -562,6 +648,13 @@ export default function MunicipalDashboardPage() {
         {activeTab === "defensa_civil" && (
           <div className="space-y-4">
             <PanelDefensaCivil />
+          </div>
+        )}
+
+        {/* PESTAÑA 7: ARCHIVO HISTÓRICO Y AUDITORÍA MUNICIPAL */}
+        {activeTab === "archivo_historico" && (
+          <div className="space-y-4">
+            <PanelArchivoHistorico />
           </div>
         )}
       </main>

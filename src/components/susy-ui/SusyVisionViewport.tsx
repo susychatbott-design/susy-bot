@@ -20,6 +20,7 @@ import {
   CapturedEvidence,
   GeoLocationCoordinates,
 } from "@/hooks/useSusyVision";
+import { resolverReferenciaUrbanaItuzaingo } from "@/lib/susy/municipal/ituzaingoGeo";
 
 export interface SusyVisionViewportProps {
   isCameraActive: boolean;
@@ -264,13 +265,15 @@ export function SusyVisionViewport({
             </div>
           )}
 
-          {/* OVERLAY DE GPS EN TIEMPO REAL */}
-          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[11px] text-emerald-300 font-mono">
-            <MapPin size={12} className="text-emerald-400 shrink-0" />
-            <span>
+          {/* OVERLAY DE UBICACIÓN HUMANA EN TIEMPO REAL */}
+          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 flex items-center gap-1.5 text-[11px] text-emerald-300 font-sans shadow-lg max-w-[70%]">
+            <MapPin size={13} className="text-emerald-400 shrink-0" />
+            <span className="truncate font-semibold">
               {currentGps
-                ? `${currentGps.latitude.toFixed(4)}, ${currentGps.longitude.toFixed(4)}`
-                : "Obteniendo satélites GPS..."}
+                ? resolverReferenciaUrbanaItuzaingo(currentGps.latitude, currentGps.longitude).barrio +
+                  " • " +
+                  resolverReferenciaUrbanaItuzaingo(currentGps.latitude, currentGps.longitude).zona
+                : "Obteniendo zona de Ituzaingó..."}
             </span>
           </div>
 

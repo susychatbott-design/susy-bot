@@ -13,6 +13,8 @@ import {
   ShieldCheck,
   Sparkles,
   TrendingUp,
+  Trash2,
+  Edit3,
 } from "lucide-react";
 import {
   AGENDA_INTENDENTE_ITUZAINGO,
@@ -22,9 +24,12 @@ import {
   obtenerBitacoraOperacionesAgenticas,
   obtenerTermometroBarrial,
   registrarInteraccionEnTrenAgentico,
+  archivarYEliminarOperacionAgentica,
+  modificarOperacionAgentica,
   RegistroOperacionAgentica,
   TREN_AGENTICO_SUSY,
 } from "@/lib/susy/municipal/ituzaingoCommandCenter";
+import { municipalArchive } from "@/lib/susy/municipal/municipalArchiveStore";
 
 export function PanelTrenAgenticoYBarrios() {
   const [barrios, setBarrios] = useState<HumorSocialBarrio[]>(() => obtenerTermometroBarrial());
@@ -35,6 +40,32 @@ export function PanelTrenAgenticoYBarrios() {
   const [textoSimulacion, setTextoSimulacion] = useState<string>("");
   const [barrioSeleccionado, setBarrioSeleccionado] = useState<string>("Casco Céntrico");
   const [ultimoImpacto, setUltimoImpacto] = useState<string | null>(null);
+  const [opEnEdicion, setOpEnEdicion] = useState<RegistroOperacionAgentica | null>(null);
+
+  const handleArchivarOp = (op: RegistroOperacionAgentica) => {
+    if (!confirm(`¿Archivar y quitar de la consola activa la operación ${op.id}? (Quedará resguardada en el Archivo Histórico de Soporte)`)) return;
+    municipalArchive.archivar({
+      originalId: op.id,
+      tipo: "OPERACION_TREN",
+      tituloOAsunto: `${op.canal} • ${op.accionEjecutada}`,
+      detalleCiudadano: op.consultaVecino,
+      areaResponsable: `${op.agenteAsignadoCodigo} (${op.agenteNombre})`,
+      fechaRegistroOriginal: op.timestamp,
+      motivoArchivado: "RESUELTO",
+      operadorNota: "Archivado por operador desde consola en vivo",
+      payloadCompleto: { ...op },
+    });
+    archivarYEliminarOperacionAgentica(op.id);
+    setBitacoraOps(obtenerBitacoraOperacionesAgenticas());
+  };
+
+  const handleGuardarEdicionOp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!opEnEdicion) return;
+    modificarOperacionAgentica(opEnEdicion.id, opEnEdicion);
+    setBitacoraOps(obtenerBitacoraOperacionesAgenticas());
+    setOpEnEdicion(null);
+  };
 
   useEffect(() => {
     const syncAll = () => {
@@ -91,7 +122,7 @@ export function PanelTrenAgenticoYBarrios() {
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-bold uppercase">
               <Sparkles size={11} />
-              <span>Tren Agéntico Nexora One • Ituzaingó, Corrientes</span>
+              <span>Gabinete y Secretarías Municipales • Ituzaingó, Corrientes</span>
             </div>
             <h2 className="text-base sm:text-lg font-extrabold text-white mt-1">
               Dirección de Prensa, Agenda del Intendente y Termómetro Social por Barrio
@@ -168,6 +199,22 @@ export function PanelTrenAgenticoYBarrios() {
                   >
                     {op.estado.replace(/_/g, " ")}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setOpEnEdicion(op)}
+                    title="Modificar registro"
+                    className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 transition-colors cursor-pointer"
+                  >
+                    <Edit3 size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleArchivarOp(op)}
+                    title="Archivar registro (enviar a repositorio de auditoría)"
+                    className="p-1 rounded-lg bg-slate-800 hover:bg-rose-950 text-rose-300 transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
 
@@ -466,6 +513,83 @@ export function PanelTrenAgenticoYBarrios() {
           ))}
         </div>
       </div>
+
+      {/* MODAL DE EDICIÓN DE OPERACIÓN PARA OPERADORES */}
+      {opEnEdicion && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-sky-500/40 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Edit3 size={15} className="text-sky-400" />
+                Modificar Registro {opEnEdicion.id}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setOpEnEdicion(null)}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleGuardarEdicionOp} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Barrio Asignado:</label>
+                <input
+                  type="text"
+                  value={opEnEdicion.barrioDetectado}
+                  onChange={(e) => setOpEnEdicion({ ...opEnEdicion, barrioDetectado: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Estado de Cuadrilla:</label>
+                <select
+                  value={opEnEdicion.estado}
+                  onChange={(e) =>
+                    setOpEnEdicion({
+                      ...opEnEdicion,
+                      estado: e.target.value as RegistroOperacionAgentica["estado"],
+                    })
+                  }
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                >
+                  <option value="COMPLETADO">COMPLETADO</option>
+                  <option value="DERIVADO_CUADRILLA">DERIVADO CUADRILLA</option>
+                  <option value="EN_ EJECUCION_TERRENO">EN EJECUCION TERRENO</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Resolución / Acción Registrada:</label>
+                <textarea
+                  rows={3}
+                  value={opEnEdicion.respuestaSusy}
+                  onChange={(e) => setOpEnEdicion({ ...opEnEdicion, respuestaSusy: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOpEnEdicion(null)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 font-bold text-white shadow-md"
+                >
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -132,9 +132,9 @@ export interface AgenteMunicipalEspecialista {
 export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   {
     id: "agent-prensa-redes",
-    codigoAgente: "NEX-ITU-PRENSA-01",
-    nombrePuesto: "Agente de Prensa Oficial, Escucha Social y Radar de Redes",
-    secretaria: "Dirección de Prensa y Comunicación Institucional (Bajo mando directo de Susy)",
+    codigoAgente: "SEC-PRENSA-COMUNICACION",
+    nombrePuesto: "Dirección de Prensa y Comunicación",
+    secretaria: "Dirección de Prensa y Comunicación Institucional",
     icono: "📡",
     estadoOperativo: "MONITOREANDO",
     misionPrincipal:
@@ -150,8 +150,8 @@ export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   },
   {
     id: "agent-obras-servicios",
-    codigoAgente: "NEX-ITU-OBRAS-02",
-    nombrePuesto: "Agente de Obras Públicas, Luminarias LED, Bacheo y Limpieza",
+    codigoAgente: "SEC-OBRAS-SERVICIOS",
+    nombrePuesto: "Secretaría de Obras y Servicios Públicos",
     secretaria: "Secretaría de Obras y Servicios Públicos",
     icono: "🚧",
     estadoOperativo: "ACTIVO_EN_TERRENO",
@@ -168,8 +168,8 @@ export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   },
   {
     id: "agent-transito-seguridad",
-    codigoAgente: "NEX-ITU-VIAL-03",
-    nombrePuesto: "Agente de Tránsito, Licencias CENAT y Seguridad Ciudadana",
+    codigoAgente: "DIR-TRANSITO-SEGURIDAD",
+    nombrePuesto: "Dirección de Tránsito y Seguridad Vial",
     secretaria: "Dirección de Tránsito, Transporte y Guardia Urbana",
     icono: "🚓",
     estadoOperativo: "GUARDIA_24HS",
@@ -186,8 +186,8 @@ export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   },
   {
     id: "agent-rentas-comercio",
-    codigoAgente: "NEX-ITU-RENTAS-04",
-    nombrePuesto: "Agente de Hacienda, Rentas, Bromatología y Habilitaciones",
+    codigoAgente: "SEC-HACIENDA-RENTAS",
+    nombrePuesto: "Secretaría de Hacienda, Rentas y Comercio",
     secretaria: "Secretaría de Hacienda, Finanzas y Dirección de Comercio",
     icono: "🏛️",
     estadoOperativo: "MONITOREANDO",
@@ -204,8 +204,8 @@ export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   },
   {
     id: "agent-turismo-ibera",
-    codigoAgente: "NEX-ITU-TURISMO-05",
-    nombrePuesto: "Agente de Turismo, Playas del Paraná, Yacyretá y Portal Cambyretá",
+    codigoAgente: "SEC-TURISMO-CULTURA",
+    nombrePuesto: "Secretaría de Turismo y Cultura",
     secretaria: "Secretaría de Turismo, Cultura y Deporte",
     icono: "🏖️",
     estadoOperativo: "ACTIVO_EN_TERRENO",
@@ -222,8 +222,8 @@ export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   },
   {
     id: "agent-social-salud",
-    codigoAgente: "NEX-ITU-SOCIAL-06",
-    nombrePuesto: "Agente de Acción Social, Salud Comunitaria, Discapacidad (CUD/TEA) y Zoonosis",
+    codigoAgente: "SEC-ACCION-SOCIAL",
+    nombrePuesto: "Secretaría de Acción Social y Salud",
     secretaria: "Secretaría de Acción Social, Desarrollo Humano y Salud",
     icono: "🤝",
     estadoOperativo: "ACTIVO_EN_TERRENO",
@@ -240,8 +240,8 @@ export const TREN_AGENTICO_SUSY: AgenteMunicipalEspecialista[] = [
   },
   {
     id: "agent-defensa-civil",
-    codigoAgente: "NEX-ITU-DEFCIVIL-07",
-    nombrePuesto: "Agente de Defensa Civil, Alerta Hidrometeorológica y Red VHF/Mesh",
+    codigoAgente: "DIR-DEFENSA-CIVIL",
+    nombrePuesto: "Dirección de Defensa Civil y Emergencias",
     secretaria: "Dirección de Defensa Civil y Guardia de Emergencias",
     icono: "🛟",
     estadoOperativo: "GUARDIA_24HS",
@@ -288,7 +288,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 142,
     principalesTemasRedes: ["Feria de Artesanos Plaza San Martín", "Iluminación Av. Centenario", "Obra teatral Centro Cultural"],
     tendenciaPrincipal: "Alta valoración en Instagram y Facebook por la agenda cultural gratuita y el ordenamiento del microcentro.",
-    agenteAsignadoCodigo: "NEX-ITU-PRENSA-01",
+    agenteAsignadoCodigo: "SEC-PRENSA-COMUNICACION",
     ultimaActualizacion: "Hace 4 min",
   },
   {
@@ -301,7 +301,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 78,
     principalesTemasRedes: ["Recolección diferenciada", "Comercios habilitados", "Seguridad vial"],
     tendenciaPrincipal: "Conversación vecinal favorable sobre limpieza urbana y actividad comercial.",
-    agenteAsignadoCodigo: "NEX-ITU-VIAL-03",
+    agenteAsignadoCodigo: "DIR-TRANSITO-SEGURIDAD",
     ultimaActualizacion: "Hace 8 min",
   },
   {
@@ -314,7 +314,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 95,
     principalesTemasRedes: ["Obras de cordón cuneta", "Recambio LED en ejecución", "Visita del Intendente"],
     tendenciaPrincipal: "Repercusión positiva en grupos barriales por el avance de pavimentación y nuevas luces LED.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 5 min",
   },
   {
@@ -327,7 +327,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 164,
     principalesTemasRedes: ["Operativo sanitario mañana", "Pedidos de poda", "Turnos de licencia"],
     tendenciaPrincipal: "Alta expectativa vecinal por el operativo 'El Municipio en tu Barrio' en el SUM comunitario.",
-    agenteAsignadoCodigo: "NEX-ITU-SOCIAL-06",
+    agenteAsignadoCodigo: "SEC-ACCION-SOCIAL",
     ultimaActualizacion: "Hace 3 min",
   },
   {
@@ -340,7 +340,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 89,
     principalesTemasRedes: ["Reposición de luminarias LED", "Perfilado de calles internas", "Fumigación preventiva"],
     tendenciaPrincipal: "Vecinos solicitan por Facebook reforzar el alumbrado en dos cuadras internas; cuadrilla ya asignada.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 6 min",
   },
   {
@@ -353,7 +353,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 63,
     principalesTemasRedes: ["Atención Primaria de la Salud", "Desmalezamiento de plaza", "Actividades deportivas"],
     tendenciaPrincipal: "Buen ánimo comunitario tras tareas de mantenimiento en espacios verdes.",
-    agenteAsignadoCodigo: "NEX-ITU-SOCIAL-06",
+    agenteAsignadoCodigo: "SEC-ACCION-SOCIAL",
     ultimaActualizacion: "Hace 11 min",
   },
   {
@@ -366,7 +366,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 52,
     principalesTemasRedes: ["Corredor costero", "Recolección de ramas", "Seguridad nocturna"],
     tendenciaPrincipal: "Reconocimiento vecinal por la rapidez en el retiro de restos de poda.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 14 min",
   },
   {
@@ -379,7 +379,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 112,
     principalesTemasRedes: ["Reclamo por luminarias apagadas", "Zanjeo y desagües pluviales", "Bacheo en esquina"],
     tendenciaPrincipal: "Reclamos activos en redes por luminarias apagadas tras la última lluvia; prioridad alta para Electrotecnia.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 2 min",
   },
   {
@@ -392,7 +392,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 74,
     principalesTemasRedes: ["Frecuencia de recolección", "Desmalezado costero", "Bajada de lanchas"],
     tendenciaPrincipal: "Pedidos de refuerzo de desmalezado y mantenimiento del acceso hacia el río.",
-    agenteAsignadoCodigo: "NEX-ITU-DEFCIVIL-07",
+    agenteAsignadoCodigo: "DIR-DEFENSA-CIVIL",
     ultimaActualizacion: "Hace 9 min",
   },
   {
@@ -405,7 +405,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 47,
     principalesTemasRedes: ["Patrimonio histórico", "Limpieza de veredas", "Iluminación peatonal"],
     tendenciaPrincipal: "Clima vecinal muy favorable y alta participación en actividades culturales.",
-    agenteAsignadoCodigo: "NEX-ITU-PRENSA-01",
+    agenteAsignadoCodigo: "SEC-PRENSA-COMUNICACION",
     ultimaActualizacion: "Hace 15 min",
   },
   {
@@ -418,7 +418,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 41,
     principalesTemasRedes: ["Habilitaciones comerciales", "Alumbrado público", "Recolección domiciliaria"],
     tendenciaPrincipal: "Conformidad con los servicios públicos y movimiento comercial estable.",
-    agenteAsignadoCodigo: "NEX-ITU-RENTAS-04",
+    agenteAsignadoCodigo: "SEC-HACIENDA-RENTAS",
     ultimaActualizacion: "Hace 18 min",
   },
   {
@@ -431,7 +431,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 58,
     principalesTemasRedes: ["Plazoleta del barrio", "Poda preventiva", "Señalización vial"],
     tendenciaPrincipal: "Solicitudes puntuales de poda preventiva cerca del tendido eléctrico.",
-    agenteAsignadoCodigo: "NEX-ITU-DEFCIVIL-07",
+    agenteAsignadoCodigo: "DIR-DEFENSA-CIVIL",
     ultimaActualizacion: "Hace 12 min",
   },
   {
@@ -444,7 +444,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 49,
     principalesTemasRedes: ["Barrido urbano", "Turnos municipales", "Vacunación antirrábica"],
     tendenciaPrincipal: "Buena recepción del cronograma de zoonosis y limpieza barrial.",
-    agenteAsignadoCodigo: "NEX-ITU-SOCIAL-06",
+    agenteAsignadoCodigo: "SEC-ACCION-SOCIAL",
     ultimaActualizacion: "Hace 16 min",
   },
   {
@@ -457,7 +457,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 67,
     principalesTemasRedes: ["Arreglo de calles de ripio", "Cunetas pluviales", "Luminaria en parada"],
     tendenciaPrincipal: "Pedidos vecinales de repaso con motoniveladora en arterias principales.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 7 min",
   },
   {
@@ -470,7 +470,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 44,
     principalesTemasRedes: ["Asistencia social", "Talleres comunitarios", "Alumbrado"],
     tendenciaPrincipal: "Participación activa de familias en talleres municipales y capilla barrial.",
-    agenteAsignadoCodigo: "NEX-ITU-SOCIAL-06",
+    agenteAsignadoCodigo: "SEC-ACCION-SOCIAL",
     ultimaActualizacion: "Hace 20 min",
   },
   {
@@ -483,7 +483,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 38,
     principalesTemasRedes: ["Recolección de residuos", "Zoonosis", "Espacios recreativos"],
     tendenciaPrincipal: "Estabilidad en servicios y buena valoración del mantenimiento de plazas.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 22 min",
   },
   {
@@ -496,7 +496,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 55,
     principalesTemasRedes: ["Operativo descacharrado", "Fumigación", "Atención primaria"],
     tendenciaPrincipal: "Vecinos destacan el operativo preventivo contra el dengue.",
-    agenteAsignadoCodigo: "NEX-ITU-SOCIAL-06",
+    agenteAsignadoCodigo: "SEC-ACCION-SOCIAL",
     ultimaActualizacion: "Hace 13 min",
   },
   {
@@ -509,7 +509,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 36,
     principalesTemasRedes: ["Mantenimiento de calles", "Iluminación LED", "Seguridad"],
     tendenciaPrincipal: "Clima barrial tranquilo con pedidos puntuales de poda.",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     ultimaActualizacion: "Hace 25 min",
   },
   {
@@ -522,7 +522,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 118,
     principalesTemasRedes: ["Ocupación cabañas y hoteles", "Gastronomía costera", "Paseos náuticos"],
     tendenciaPrincipal: "Fuerte entusiasmo en redes por el movimiento turístico de fin de semana y playas impecables.",
-    agenteAsignadoCodigo: "NEX-ITU-TURISMO-05",
+    agenteAsignadoCodigo: "SEC-TURISMO-CULTURA",
     ultimaActualizacion: "Hace 5 min",
   },
   {
@@ -535,7 +535,7 @@ export const BARRIOS_HUMOR_SOCIAL_INICIAL: HumorSocialBarrio[] = [
     mencionesRedes24h: 82,
     principalesTemasRedes: ["Playas y paradores", "Visitas a Represa Yacyretá", "Sunset Costanera"],
     tendenciaPrincipal: "Excelente valoración de turistas y vecinos sobre la limpieza y seguridad costera.",
-    agenteAsignadoCodigo: "NEX-ITU-TURISMO-05",
+    agenteAsignadoCodigo: "SEC-TURISMO-CULTURA",
     ultimaActualizacion: "Hace 6 min",
   },
 ];
@@ -568,7 +568,7 @@ const INITIAL_OPERATIONS_LOG: RegistroOperacionAgentica[] = [
     timestamp: "Hace 2 min",
     canal: "VOZ_LIVE",
     barrioDetectado: "Barrio Iberá",
-    agenteAsignadoCodigo: "NEX-ITU-OBRAS-02",
+    agenteAsignadoCodigo: "SEC-OBRAS-SERVICIOS",
     agenteNombre: "Agente de Obras Públicas, Luminarias LED y Bacheo",
     agenteIcono: "🚧",
     consultaVecino: "Reclamo por dos luminarias LED apagadas en esquina tras la lluvia.",
@@ -583,7 +583,7 @@ const INITIAL_OPERATIONS_LOG: RegistroOperacionAgentica[] = [
     timestamp: "Hace 5 min",
     canal: "CHAT_WEB",
     barrioDetectado: "General Manuel Belgrano",
-    agenteAsignadoCodigo: "NEX-ITU-RENTAS-04",
+    agenteAsignadoCodigo: "SEC-HACIENDA-RENTAS",
     agenteNombre: "Agente de Hacienda, Rentas y Permisos QR",
     agenteIcono: "🏛️",
     consultaVecino: "Solicitud de permiso provisorio de poda de ramas frente al domicilio.",
@@ -598,7 +598,7 @@ const INITIAL_OPERATIONS_LOG: RegistroOperacionAgentica[] = [
     timestamp: "Hace 9 min",
     canal: "ESCANER_REDES",
     barrioDetectado: "Casco Céntrico",
-    agenteAsignadoCodigo: "NEX-ITU-PRENSA-01",
+    agenteAsignadoCodigo: "SEC-PRENSA-COMUNICACION",
     agenteNombre: "Agente de Prensa Oficial y Escucha Social",
     agenteIcono: "📡",
     consultaVecino: "Monitoreo de menciones en Instagram y Facebook sobre la Feria de Artesanos y obra teatral.",
@@ -613,7 +613,7 @@ const INITIAL_OPERATIONS_LOG: RegistroOperacionAgentica[] = [
     timestamp: "Hace 14 min",
     canal: "CHAT_WEB",
     barrioDetectado: "Mil Viviendas",
-    agenteAsignadoCodigo: "NEX-ITU-VIAL-03",
+    agenteAsignadoCodigo: "DIR-TRANSITO-SEGURIDAD",
     agenteNombre: "Agente de Tránsito y Licencias CENAT",
     agenteIcono: "🚓",
     consultaVecino: "Consulta de costos y turno para renovación de Licencia de Conducir Categoría B.",
@@ -637,27 +637,60 @@ export function obtenerBitacoraOperacionesAgenticas(): RegistroOperacionAgentica
   return INITIAL_OPERATIONS_LOG;
 }
 
+export function archivarYEliminarOperacionAgentica(id: string): RegistroOperacionAgentica | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const actual = obtenerBitacoraOperacionesAgenticas();
+    const target = actual.find((o) => o.id === id);
+    if (!target) return null;
+    const actualizado = actual.filter((o) => o.id !== id);
+    localStorage.setItem(STORAGE_KEY_OPERATIONS_LOG, JSON.stringify(actualizado));
+    window.dispatchEvent(new Event("susy_agentic_ops_updated"));
+    return target;
+  } catch {
+    return null;
+  }
+}
+
+export function modificarOperacionAgentica(
+  id: string,
+  updates: Partial<RegistroOperacionAgentica>
+): RegistroOperacionAgentica | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const actual = obtenerBitacoraOperacionesAgenticas();
+    const idx = actual.findIndex((o) => o.id === id);
+    if (idx === -1) return null;
+    actual[idx] = { ...actual[idx], ...updates };
+    localStorage.setItem(STORAGE_KEY_OPERATIONS_LOG, JSON.stringify(actual));
+    window.dispatchEvent(new Event("susy_agentic_ops_updated"));
+    return actual[idx];
+  } catch {
+    return null;
+  }
+}
+
 function resolverAgenteParaConsulta(texto: string): AgenteMunicipalEspecialista {
   const t = texto.toLowerCase();
   if (/incendio|inundaci|cable|tormenta|alerta|defensa civil|emergencia|auxilio|103|100|107/.test(t)) {
-    return TREN_AGENTICO_SUSY[6]; // NEX-ITU-DEFCIVIL-07
+    return TREN_AGENTICO_SUSY[6]; // DIR-DEFENSA-CIVIL
   }
   if (/bache|pozo|luz|luminaria|led|poda|rama|basura|calle|zanjeo|obra|cord[oó]n/.test(t)) {
-    return TREN_AGENTICO_SUSY[1]; // NEX-ITU-OBRAS-02
+    return TREN_AGENTICO_SUSY[1]; // SEC-OBRAS-SERVICIOS
   }
   if (/licencia|carnet|conducir|cenat|tr[aá]nsito|multa|estacionamiento|vial/.test(t)) {
-    return TREN_AGENTICO_SUSY[2]; // NEX-ITU-VIAL-03
+    return TREN_AGENTICO_SUSY[2]; // DIR-TRANSITO-SEGURIDAD
   }
   if (/tasa|rentas|libre deuda|comercio|habilitaci[oó]n|bromatolog|impuesto|pago/.test(t)) {
-    return TREN_AGENTICO_SUSY[3]; // NEX-ITU-RENTAS-04
+    return TREN_AGENTICO_SUSY[3]; // SEC-HACIENDA-RENTAS
   }
   if (/turismo|playa|yacyret[aá]|iber[aá]|cambyret[aá]|teatro|cultura|chamam[eé]|hotel|caba[ñn]a/.test(t)) {
-    return TREN_AGENTICO_SUSY[4]; // NEX-ITU-TURISMO-05
+    return TREN_AGENTICO_SUSY[4]; // SEC-TURISMO-CULTURA
   }
   if (/salud|cud|discapacidad|tea|acci[oó]n social|vacuna|zoonosis|hospital/.test(t)) {
-    return TREN_AGENTICO_SUSY[5]; // NEX-ITU-SOCIAL-06
+    return TREN_AGENTICO_SUSY[5]; // SEC-ACCION-SOCIAL
   }
-  return TREN_AGENTICO_SUSY[0]; // NEX-ITU-PRENSA-01 por defecto
+  return TREN_AGENTICO_SUSY[0]; // SEC-PRENSA-COMUNICACION por defecto
 }
 
 export function registrarInteraccionEnTrenAgentico(params: {
@@ -814,7 +847,7 @@ export function generarContextoComandoMunicipalItuzaingo(userQuery = ""): string
 [CENTRO DE MANDO Y PRENSA MUNICIPAL — ITUZAINGÓ, CORRIENTES]
 - Jurisdicción EXCLUSIVA: Ciudad de Ituzaingó, Provincia de CORRIENTES (CP W3302, Tel 03786, Palacio Municipal: Av. Centenario 1519). PROHIBIDO confundir con Ituzaingó (Buenos Aires).
 - Autoridades: Intendente José Emilio Nicolás (2025-2029) | Viceintendente María Luisa Ojeda.
-- Rol de Susy: Directora Virtual de Atención al Vecino y Directora de Prensa Municipal, al mando del Tren Agéntico de 7 Agentes Especialistas (NEX-ITU-PRENSA-01 Prensa/Redes, NEX-ITU-OBRAS-02 Obras/LED/Bacheo, NEX-ITU-VIAL-03 Tránsito/Licencias, NEX-ITU-RENTAS-04 Rentas/Comercio, NEX-ITU-TURISMO-05 Turismo/Iberá/Yacyretá, NEX-ITU-SOCIAL-06 Acción Social/Salud/TEA, NEX-ITU-DEFCIVIL-07 Defensa Civil 103).
+- Rol de Susy: Directora Virtual de Atención al Vecino y Directora de Prensa Municipal, al mando del Tren Agéntico de 7 Agentes Especialistas de cada Secretaría Municipal (SEC-PRENSA-COMUNICACION Prensa/Redes, SEC-OBRAS-SERVICIOS Obras/LED/Bacheo, DIR-TRANSITO-SEGURIDAD Tránsito/Licencias, SEC-HACIENDA-RENTAS Rentas/Comercio, SEC-TURISMO-CULTURA Turismo/Iberá/Yacyretá, SEC-ACCION-SOCIAL Acción Social/Salud/TEA, DIR-DEFENSA-CIVIL Defensa Civil 103).
 - Agenda del Intendente hoy: Supervisión de pavimentación y LED en B° Belgrano y San Jorge (08:30 hs); Mesa Turística Costanera y Portal Cambyretá en Palacio Municipal (11:00 hs); mañana 09:00 hs Operativo 'El Municipio en tu Barrio' en SUM B° Mil Viviendas y San Cayetano; viernes 18:30 hs Microcréditos en Centro Cultural; sábado 19:30 hs Inauguración defensas costeras en Playa Stella Maris.
 - Termómetro Social en Redes (Ánimo Global 76% positivo en los 20 barrios): Destacan Casco Céntrico (86%), Portal del Sol (88%), La Florida (85%), B° San Martín (83%), B° Belgrano (79%) y Mil Viviendas (74%). Focos con cuadrillas priorizadas por reclamos de LED/calles: B° Iberá (61%), Rincón Santa María (64%), Cazadores Correntinos (66%) y San Jorge (68%).${extraBlocks}`.trim();
 }
