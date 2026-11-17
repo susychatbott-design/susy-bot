@@ -115,8 +115,8 @@ function isUselessOrNoiseTranscript(raw: string): boolean {
  */
 export function useSusyLive(options: UseSusyLiveOptions = {}) {
   const {
-    wsUrl = "ws://localhost:3010/tts-stream",
-    wsTimeoutMs = 3000,
+    wsUrl = "",
+    wsTimeoutMs = 0,
     crossfadeOverlapMs = 18,
     messages = [],
     sessionId = null,
@@ -694,6 +694,15 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
   // =========================================================================
   const connectWebSocket = useCallback((): void => {
     if (typeof window === "undefined") return;
+    if (!wsUrl || wsUrl.trim().length === 0) {
+      wsFallbackModeRef.current = true;
+      setState((prev) => ({
+        ...prev,
+        isWsConnected: false,
+        isUsingFallback: true,
+      }));
+      return;
+    }
     if (
       wsRef.current &&
       (wsRef.current.readyState === WebSocket.OPEN ||
@@ -1412,7 +1421,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       let silenceStartTs: number | null = null;
       let speechStartTs = 0;
       let consecutiveVoiceFrames = 0;
-      const redemptionSilenceMs = 550;
+      const redemptionSilenceMs = 420;
+      const maxSpeechDurationMs = 7000;
 
       setState((prev) => ({
         ...prev,
@@ -1451,8 +1461,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
           isFallbackSpeakingRef.current ||
           activeUtterancesRef.current.length > 0;
         // Durante reproducción (WS o Fallback), exigir umbral más alto y más frames sostenidos para permitir Barge-in real sin auto-escucharse
-        const threshold = isSystemSpeakingNow ? 0.065 : 0.032;
-        const requiredFrames = isSystemSpeakingNow ? 6 : 4;
+        const threshold = isSystemSpeakingNow ? 0.065 : 0.030;
+        const requiredFrames = isSystemSpeakingNow ? 6 : 3;
 
         if (!isSpeakingRef.current) {
           if (rms >= threshold) {
@@ -1476,8 +1486,8 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
               recorder.onstop = () => {
                 const duration = performance.now() - speechStartTs;
                 const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-                // Ignorar ruidos cortos (< 420ms o < 1500 bytes) tras una interrupción Barge-in
-                if (duration >= 420 && blob.size > 1500) {
+                // Ignorar ruidos muy cortos (< 380ms o < 1200 bytes) tras una interrupción Barge-in
+                if (duration >= 380 && blob.size > 1200) {
                   processAudioUtterance(blob).catch(() => {});
                 } else {
                   unlockVadAndResetAudioState();
@@ -1490,10 +1500,14 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
             consecutiveVoiceFrames = 0;
           }
         } else {
-          if (rms < 0.016) {
+          // Si el audio supera la duración máxima recomendada para una frase conversacional, forzar corte
+          const isMaxDurationReached = now - speechStartTs >= maxSpeechDurationMs;
+          const isSilent = rms < 0.024; // Umbral de silencio dinámico mejorado para tolerar ruido ambiente moderado
+
+          if (isSilent || isMaxDurationReached) {
             if (silenceStartTs === null) {
               silenceStartTs = now;
-            } else if (now - silenceStartTs >= redemptionSilenceMs) {
+            } else if (now - silenceStartTs >= redemptionSilenceMs || isMaxDurationReached) {
               isSpeakingRef.current = false;
               silenceStartTs = null;
               setState((prev) => ({ ...prev, isUserSpeaking: false }));

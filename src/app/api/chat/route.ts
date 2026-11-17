@@ -702,15 +702,17 @@ export async function POST(req: Request) {
         new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
       ]);
 
+    const isVoiceCall = interactionMode === "voice";
+
     const [weatherData, ragNewsData, ragBizData, continuousUserMemory, municipalKnowledge] = await Promise.all([
-      isWeatherExplicit ? withTimeout(fetchRealtimeWeather(), 900, null) : Promise.resolve(null),
-      supabase ? withTimeout(fetchSemanticArticlesRAG(supabase, effectiveMessage), 1500, "") : Promise.resolve(""),
-      supabase ? withTimeout(fetchDirectoryBusinessesRAG(supabase, effectiveMessage), 1200, "") : Promise.resolve(""),
-      (supabase && user_id) ? withTimeout(fetchUserContinuousMemory(supabase, user_id), 1000, null) : Promise.resolve(null),
+      isWeatherExplicit ? withTimeout(fetchRealtimeWeather(), 750, null) : Promise.resolve(null),
+      (supabase && !isVoiceCall) ? withTimeout(fetchSemanticArticlesRAG(supabase, effectiveMessage), 1200, "") : Promise.resolve(""),
+      (supabase && !isVoiceCall) ? withTimeout(fetchDirectoryBusinessesRAG(supabase, effectiveMessage), 1000, "") : Promise.resolve(""),
+      (supabase && user_id && !isVoiceCall) ? withTimeout(fetchUserContinuousMemory(supabase, user_id), 800, null) : Promise.resolve(null),
       supabase
         ? withTimeout(
             fetchMunicipalKnowledgeRAG(supabase, effectiveMessage),
-            1600,
+            isVoiceCall ? 800 : 1600,
             { contextText: "", maxConfidence: 0, hasDirectMatch: false }
           )
         : Promise.resolve({ contextText: "", maxConfidence: 0, hasDirectMatch: false })

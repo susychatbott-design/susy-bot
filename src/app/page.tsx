@@ -170,8 +170,8 @@ export default function SusyBotPage() {
 
   const [vadEnabled, setVadEnabled] = useState<boolean>(false);
   const susyLive = useSusyLive({
-    wsUrl: "ws://localhost:3010/tts-stream",
-    wsTimeoutMs: 3000,
+    wsUrl: "",
+    wsTimeoutMs: 0,
     crossfadeOverlapMs: 18,
     messages: chat.messages.map((m) => ({
       role: m.role,
@@ -179,8 +179,11 @@ export default function SusyBotPage() {
     })),
     sessionId: chat.sessionId,
     mode: chat.activeMode,
-    onAssistantComplete: (fullResponse: string) => {
+    onAssistantComplete: (fullResponse: string, userTranscript: string) => {
       processAssistantMunicipalActions(fullResponse);
+      if (userTranscript && fullResponse) {
+        chat.appendTurn(userTranscript, fullResponse);
+      }
     },
   });
 
@@ -465,16 +468,25 @@ export default function SusyBotPage() {
         deviceLongitude={deviceCapabilities.location?.longitude ?? null}
       />
 
-      {/* VISOR INMERSIVO DE CÁMARA TITÁN (BOUNDING BOXES TENSORFLOW.JS + ALERTAS 360°) */}
+      {/* HUD TÁCTICO NORA LIVE EXTERIORES (RELEVAMIENTO URBANO, RURAL Y SINIESTROS VIALES) */}
       <SusyVisionViewport
         isCameraActive={vision.isCameraActive}
         onCloseCamera={vision.stopCamera}
         videoRef={vision.videoRef}
-        canvasRef={vision.canvasRef}
-        alerts={vision.alerts}
-        telemetry={vision.telemetry}
         isProcessing={vision.isProcessing}
-        criticalHazardDetected={vision.criticalHazardDetected}
+        currentGps={vision.currentGps}
+        onToggleFacingMode={vision.toggleCameraFacing}
+        onEvidenceCaptured={(evidence, category) => {
+          setSelectedImageBase64(evidence.imageBase64);
+          const gpsNote = evidence.gps
+            ? ` en coordenadas GPS (${evidence.gps.latitude.toFixed(4)}, ${evidence.gps.longitude.toFixed(4)})`
+            : "";
+          const prompt =
+            category === "siniestro_vial" || category === "defensa_civil"
+              ? `[ALERTA SINIESTRO/DEFENSA CIVIL${gpsNote}]: Envío fotografía capturada en vivo. Por favor evaluá la gravedad de la problemática para derivar a las cuadrillas y notificar a emergencias.`
+              : `[RELEVAMIENTO EXTERIORES${gpsNote}]: Adjunto fotografía para registrar el reclamo municipal correspondiente a ${category}.`;
+          handleSendUserQuery(prompt);
+        }}
       />
 
       {/* ÁREA CENTRAL DINÁMICA (CONMUTACIÓN ENTRE PANELES MUNICIPALES, CONVERSACIÓN Y ACCESIBILIDAD) */}

@@ -617,6 +617,32 @@ export function useSusyChat(options: UseSusyChatOptions = {}) {
     );
   }, []);
 
+  const appendTurn = useCallback((userText: string, assistantText: string): void => {
+    const userMsg: ChatMessage = {
+      id: `usr-live-${Date.now()}`,
+      role: "user",
+      content: userText,
+      timestamp: new Date().toISOString(),
+      mode: state.activeMode,
+    };
+    const assistantMsg: ChatMessage = {
+      id: `asst-live-${Date.now() + 1}`,
+      role: "assistant",
+      content: assistantText,
+      timestamp: new Date().toISOString(),
+      mode: state.activeMode,
+    };
+
+    messagesRef.current = [...messagesRef.current, userMsg, assistantMsg];
+    setState((prev) => ({
+      ...prev,
+      messages: messagesRef.current,
+      isLoading: false,
+      isStreaming: false,
+      currentResponseStream: "",
+    }));
+  }, [state.activeMode]);
+
   const clearChat = useCallback((): void => {
     startNewChat();
   }, [startNewChat]);
@@ -627,6 +653,7 @@ export function useSusyChat(options: UseSusyChatOptions = {}) {
     userId: currentUserId,
     setMode,
     sendMessage,
+    appendTurn,
     stopStreaming,
     clearChat,
     startNewChat,

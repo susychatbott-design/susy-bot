@@ -48,8 +48,8 @@ export default function SusyRealtimeCallModal({
   const { isOnline, coords } = useSusyOfflineGPS();
   const { emitSinglePulse, startDangerAlertLoop, clearHapticAlerts } = useSusyLazarilloHaptics();
   const susyLive = useSusyLive({
-    wsUrl: "ws://localhost:3010/tts-stream",
-    wsTimeoutMs: 3000,
+    wsUrl: "",
+    wsTimeoutMs: 0,
     mode: activeMode,
   });
   const isTtsFallbackActive = isUsingFallback || susyLive.isUsingFallback;
@@ -936,8 +936,8 @@ export default function SusyRealtimeCallModal({
       };
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const SILENCE_TIMEOUT_MS = 1350;
-      const MAX_SPEECH_DURATION_MS = 45000;
+      const SILENCE_TIMEOUT_MS = 550;
+      const MAX_SPEECH_DURATION_MS = 12000;
 
       setIsEngineReady(true);
       setCallState("listening");
