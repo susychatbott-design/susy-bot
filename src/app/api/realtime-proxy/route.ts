@@ -23,27 +23,13 @@ import { analyzeVecino, buildSusyPnlContext, SUSY_ORAL_CADENCE_MODULE } from "@/
  * Las frases cortas fluyen directamente al speaker sin latencia.
  */
 function atomizeSentencesForMobile(text: string): string {
-  // Primero dividir en oraciones reales por puntuación
-  const sentences = text
-    .replace(/([.!?])/g, "$1\n")
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const atomic: string[] = [];
-  for (const sentence of sentences) {
-    const words = sentence.split(/\s+/);
-    if (words.length <= 15) {
-      atomic.push(sentence);
-    } else {
-      // Partir en chunks de 12 palabras para margen de seguridad
-      for (let i = 0; i < words.length; i += 12) {
-        const chunk = words.slice(i, i + 12).join(" ");
-        atomic.push(chunk.endsWith(".") || chunk.endsWith(",") ? chunk : chunk + ",");
-      }
-    }
-  }
-  return atomic.join(" ").replace(/,\s*\./g, ".").trim();
+  // Mantener oraciones reales y completas (. ? ! \n)
+  // No forzar comas arbitrarias en oraciones de más de 12 palabras,
+  // ya que provocaban que en los navegadores móviles la locución se corte en la 4ta palabra.
+  return text
+    .replace(/([.!?]+)/g, "$1 ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 

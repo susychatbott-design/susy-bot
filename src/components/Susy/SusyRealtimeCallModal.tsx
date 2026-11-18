@@ -438,31 +438,41 @@ export default function SusyRealtimeCallModal({
 
       setAccessibleAnnouncement("Susy está respondiendo.");
 
-      // Reproducción continua mediante agrupación por oraciones completas (. ? ! \n) y retención en useRef<SpeechSynthesisUtterance[]>
+      // Reproducción continua de oraciones completas con Keep-Alive anti-freeze para Chrome móvil
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
-          fallbackTextBufferRef.current = spokenText;
-          // ⚡ FASE 7.7: Fragmentación de baja latencia (primer fragmento corto + cortes en comas)
-          const { chunks: speakableChunks, rest: trailingText } = extractSpeakableChunks(
-            fallbackTextBufferRef.current,
-            { isFirstChunk: true, firstChunkWords: 6 }
-          );
-          const rawSentences = [...speakableChunks, trailingText.trim()].filter(
-            (s) => s.length > 0
-          );
+          // Dividir exclusivamente por puntuación de oraciones reales (. ? ! \n), nunca en comas
+          // para evitar que en Android Chrome se congele o quede muda tras 4 palabras
+          const cleanSentences = spokenText
+            .replace(/([.!?]+|\n+)/g, "$1\n")
+            .split("\n")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
 
-          fallbackTextBufferRef.current = "";
           fallbackSentenceQueueRef.current =
-            rawSentences.length > 0 ? [...rawSentences] : [spokenText];
+            cleanSentences.length > 0 ? [...cleanSentences] : [spokenText];
           isFallbackSpeakingRef.current = true;
-          // 🛡️ LOCKOUT VAD DE 1800ms: Protege a Susy de auto-interrumpirse con su propio parlante en el celular
-          vadLockoutUntilRef.current = Date.now() + 1800;
+          // 🛡️ LOCKOUT VAD DE 2200ms: Protege a Susy de auto-interrumpirse con su propio parlante en el celular
+          vadLockoutUntilRef.current = Date.now() + 2200;
 
-          const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 7) * 1000) + 6000);
+          const estimatedDurationMs = Math.max(18000, Math.round((spokenText.length / 6) * 1000) + 8000);
 
           primeLatinVoices();
 
           resetSpeechHeartbeat(estimatedDurationMs);
+
+          // 💓 KEEP-ALIVE PULSE PARA ANDROID / CHROME:
+          // En móviles Chrome pone en pausa el sintetizador cada 2-3 segundos si no se pulsa .resume().
+          if (speechKeepAliveRef.current) {
+            clearInterval(speechKeepAliveRef.current);
+          }
+          speechKeepAliveRef.current = setInterval(() => {
+            if (typeof window !== "undefined" && "speechSynthesis" in window) {
+              if (window.speechSynthesis.speaking && window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+              }
+            }
+          }, 2000);
 
           const currentEpoch = fallbackEpochRef.current;
 
