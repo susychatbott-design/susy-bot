@@ -260,6 +260,20 @@ export function SusyHeader({
           <span>SOS</span>
         </button>
 
+        {/* 📲 BOTÓN COMPARTIR / QR / WHATSAPP (SIEMPRE VISIBLE EN MÓVIL Y PC) */}
+        {onOpenShareModal && (
+          <button
+            type="button"
+            onClick={onOpenShareModal}
+            className="flex items-center justify-center gap-1 min-w-[42px] min-h-[42px] sm:min-w-[48px] sm:min-h-[48px] px-2.5 sm:px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 active:scale-95 text-white text-xs font-extrabold shadow-md shadow-emerald-950/40 border border-emerald-400/40 transition-all cursor-pointer shrink-0"
+            title="Compartir Susy Bot por WhatsApp o mostrar código QR"
+            aria-label="Compartir Susy Bot por WhatsApp o Código QR"
+          >
+            <Share2 size={16} />
+            <span className="hidden xs:inline">Compartir</span>
+          </button>
+        )}
+
         {/* 📞 BOTÓN CRÍTICO 2: LLAMADA DE VOZ EN TIEMPO REAL (SIEMPRE VISIBLE EN MÓVIL Y PC + Audio Primer Fase 7.6) */}
         <button
           type="button"

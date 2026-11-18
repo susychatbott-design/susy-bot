@@ -19,6 +19,7 @@ import {
   FileCheck2,
   BarChart3,
   Sparkles,
+  Share2,
 } from "lucide-react";
 
 // 1. Ecosistema Sensorial de Hooks Desacoplados (Fase 1)
@@ -557,6 +558,16 @@ export default function SusyBotPage() {
           )}
           {/* BARRA RÁPIDA DE MÓDULOS MUNICIPALES (DEFENSA CIVIL, SECRETARÍAS, COMERCIOS, PRENSA, GESTIÓN) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setShowShareQRModal(true)}
+              className="min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-700/80 hover:bg-emerald-600 text-white border border-emerald-400/50 flex items-center gap-1.5 shrink-0 cursor-pointer transition-all shadow-md shadow-emerald-950/40"
+              title="Compartir Susy Bot por WhatsApp o mostrar código QR"
+            >
+              <Share2 size={14} />
+              <span>Compartir / WhatsApp</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowOfficesGrid((v) => !v)}
