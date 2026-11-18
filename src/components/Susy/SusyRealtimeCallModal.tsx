@@ -455,7 +455,8 @@ export default function SusyRealtimeCallModal({
           fallbackSentenceQueueRef.current =
             rawSentences.length > 0 ? [...rawSentences] : [spokenText];
           isFallbackSpeakingRef.current = true;
-          vadLockoutUntilRef.current = Date.now() + 420;
+          // 🛡️ LOCKOUT VAD DE 1800ms: Protege a Susy de auto-interrumpirse con su propio parlante en el celular
+          vadLockoutUntilRef.current = Date.now() + 1800;
 
           const estimatedDurationMs = Math.max(15000, Math.round((spokenText.length / 7) * 1000) + 6000);
 
@@ -549,12 +550,11 @@ export default function SusyRealtimeCallModal({
         } catch (e) {
           console.warn("[SpeechSynthesis Error]:", e);
           clearSpeechHeartbeat();
+          resumeListening();
         }
-      }
-
-      setTimeout(() => {
+      } else {
         resumeListening();
-      }, 3500);
+      }
     },
     [clearSpeechHeartbeat, isMuted, resetSpeechHeartbeat, resumeListening, stopSusySpeech, useSystemScreenReader]
   );
@@ -1048,16 +1048,17 @@ export default function SusyRealtimeCallModal({
           return;
         }
 
-        // 🛡️ BARGE-IN EN MODO FALLBACK (FASE 7.5):
+        // 🛡️ BARGE-IN EN MODO FALLBACK:
         // Si Susy está hablando y el usuario interrumpe con voz humana sostenida por encima del umbral de Barge-in,
         // ejecutar el Kill Switch inmediato (`window.speechSynthesis.cancel()`, vaciar colas y abortar LLM) y grabar la nueva consulta.
         if (isSusySpeakingRef.current) {
           if (interactionModeRef.current === "hands_free") {
-            const bargeInThreshold = Math.max(26, noiseFloorRef.current + 15);
+            // El umbral debe ser claramente superior al audio emitido por el parlante del celular
+            const bargeInThreshold = Math.max(38, noiseFloorRef.current + 22);
             if (avg > bargeInThreshold) {
               if (interruptionSoundStartRef.current === null) {
                 interruptionSoundStartRef.current = now;
-              } else if (now - interruptionSoundStartRef.current >= 260) {
+              } else if (now - interruptionSoundStartRef.current >= 450) {
                 interruptionSoundStartRef.current = null;
                 lastInterruptedResponseRef.current = {
                   text: lastCompletedAssistantTextRef.current,
