@@ -41,6 +41,7 @@ import { MUNICIPAL_COMMERCE_LIST } from "@/lib/susy/municipal/departmentsData";
 import { PanelDefensaCivil } from "@/components/Dashboard/PanelDefensaCivil";
 import { PanelTrenAgenticoYBarrios } from "@/components/Dashboard/PanelTrenAgenticoYBarrios";
 import { PanelArchivoHistorico } from "@/components/Dashboard/PanelArchivoHistorico";
+import { NoraCopilot } from "@/components/Dashboard/NoraCopilot";
 import { municipalArchive } from "@/lib/susy/municipal/municipalArchiveStore";
 import { Trash2, Edit3, Archive } from "lucide-react";
 
@@ -868,6 +869,9 @@ export default function MunicipalDashboardPage() {
         onClose={() => setSelectedDoc(null)}
         documentData={selectedDoc}
       />
+
+      {/* Copilot Técnico en Vivo para Asistencia de Operadores */}
+      <NoraCopilot />
     </div>
   );
 }
