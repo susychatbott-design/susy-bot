@@ -19,8 +19,8 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
   {
     id: "documento",
     token: "documento",
-    emoji: "🪪",
-    arasaacId: 2465,
+    emoji: "📄",
+    arasaacId: 21802,
     label: "Documento / DNI",
     prompt: "El vecino seleccionó el pictograma [PICTO: documento]. Necesito saber qué documentos o DNI debo llevar para mi trámite municipal. Explícame paso a paso con lenguaje literal.",
     category: "municipal",
@@ -31,7 +31,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "ventanilla",
     token: "ventanilla",
     emoji: "🏛️",
-    arasaacId: 6516,
+    arasaacId: 9092,
     label: "Oficina / Ventanilla",
     prompt: "El vecino seleccionó el pictograma [PICTO: ventanilla]. ¿A qué oficina o ventanilla municipal debo ir en Ituzaingó? Responde en pasos cortos y literales.",
     category: "municipal",
@@ -53,7 +53,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "pagar",
     token: "pagar",
     emoji: "💳",
-    arasaacId: 6554,
+    arasaacId: 6457,
     label: "Pagar / Tasa",
     prompt: "El vecino seleccionó el pictograma [PICTO: pagar]. ¿Cuánto cuesta y dónde se paga este trámite municipal? Responde de forma muy breve y literal.",
     category: "municipal",
@@ -64,7 +64,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "firma",
     token: "firma",
     emoji: "✍️",
-    arasaacId: 9016,
+    arasaacId: 12317,
     label: "Firmar / Retirar",
     prompt: "El vecino seleccionó el pictograma [PICTO: firma]. ¿Dónde firmo o retiro mi carnet o permiso municipal?",
     category: "municipal",
@@ -75,7 +75,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "salud",
     token: "salud",
     emoji: "🏥",
-    arasaacId: 3249,
+    arasaacId: 6523,
     label: "Hospital / Salud",
     prompt: "El vecino seleccionó el pictograma [PICTO: salud]. Necesito información del Hospital Billinghurst o farmacias de turno en Ituzaingó. Responde claro y literal.",
     category: "necesidades",
@@ -86,7 +86,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "ayuda",
     token: "ayuda",
     emoji: "🫂",
-    arasaacId: 37418,
+    arasaacId: 12252,
     label: "Necesito Ayuda",
     prompt: "El vecino seleccionó el pictograma [PICTO: ayuda]. Necesito ayuda sencilla y paso a paso.",
     category: "necesidades",
@@ -97,7 +97,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "calma",
     token: "calma",
     emoji: "🛋️",
-    arasaacId: 35665,
+    arasaacId: 31310,
     label: "Pausa / Calma",
     prompt: "El vecino seleccionó el pictograma [PICTO: calma]. Necesito una pausa tranquila sin sobrecarga de información.",
     category: "emociones",
@@ -108,7 +108,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "correcto",
     token: "correcto",
     emoji: "✅",
-    arasaacId: 5526,
+    arasaacId: 5584,
     label: "Sí / Entendido",
     prompt: "Sí, estoy de acuerdo. Muéstrame el siguiente paso.",
     category: "respuestas",
@@ -119,7 +119,7 @@ export const SUSY_ARASAAC_PICTOGRAMS: TEAPictogramItem[] = [
     id: "no",
     token: "no",
     emoji: "❌",
-    arasaacId: 5528,
+    arasaacId: 5526,
     label: "No",
     prompt: "No, gracias. Quiero otra opción simple.",
     category: "respuestas",
@@ -200,9 +200,9 @@ export function SusyTEABoard({
 
   return (
     <div
-      className="fixed left-0 right-0 w-full border-t border-sky-500/25 bg-slate-900/95 backdrop-blur-md px-3 py-2 z-40"
+      className="fixed left-0 right-0 w-full border-t border-sky-500/25 bg-slate-900/98 backdrop-blur-md px-3 py-2 z-30 shadow-2xl transition-all"
       style={{
-        bottom: "calc(4.25rem + env(safe-area-inset-bottom))",
+        bottom: "calc(5.75rem + env(safe-area-inset-bottom, 0px))",
       }}
       role="region"
       aria-label="Tablero de Pictogramas TEA y Comunicación Aumentativa"

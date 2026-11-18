@@ -494,8 +494,8 @@ export default function SusyBotPage() {
 
       {/* ÁREA CENTRAL DINÁMICA (CONMUTACIÓN ENTRE PANELES MUNICIPALES, CONVERSACIÓN Y ACCESIBILIDAD) */}
       <main
-        className={`flex-1 overflow-y-auto pt-20 sm:pt-20 px-3 sm:px-6 scroll-pb-44 ${
-          shouldShowTEABoard ? "pb-68 sm:pb-64" : "pb-36 sm:pb-36"
+        className={`flex-1 overflow-y-auto pt-20 sm:pt-20 px-3 sm:px-6 scroll-pb-48 ${
+          shouldShowTEABoard ? "pb-76 sm:pb-72" : "pb-40 sm:pb-36"
         }`}
       >
         <div className="max-w-4xl mx-auto py-4 space-y-4">

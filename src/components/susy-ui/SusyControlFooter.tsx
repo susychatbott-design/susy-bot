@@ -238,11 +238,11 @@ export function SusyControlFooter({
       </div>
 
       {/* FIRMA INSTITUCIONAL, AVISO DE IA Y CONTACTO TÉCNICO NEXORA ONE */}
-      <div className="w-full max-w-5xl mx-auto mt-1.5 px-2 flex flex-col gap-0.5 text-[10px] text-slate-400">
-        <div className="text-center text-[10px] text-slate-400/90 leading-snug">
-          ⚠️ <strong className="text-slate-300">Aviso:</strong> Susy es un asistente de Inteligencia Artificial; puede cometer errores y no reemplaza la intervención ni el dictamen de un agente municipal humano.
+      <div className="w-full max-w-5xl mx-auto mt-1 px-2 flex flex-col gap-0.5 text-[9.5px] text-slate-400">
+        <div className="text-center text-[9.5px] text-slate-400/90 leading-tight">
+          ⚠️ <strong className="text-slate-300">Aviso:</strong> Susy es un asistente de IA; puede cometer errores y no reemplaza el dictamen de un agente municipal humano.
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[9.5px] text-slate-400">
           <span>
             Desarrollado por <strong className="text-slate-200">Nexora One</strong> • Municipalidad de Ituzaingó
           </span>
