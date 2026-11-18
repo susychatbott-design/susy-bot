@@ -257,7 +257,7 @@ export function SusyTEABoard({
 
       {/* CUADRÍCULA EXPANDIDA O TIRA HORIZONTAL ACCESIBLE (HIT-BOX >= 48x48px) */}
       {isExpanded ? (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-52 overflow-y-auto pb-1">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-56 overflow-y-auto pb-2 pr-1">
           {SUSY_ARASAAC_PICTOGRAMS.map((item) => {
             const arasaacUrl = `https://static.arasaac.org/pictograms/${item.arasaacId}/${item.arasaacId}_300.png`;
             const useEmoji = Boolean(failedImages[item.id]);
@@ -291,7 +291,7 @@ export function SusyTEABoard({
           })}
         </div>
       ) : (
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-sky-500/20">
+        <div className="flex gap-2 overflow-x-auto pb-2 px-1 scrollbar-thin scrollbar-thumb-sky-500/20">
           {SUSY_ARASAAC_PICTOGRAMS.map((item) => {
             const arasaacUrl = `https://static.arasaac.org/pictograms/${item.arasaacId}/${item.arasaacId}_300.png`;
             const useEmoji = Boolean(failedImages[item.id]);
@@ -323,6 +323,8 @@ export function SusyTEABoard({
               </button>
             );
           })}
+          {/* Espaciador de margen final para que la última tarjeta (2️⃣) nunca quede pegada ni cortada en el scroll móvil */}
+          <div className="w-5 shrink-0" aria-hidden="true" />
         </div>
       )}
     </div>

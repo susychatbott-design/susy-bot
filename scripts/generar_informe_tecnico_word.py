@@ -2,7 +2,8 @@
 """
 Generador del Informe Técnico Oficial y Guía de Usuario de Susy Bot
 Diseño Ejecutivo Sobrio y 100% Humano (Escala de Grises / Negro Institucional)
-Sin azules, sin marcas de agua invasivas, con saltos de página limpios y maquetación pulcra.
+Sin azules, sin referencias a no videntes/lazarillo, con claves oficiales de acceso
+y saltos de página limpios y maquetación pulcra.
 """
 
 import docx
@@ -44,13 +45,11 @@ def create_document():
         section.right_margin = Inches(1.0)
         section.page_width = Inches(8.27)  # A4
         section.page_height = Inches(11.69)
-        # Limpiar completamente encabezado y pie para no solapar membretes ni introducir marcas de agua
         section.header.is_linked_to_previous = False
         p_hdr = section.header.paragraphs[0]
         p_hdr.text = ""
 
     # Paleta de Colores Sobria y Profesional (100% Escala de Grises / Grafito / Negro)
-    # CERO azul, celeste ni colores estridentes propios de IA
     COLOR_BLACK = RGBColor(17, 24, 39)       # Negro carbón puro para texto principal
     COLOR_CHARCOAL = RGBColor(55, 65, 81)    # Gris plomo oscuro para títulos en negrita
     COLOR_GRAY_MUTED = RGBColor(107, 114, 128) # Gris medio para subtítulos y datos de contacto
@@ -65,7 +64,7 @@ def create_document():
     col_logo.width = Inches(3.1)
     col_info.width = Inches(3.17)
 
-    # Celda Izquierda: Logo Oficial Nexora One (fondo oscuro nítido)
+    # Celda Izquierda: Logo Oficial Nexora One
     cell_logo = header_table.cell(0, 0)
     cell_logo.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
     logo_path = 'd:/Susy Bot/public/icons/nexora-header-logo.png'
@@ -186,7 +185,7 @@ def create_document():
     bullets = [
         ("• Atención Multimodal (Texto, Audio y Llamada Telefónica en Vivo): ", "El ciudadano puede comunicarse mediante mensajes escritos, notas de voz o iniciar una llamada telefónica en vivo y manos libres desde su teléfono móvil o computadora. Susy responde oralmente con una voz fluida y natural, facilitando la comunicación de quienes no están habituados a escribir en pantallas táctiles."),
         ("• Gestión Pragmática de Reclamos (Cero Trámites Innecesarios): ", "Frente al envío de una fotografía de una rama con riesgo de caída, un bache o una luminaria dañada, el sistema evita cuestionarios innecesarios. Reconoce la ubicación geográfica dentro del radio urbano de Ituzaingó, emite de inmediato el ticket oficial #ITU y lo eleva a la secretaría correspondiente (Obras Públicas, Tránsito o Defensa Civil), liberando al vecino sin demoras."),
-        ("• Accesibilidad Universal y Diseño DUA: ", "Cuenta con tableros de comunicación asistida con pictogramas para vecinos con autismo (TEA), integración con lectores de pantalla (TalkBack en Android y VoiceOver en iOS) y orientación auditiva descriptiva para personas ciegas o con disminución visual."),
+        ("• Accesibilidad Cognitiva y Tablero TEA / ARASAAC: ", "Incorpora tableros de comunicación alternativa con pictogramas oficiales estandarizados (documento, ventanilla, esperar, pagar, etc.) para vecinos y niños dentro del espectro autista (TEA), permitiendo una interacción estructurada, tranquila y predecible."),
         ("• Emisión de Turnos y Permisos Provisorios con QR: ", "Capacidad para otorgar turnos en ventanilla para trámites de licencia o rentas, así como permisos de 72 horas para poda o mudanzas, respaldados con código QR de verificación para inspectores."),
         ("• Identidad, Patrimonio y Ecoturismo: ", "Difunde la historia fundacional de Don Bernardino Valle, la cartelera del Centro Cultural, la agenda del Intendente y asesora sobre los atractivos de los Esteros del Iberá a través del Portal Cambyretá."),
     ]
@@ -208,13 +207,33 @@ def create_document():
         r_bd.font.color.rgb = COLOR_BLACK
 
     # SALTO DE PÁGINA LIMPIO PARA LA GUÍA DEL DASHBOARD Y LOS CÓDIGOS QR
-    # Así evitamos cualquier corte desprolijo entre páginas
     doc.add_page_break()
 
     add_section_heading("4. GUÍA DE USUARIO DEL CENTRO DE GESTIÓN MUNICIPAL (DASHBOARD)")
     add_body_paragraph(
-        "El Centro de Gestión (/dashboard) es el panel operativo exclusivo para el Intendente, secretarios de área y operadores municipales. Cada pestaña cumple una función clara dentro de la administración pública:"
+        "El Centro de Gestión (/dashboard) es el panel operativo exclusivo para el Intendente, secretarios de área y operadores municipales. Para resguardar la seguridad y privacidad del sistema, el acceso requiere validación con credenciales autorizadas."
     )
+
+    # RECUADRO CON CONTRASEÑAS OFICIALES DE ACCESO AL DASHBOARD
+    p_auth = doc.add_paragraph()
+    p_auth.paragraph_format.space_before = Pt(4)
+    p_auth.paragraph_format.space_after = Pt(8)
+    p_auth.paragraph_format.left_indent = Inches(0.2)
+    p_auth.paragraph_format.right_indent = Inches(0.2)
+    r_auth_title = p_auth.add_run("CREDENCIALES Y CONTRASEÑAS DE ACCESO AL DASHBOARD:\n")
+    r_auth_title.bold = True
+    r_auth_title.font.size = Pt(9.5)
+    r_auth_title.font.name = "Arial"
+    r_auth_title.font.color.rgb = COLOR_BLACK
+
+    r_auth_desc = p_auth.add_run(
+        "• PIN Numérico de Acceso Rápido: 1519 (Correspondiente a la altura oficial del Palacio Municipal: Av. Centenario 1519).\n"
+        "• Contraseña Alfanumérica de Respaldo: ituzaingo2026\n"
+        "Cualquiera de las dos claves es válida en la pantalla de ingreso. Una vez autenticado, el operador dispone de una sesión activa protegida."
+    )
+    r_auth_desc.font.size = Pt(9)
+    r_auth_desc.font.name = "Arial"
+    r_auth_desc.font.color.rgb = COLOR_CHARCOAL
 
     dashboard_tabs = [
         ("1. Tren Agéntico & Ánimo Barrial (20 Barrios)", "Monitoreo en tiempo real del despacho municipal hacia las distintas áreas operativas. Presenta el termómetro social de los 20 barrios de Ituzaingó. Cada registro cuenta con botones para 'Modificar' el estado del reclamo o 'Archivar' el caso para mantener la consola despejada."),
@@ -314,7 +333,7 @@ def create_document():
     r11_t.font.size = Pt(9.5)
     r11_t.font.name = "Arial"
     r11_t.font.color.rgb = COLOR_BLACK
-    r11_u = p11.add_run("https://susy-bot.vercel.app/dashboard\n(Acceso exclusivo de operadores)")
+    r11_u = p11.add_run("https://susy-bot.vercel.app/dashboard\n(Acceso exclusivo de operadores • PIN: 1519)")
     r11_u.font.size = Pt(8.5)
     r11_u.font.name = "Arial"
     r11_u.font.color.rgb = COLOR_GRAY_MUTED
