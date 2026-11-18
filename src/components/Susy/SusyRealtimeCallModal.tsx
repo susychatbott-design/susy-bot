@@ -438,127 +438,84 @@ export default function SusyRealtimeCallModal({
 
       setAccessibleAnnouncement("Susy está respondiendo.");
 
-      // Reproducción continua de oraciones completas con Keep-Alive anti-freeze para Chrome móvil
+      // Reproducción robusta directa con Utterance completa y Keep-Alive continuo
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         try {
-          // Dividir exclusivamente por puntuación de oraciones reales (. ? ! \n), nunca en comas
-          // para evitar que en Android Chrome se congele o quede muda tras 4 palabras
-          const cleanSentences = spokenText
-            .replace(/([.!?]+|\n+)/g, "$1\n")
-            .split("\n")
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0);
-
-          fallbackSentenceQueueRef.current =
-            cleanSentences.length > 0 ? [...cleanSentences] : [spokenText];
+          fallbackTextBufferRef.current = "";
+          fallbackSentenceQueueRef.current = [];
           isFallbackSpeakingRef.current = true;
-          // 🛡️ LOCKOUT VAD DE 2200ms: Protege a Susy de auto-interrumpirse con su propio parlante en el celular
-          vadLockoutUntilRef.current = Date.now() + 2200;
+          // 🛡️ LOCKOUT VAD DE 2500ms: Protege a Susy de auto-interrumpirse con su propio parlante en el celular
+          vadLockoutUntilRef.current = Date.now() + 2500;
 
-          const estimatedDurationMs = Math.max(18000, Math.round((spokenText.length / 6) * 1000) + 8000);
+          const estimatedDurationMs = Math.max(25000, Math.round((spokenText.length / 5) * 1000) + 10000);
 
           primeLatinVoices();
-
           resetSpeechHeartbeat(estimatedDurationMs);
 
-          // 💓 KEEP-ALIVE PULSE PARA ANDROID / CHROME:
-          // En móviles Chrome pone en pausa el sintetizador cada 2-3 segundos si no se pulsa .resume().
+          // 💓 KEEP-ALIVE PULSE: Cada 1.5s llama a resume() para que Chrome jamás se congele
           if (speechKeepAliveRef.current) {
             clearInterval(speechKeepAliveRef.current);
           }
           speechKeepAliveRef.current = setInterval(() => {
             if (typeof window !== "undefined" && "speechSynthesis" in window) {
-              if (window.speechSynthesis.speaking && window.speechSynthesis.paused) {
+              if (window.speechSynthesis.paused || window.speechSynthesis.speaking) {
                 window.speechSynthesis.resume();
               }
             }
-          }, 2000);
+          }, 1500);
 
           const currentEpoch = fallbackEpochRef.current;
 
-          const playSentenceQueue = () => {
-            if (
-              fallbackEpochRef.current !== currentEpoch ||
-              !isSusySpeakingRef.current ||
-              !isFallbackSpeakingRef.current
-            ) {
-              return;
-            }
+          // Una única locución continua y fluida para todo el texto de la respuesta
+          const utterance = new SpeechSynthesisUtterance(spokenText);
+          activeUtterancesRef.current = [utterance];
 
-            if (sentenceWatchdogRef.current) {
-              clearTimeout(sentenceWatchdogRef.current);
-              sentenceWatchdogRef.current = null;
-            }
+          utterance.rate = activeVoiceParamsRef.current.rate;
+          utterance.pitch = activeVoiceParamsRef.current.pitch;
+          applyLatinVoice(utterance);
 
-            const sentence = fallbackSentenceQueueRef.current.shift();
-            if (!sentence) {
-              clearSpeechHeartbeat();
-              activeUtterancesRef.current = [];
-              isFallbackSpeakingRef.current = false;
-              isSusySpeakingRef.current = false;
-              vadLockoutUntilRef.current = Date.now() + 500;
-              if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
-              cooldownTimerRef.current = setTimeout(() => {
-                resumeListening();
-              }, 350);
-              return;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(sentence);
-            // 🛡️ Prevención de Garbage Collection en Chrome: guardar en array useRef<SpeechSynthesisUtterance[]>
-            activeUtterancesRef.current.push(utterance);
-
-            utterance.rate = activeVoiceParamsRef.current.rate;
-            utterance.pitch = activeVoiceParamsRef.current.pitch;
-
-            // 🌎 FASE 7.7: Forzar voz latina (es-AR / es-MX / es-US / es-419), nunca es-ES
-            applyLatinVoice(utterance);
-
-            let advanced = false;
-            const advanceToNextSentence = () => {
-              if (advanced) return;
-              advanced = true;
-              if (sentenceWatchdogRef.current) {
-                clearTimeout(sentenceWatchdogRef.current);
-                sentenceWatchdogRef.current = null;
-              }
-              activeUtterancesRef.current = activeUtterancesRef.current.filter(
-                (u) => u !== utterance
-              );
-              if (
-                fallbackEpochRef.current !== currentEpoch ||
-                !isSusySpeakingRef.current ||
-                !isFallbackSpeakingRef.current
-              ) {
-                return;
-              }
-              playSentenceQueue();
-            };
-
-            const maxSentenceMs = Math.min(14000, Math.max(3500, sentence.length * 90));
-            sentenceWatchdogRef.current = setTimeout(() => {
-              advanceToNextSentence();
-            }, maxSentenceMs);
-
-            utterance.onend = () => {
-              advanceToNextSentence();
-            };
-
-            utterance.onerror = (err) => {
-              console.warn("[SpeechSynthesis Chunk Error]:", err);
-              advanceToNextSentence();
-            };
-
-            if (window.speechSynthesis.paused) {
-              window.speechSynthesis.resume();
-            }
-            window.speechSynthesis.speak(utterance);
+          let finished = false;
+          const finishSpeech = () => {
+            if (finished) return;
+            finished = true;
+            clearSpeechHeartbeat();
+            activeUtterancesRef.current = [];
+            isFallbackSpeakingRef.current = false;
+            isSusySpeakingRef.current = false;
+            vadLockoutUntilRef.current = Date.now() + 800;
+            if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+            cooldownTimerRef.current = setTimeout(() => {
+              resumeListening();
+            }, 350);
           };
 
-          playSentenceQueue();
+          utterance.onend = () => {
+            if (fallbackEpochRef.current === currentEpoch) {
+              finishSpeech();
+            }
+          };
+
+          utterance.onerror = (err) => {
+            console.warn("[SpeechSynthesis Error]:", err);
+            if (fallbackEpochRef.current === currentEpoch) {
+              finishSpeech();
+            }
+          };
+
+          if (sentenceWatchdogRef.current) clearTimeout(sentenceWatchdogRef.current);
+          sentenceWatchdogRef.current = setTimeout(() => {
+            if (fallbackEpochRef.current === currentEpoch && isSusySpeakingRef.current) {
+              finishSpeech();
+            }
+          }, estimatedDurationMs);
+
+          if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
+          }
+          window.speechSynthesis.speak(utterance);
           return;
         } catch (e) {
-          console.warn("[SpeechSynthesis Error]:", e);
+          console.warn("[SpeechSynthesis Exception]:", e);
           clearSpeechHeartbeat();
           resumeListening();
         }
