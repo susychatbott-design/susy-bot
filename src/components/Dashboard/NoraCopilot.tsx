@@ -71,52 +71,33 @@ export function NoraCopilot() {
     setIsThinking(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/nora-copilot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: query,
           history: messages.map((m) => ({
-            role: m.sender === "nora" ? "assistant" : "user",
-            content: m.text
-          })),
-          customSystemPrompt: NORA_KNOWLEDGE_BASE,
-          mode: "general",
+            sender: m.sender,
+            text: m.text
+          }))
         })
       });
 
       if (res.ok) {
-        const text = await res.text();
-        // Parsear si viene por stream o JSON
-        let cleanReply = text;
-        if (text.includes("data:")) {
-          cleanReply = text
-            .split("\n")
-            .filter((l) => l.startsWith("data:"))
-            .map((l) => {
-              const val = l.slice(5).trim();
-              if (val === "[DONE]") return "";
-              try {
-                const j = JSON.parse(val);
-                return j.text || j.content || "";
-              } catch {
-                return val;
-              }
-            })
-            .join("");
-        }
+        const data = await res.json();
+        const cleanReply = (data.text || "").trim();
 
         setMessages((prev) => [
           ...prev,
           {
             id: "n_" + Date.now(),
             sender: "nora",
-            text: cleanReply.trim() || "Entendido. Podés ver esa información directamente en la pestaña correspondiente del panel superior.",
+            text: cleanReply || "Entendido. Podés ver esa información directamente en la pestaña correspondiente del panel superior.",
             time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           }
         ]);
       } else {
-        throw new Error("ERR_CHAT");
+        throw new Error("ERR_NORA_API");
       }
     } catch {
       // Fallback local determinista sobre el conocimiento de Susy
