@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Trash2,
   Edit3,
+  Printer,
+  FileDown,
 } from "lucide-react";
 import {
   AGENDA_INTENDENTE_ITUZAINGO,
@@ -30,6 +32,10 @@ import {
   TREN_AGENTICO_SUSY,
 } from "@/lib/susy/municipal/ituzaingoCommandCenter";
 import { municipalArchive } from "@/lib/susy/municipal/municipalArchiveStore";
+import {
+  exportarPlanillaWord,
+  imprimirPlanillaPDF,
+} from "@/lib/susy/municipal/municipalReportPrinter";
 
 export function PanelTrenAgenticoYBarrios() {
   const [barrios, setBarrios] = useState<HumorSocialBarrio[]>(() => obtenerTermometroBarrial());
@@ -59,12 +65,33 @@ export function PanelTrenAgenticoYBarrios() {
     setBitacoraOps(obtenerBitacoraOperacionesAgenticas());
   };
 
-  const handleGuardarEdicionOp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!opEnEdicion) return;
-    modificarOperacionAgentica(opEnEdicion.id, opEnEdicion);
-    setBitacoraOps(obtenerBitacoraOperacionesAgenticas());
-    setOpEnEdicion(null);
+  const handleImprimirOpsPDF = (destinatario: "INTENDENTE" | "SECRETARIOS_AREA") => {
+    imprimirPlanillaPDF({
+      tituloInforme:
+        destinatario === "INTENDENTE"
+          ? "PARTE DIARIO DE GESTIONES CIUDADANAS Y DESPACHO DE ÁREAS"
+          : "PLANILLA DE TRABAJO DIARIO PARA CUADRILLAS Y SECRETARÍAS",
+      destinatario,
+      cargoDestinatario: "Secretaría de Obras, Tránsito y Defensa Civil",
+      periodo: "Jornada de Guardia Actual",
+      resumenEjecutivo: `Relevamiento consolidado de ${bitacoraOps.length} operaciones del Tren Agéntico con derivaciones y estado de resolución.`,
+      operacionesActivas: bitacoraOps,
+    });
+  };
+
+  const handleExportarOpsWord = () => {
+    exportarPlanillaWord(
+      {
+        tituloInforme: "INFORME OPERATIVO DEL TREN AGÉNTICO Y SECRETARÍAS MUNICIPALES",
+        destinatario: "INTENDENTE",
+        cargoDestinatario: "Intendencia Municipal de Ituzaingó",
+        periodo: "Últimas 24 Horas",
+        resumenEjecutivo:
+          "Reporte oficial de reclamos, pedidos vecinales e incidencias tramitadas por el asistente virtual y asignadas a cada área municipal.",
+        operacionesActivas: bitacoraOps,
+      },
+      "Parte_Diario_Operativo"
+    );
   };
 
   useEffect(() => {
@@ -163,9 +190,29 @@ export function PanelTrenAgenticoYBarrios() {
               Cada llamada en vivo, chat ciudadano o escaneo de redes queda registrado aquí con el barrio detectado, el agente municipal interviniente y la resolución.
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold self-start">
-            Sincronización en Tiempo Real Activa
-          </span>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => handleImprimirOpsPDF("INTENDENTE")}
+              title="Imprimir planilla para despacho del Intendente"
+              className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-sky-950 cursor-pointer"
+            >
+              <Printer size={13} />
+              <span>Imprimir / PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportarOpsWord}
+              title="Descargar parte diario en Word para secretarías"
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-950 cursor-pointer"
+            >
+              <FileDown size={13} />
+              <span>Word (.doc)</span>
+            </button>
+            <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+              En Vivo
+            </span>
+          </div>
         </div>
 
         <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">

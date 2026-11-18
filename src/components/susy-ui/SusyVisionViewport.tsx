@@ -40,45 +40,45 @@ const CATEGORY_CHIPS: {
   color: string;
   isUrgent?: boolean;
 }[] = [
-  {
-    id: "siniestro_vial",
-    label: "Siniestro / Ruta 12 y 41",
-    icon: Siren,
-    color: "bg-rose-600/30 text-rose-300 border-rose-500/50 hover:bg-rose-600/50",
-    isUrgent: true,
-  },
-  {
-    id: "defensa_civil",
-    label: "Defensa Civil / Incendios",
-    icon: Flame,
-    color: "bg-amber-600/30 text-amber-300 border-amber-500/50 hover:bg-amber-600/50",
-    isUrgent: true,
-  },
-  {
-    id: "obras_publicas",
-    label: "Bache / Calzada Rota",
-    icon: AlertTriangle,
-    color: "bg-blue-600/30 text-blue-300 border-blue-500/50 hover:bg-blue-600/50",
-  },
-  {
-    id: "luminaria",
-    label: "Alumbrado Público",
-    icon: AlertTriangle,
-    color: "bg-yellow-600/30 text-yellow-300 border-yellow-500/50 hover:bg-yellow-600/50",
-  },
-  {
-    id: "limpieza_ramas",
-    label: "Limpieza y Poda",
-    icon: FileCheck2,
-    color: "bg-emerald-600/30 text-emerald-300 border-emerald-500/50 hover:bg-emerald-600/50",
-  },
-  {
-    id: "desarrollo_social",
-    label: "Desarrollo Social / Asistencia",
-    icon: FileCheck2,
-    color: "bg-purple-600/30 text-purple-300 border-purple-500/50 hover:bg-purple-600/50",
-  },
-];
+    {
+      id: "siniestro_vial",
+      label: "Siniestro / Ruta 12 y 41",
+      icon: Siren,
+      color: "bg-rose-600/30 text-rose-300 border-rose-500/50 hover:bg-rose-600/50",
+      isUrgent: true,
+    },
+    {
+      id: "defensa_civil",
+      label: "Defensa Civil / Incendios",
+      icon: Flame,
+      color: "bg-amber-600/30 text-amber-300 border-amber-500/50 hover:bg-amber-600/50",
+      isUrgent: true,
+    },
+    {
+      id: "obras_publicas",
+      label: "Bache / Calzada Rota",
+      icon: AlertTriangle,
+      color: "bg-blue-600/30 text-blue-300 border-blue-500/50 hover:bg-blue-600/50",
+    },
+    {
+      id: "luminaria",
+      label: "Alumbrado Público",
+      icon: AlertTriangle,
+      color: "bg-yellow-600/30 text-yellow-300 border-yellow-500/50 hover:bg-yellow-600/50",
+    },
+    {
+      id: "limpieza_ramas",
+      label: "Limpieza y Poda",
+      icon: FileCheck2,
+      color: "bg-emerald-600/30 text-emerald-300 border-emerald-500/50 hover:bg-emerald-600/50",
+    },
+    {
+      id: "desarrollo_social",
+      label: "Desarrollo Social / Asistencia",
+      icon: FileCheck2,
+      color: "bg-purple-600/30 text-purple-300 border-purple-500/50 hover:bg-purple-600/50",
+    },
+  ];
 
 /**
  * SusyVisionViewport: HUD Táctico "Nora Live Exteriores / Relevamiento Municipal y Siniestros".
@@ -254,9 +254,8 @@ export function SusyVisionViewport({
           {!previewCaptured && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
               <div
-                className={`w-4/5 h-4/5 border-2 rounded-2xl border-dashed transition-colors ${
-                  isCritical ? "border-rose-500/70" : "border-emerald-400/50"
-                }`}
+                className={`w-4/5 h-4/5 border-2 rounded-2xl border-dashed transition-colors ${isCritical ? "border-rose-500/70" : "border-emerald-400/50"
+                  }`}
               />
               <div className="absolute w-8 h-8 border-t-2 border-l-2 border-white/60 top-6 left-6" />
               <div className="absolute w-8 h-8 border-t-2 border-r-2 border-white/60 top-6 right-6" />
@@ -271,8 +270,8 @@ export function SusyVisionViewport({
             <span className="truncate font-semibold">
               {currentGps
                 ? resolverReferenciaUrbanaItuzaingo(currentGps.latitude, currentGps.longitude).barrio +
-                  " • " +
-                  resolverReferenciaUrbanaItuzaingo(currentGps.latitude, currentGps.longitude).zona
+                " • " +
+                resolverReferenciaUrbanaItuzaingo(currentGps.latitude, currentGps.longitude).zona
                 : "Obteniendo zona de Ituzaingó..."}
             </span>
           </div>
@@ -313,11 +312,10 @@ export function SusyVisionViewport({
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                    isSelected
-                      ? `${cat.color} ring-1 ring-white/30 scale-105`
-                      : "bg-slate-800/80 border-white/5 text-slate-400 hover:text-white"
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${isSelected
+                    ? `${cat.color} ring-1 ring-white/30 scale-105`
+                    : "bg-slate-800/80 border-white/5 text-slate-400 hover:text-white"
+                    }`}
                 >
                   <Icon size={13} />
                   <span>{cat.label}</span>
@@ -343,13 +341,12 @@ export function SusyVisionViewport({
                   type="button"
                   onClick={handleConfirmAndSend}
                   disabled={isSubmitting || reportSuccess}
-                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all ${
-                    reportSuccess
-                      ? "bg-emerald-600 text-white"
-                      : isCritical
+                  className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all ${reportSuccess
+                    ? "bg-emerald-600 text-white"
+                    : isCritical
                       ? "bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/60"
                       : "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/60"
-                  }`}
+                    }`}
                 >
                   {isSubmitting ? (
                     <>
@@ -376,11 +373,10 @@ export function SusyVisionViewport({
                 type="button"
                 onClick={handleSnapEvidence}
                 disabled={isProcessing}
-                className={`w-full py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-xl transition-all ${
-                  isCritical
-                    ? "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white"
-                    : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white"
-                }`}
+                className={`w-full py-3 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-xl transition-all ${isCritical
+                  ? "bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white"
+                  : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white"
+                  }`}
               >
                 <Camera size={18} />
                 <span>Capturar Evidencia y Ubicación GPS</span>

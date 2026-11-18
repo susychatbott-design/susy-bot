@@ -234,7 +234,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     isSpeakingRef.current = false;
 
     if (vadAudioCtxRef.current && vadAudioCtxRef.current.state === "suspended") {
-      vadAudioCtxRef.current.resume().catch(() => {});
+      vadAudioCtxRef.current.resume().catch(() => { });
     }
 
     setState((prev) => ({
@@ -512,7 +512,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       nextStartTimeRef.current = 0;
     }
     if (playbackCtxRef.current.state === "suspended") {
-      playbackCtxRef.current.resume().catch(() => {});
+      playbackCtxRef.current.resume().catch(() => { });
     }
     return playbackCtxRef.current;
   }, []);
@@ -741,7 +741,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       ws.onmessage = (event: MessageEvent) => {
         if (event.data instanceof ArrayBuffer) {
           clearWsResponseTimeout();
-          scheduleIncomingAudioBuffer(event.data).catch(() => {});
+          scheduleIncomingAudioBuffer(event.data).catch(() => { });
           return;
         }
 
@@ -1370,7 +1370,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
     }
 
     if (vadAudioCtxRef.current) {
-      vadAudioCtxRef.current.close().catch(() => {});
+      vadAudioCtxRef.current.close().catch(() => { });
       vadAudioCtxRef.current = null;
     }
 
@@ -1434,7 +1434,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
       const loop = (): void => {
         if (!vadAudioCtxRef.current) return;
         if (vadAudioCtxRef.current.state === "suspended") {
-          vadAudioCtxRef.current.resume().catch(() => {});
+          vadAudioCtxRef.current.resume().catch(() => { });
         }
 
         const now = performance.now();
@@ -1488,7 +1488,7 @@ export function useSusyLive(options: UseSusyLiveOptions = {}) {
                 const blob = new Blob(recordedChunksRef.current, { type: mimeType });
                 // Ignorar ruidos muy cortos (< 380ms o < 1200 bytes) tras una interrupción Barge-in
                 if (duration >= 380 && blob.size > 1200) {
-                  processAudioUtterance(blob).catch(() => {});
+                  processAudioUtterance(blob).catch(() => { });
                 } else {
                   unlockVadAndResetAudioState();
                 }

@@ -148,7 +148,7 @@ export function useSusyVision() {
           videoRef.current.setAttribute("playsinline", "true");
           videoRef.current.setAttribute("autoplay", "true");
           videoRef.current.muted = true;
-          await videoRef.current.play().catch(() => {});
+          await videoRef.current.play().catch(() => { });
         }
 
         setState((prev) => ({
@@ -159,7 +159,7 @@ export function useSusyVision() {
         }));
 
         // Adquirir coordenadas en segundo plano sin bloquear el video
-        fetchCurrentGps().catch(() => {});
+        fetchCurrentGps().catch(() => { });
       } catch (err: unknown) {
         console.error("[useSusyVision] Error al abrir cámara:", err);
         setState((prev) => ({

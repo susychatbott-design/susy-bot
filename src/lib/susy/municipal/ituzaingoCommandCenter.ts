@@ -633,7 +633,7 @@ export function obtenerBitacoraOperacionesAgenticas(): RegistroOperacionAgentica
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-  } catch {}
+  } catch { }
   return INITIAL_OPERATIONS_LOG;
 }
 
@@ -741,7 +741,7 @@ export function registrarInteraccionEnTrenAgentico(params: {
       const actualizado = [nuevoRegistro, ...actual].slice(0, 60);
       localStorage.setItem(STORAGE_KEY_OPERATIONS_LOG, JSON.stringify(actualizado));
       window.dispatchEvent(new Event("susy_agentic_ops_updated"));
-    } catch {}
+    } catch { }
   }
 
   return nuevoRegistro;
@@ -755,7 +755,7 @@ export function obtenerTermometroBarrial(): HumorSocialBarrio[] {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
-  } catch {}
+  } catch { }
   return BARRIOS_HUMOR_SOCIAL_INICIAL;
 }
 
@@ -804,7 +804,7 @@ export function registrarPulsoSocialBarrial(
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem(STORAGE_KEY_BARRIOS, JSON.stringify(lista));
-    } catch {}
+    } catch { }
   }
 
   return {

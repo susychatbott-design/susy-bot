@@ -9,6 +9,8 @@ import {
   RefreshCw,
   FileSpreadsheet,
   FileText,
+  Printer,
+  FileDown,
   Clock,
   ShieldCheck,
   Building2,
@@ -19,6 +21,10 @@ import {
   municipalArchive,
   ArchivoHistoricoItem,
 } from "@/lib/susy/municipal/municipalArchiveStore";
+import {
+  exportarPlanillaWord,
+  imprimirPlanillaPDF,
+} from "@/lib/susy/municipal/municipalReportPrinter";
 
 export function PanelArchivoHistorico() {
   const [items, setItems] = useState<ArchivoHistoricoItem[]>(() =>
@@ -27,6 +33,41 @@ export function PanelArchivoHistorico() {
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
   const [busqueda, setBusqueda] = useState<string>("");
   const [mensajeDescarga, setMensajeDescarga] = useState<string | null>(null);
+
+  const handleExportarWord = (destinatario: "INTENDENTE" | "SECRETARIOS_AREA") => {
+    exportarPlanillaWord(
+      {
+        tituloInforme:
+          destinatario === "INTENDENTE"
+            ? "INFORME OFICIAL DE ACTAS Y EXPEDIENTES AL PODER EJECUTIVO MUNICIPAL"
+            : "PLANILLA DE EXPEDIENTES Y TRAMITES PARA SECRETARIOS Y JEFES DE ÁREA",
+        destinatario,
+        cargoDestinatario: "Secretarías y Direcciones del Municipio",
+        periodo: "Último período operativo municipal",
+        resumenEjecutivo:
+          "Planilla formal comprensiva de las actuaciones, quejas vecinales, turnos y permisos tramitados a través de Susy Bot e incorporados al archivo histórico municipal.",
+        itemsArchivo: itemsFiltrados,
+      },
+      destinatario === "INTENDENTE" ? "Informe_Intendente" : "Planilla_Secretarios"
+    );
+    setMensajeDescarga("Planilla en formato Word (.doc) generada y descargada.");
+    setTimeout(() => setMensajeDescarga(null), 3500);
+  };
+
+  const handleImprimirPDF = (destinatario: "INTENDENTE" | "SECRETARIOS_AREA") => {
+    imprimirPlanillaPDF({
+      tituloInforme:
+        destinatario === "INTENDENTE"
+          ? "INFORME EJECUTIVO DE EXPEDIENTES AL INTENDENTE MUNICIPAL"
+          : "PLANILLA OFICIAL DE RELEVAMIENTO PARA JEFATURAS DE ÁREA",
+      destinatario,
+      cargoDestinatario: "Gabinete Municipal de Ituzaingó",
+      periodo: "Ejercicio Operativo en Curso",
+      resumenEjecutivo:
+        "Documento emitido con membrete institucional y campo de firmas para elevación formal de actuaciones al Departamento Ejecutivo.",
+      itemsArchivo: itemsFiltrados,
+    });
+  };
 
   useEffect(() => {
     const syncArchive = () => setItems(municipalArchive.getArchivados());
@@ -109,21 +150,43 @@ export function PanelArchivoHistorico() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* BOTÓN IMPRIMIR / PDF PARA INTENDENTE */}
+          <button
+            type="button"
+            onClick={() => handleImprimirPDF("INTENDENTE")}
+            title="Imprimir o guardar en PDF con formato oficial para el Intendente"
+            className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-sky-950 cursor-pointer"
+          >
+            <Printer size={14} />
+            <span>Imprimir / PDF (Intendente)</span>
+          </button>
+
+          {/* BOTÓN WORD PARA JEFES DE ÁREAS */}
+          <button
+            type="button"
+            onClick={() => handleExportarWord("SECRETARIOS_AREA")}
+            title="Descargar planilla editable en Word para Jefes de Área"
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-indigo-950 cursor-pointer"
+          >
+            <FileDown size={14} />
+            <span>Descargar Word (.doc)</span>
+          </button>
+
           <button
             type="button"
             onClick={handleDescargarCSV}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5 cursor-pointer"
           >
             <FileSpreadsheet size={14} className="text-emerald-400" />
-            <span>Exportar CSV</span>
+            <span>CSV</span>
           </button>
           <button
             type="button"
             onClick={handleDescargarJSON}
-            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-amber-950 cursor-pointer"
+            className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-xs font-bold text-white flex items-center gap-1.5 shadow-md shadow-amber-950 cursor-pointer"
           >
             <Download size={14} />
-            <span>Descargar Backup JSON</span>
+            <span>JSON Backup</span>
           </button>
         </div>
       </div>
