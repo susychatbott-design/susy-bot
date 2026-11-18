@@ -44,6 +44,7 @@ export async function transcribeAudioWithWhisper(audio: AudioInput): Promise<str
       formData.append("model", "whisper-large-v3-turbo");
       formData.append("language", "es");
       formData.append("temperature", "0.0");
+      formData.append("prompt", "Conversación en Ituzaingó, Corrientes, sobre trámites municipales, Esteros del Iberá, Portal Cambyretá, carnet de conducir, intendente, tasas y turismo.");
 
       const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
         method: "POST",

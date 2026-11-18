@@ -164,9 +164,18 @@ export async function POST(req: Request) {
       buildSusyPnlContext(vecinoProfile);
     
     // 1. Detección de consultas culturales, teatro y eventos de fin de semana
-    const isCulturalQuery = /evento|actividad|finde|fin de semana|teatro|obra|cultura|chamam|musica|música|costanera|pescador|artesano|feria|centro cultural/i.test(promptToInfer);
+    const isCulturalQuery = /(evento|actividad|finde|fin de semana|teatro|obra|cultura|chamam|musica|música|costanera|pescador|artesano|feria|centro cultural)/i.test(promptToInfer) && !/esteros|iber[aá]|cambyret[aá]/i.test(promptToInfer);
     if (isCulturalQuery) {
       contextualSystemPrompt += `\n\n${generarContextoAgendaCultural()}\n\nDIRECTIVA OBLIGATORIA: El usuario te pregunta por eventos o actividades. Informá de inmediato y con entusiasmo que en el Centro Cultural Ituzaingó (Corrientes y Belgrano) se presenta la obra de teatro "El Viento Trae Recuerdos" (sábado y domingo 20:30 hs, entrada libre y gratuita), además del chamamé al atardecer en la Costanera y la feria de artesanos en Plaza San Martín.`;
+    }
+
+    // 1.1 Detección específica de los Esteros del Iberá y Portal Cambyretá (Ecoturismo y Humedales)
+    const isIberaQuery = /estero|esteros|iber[aá]|cambyret[aá]|parque nacional|reserva|carpincho|fauna|ciervo de los pantanos/i.test(promptToInfer);
+    if (isIberaQuery) {
+      contextualSystemPrompt += `\n\n[INFORMACIÓN DE LOS ESTEROS DEL IBERÁ - PORTAL CAMBYRETÁ, ITUZAINGÓ]:
+Los Esteros del Iberá son el segundo humedal más grande del mundo y una de las reservas de agua dulce y biodiversidad más importantes del planeta, ubicados en el corazón de la Provincia de Corrientes. Abarcan más de 12.000 kilómetros cuadrados de lagunas, embalsados y pastizales vírgenes con una fauna autóctona extraordinaria: carpinchos, yacarés negros y overos, ciervos de los pantanos, monos carayá y más de 350 especies de aves.
+Ituzaingó es la puerta de entrada norte a este paraíso natural a través del Portal Cambyretá (acceso sobre Ruta Nacional 12, a solo 15 km de la ciudad y 29 km de camino de tierra consolidado). El acceso es libre y gratuito para el avistaje de fauna, senderismo y safaris fotográficos.
+DIRECTIVA OBLIGATORIA: Cuando te pregunten qué son los Esteros del Iberá, explicalo con orgullo y claridad: son un gigantesco humedal y reserva natural protegida de agua dulce y biodiversidad única, y destacá que Ituzaingó es su portal norte de acceso (Portal Cambyretá). NO hables de artesanos ni de ferias salvo que te lo pregunten específicamente.`;
     }
 
     // 2. Detección de comercios, farmacias de turno y servicios
